@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: var(--font-geist-sans);
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-geist-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans);
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Layout helpers */
+.layout-root {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 280px;
+  gap: 0;
+  min-height: calc(100vh - 56px);
+}
+
+/* Sidebar и TOC будут использовать sticky позиционирование */
+
+@media (max-width: 1280px) {
+  .layout-root {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .sidebar-column {
+    width: 280px !important;
+  }
+  .toc-column {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .layout-root {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar-column {
+    display: none !important;
+  }
+}
+
+.prose h2 a, .prose h3 a, .prose h4 a {
+  text-decoration: none;
+}
+
+/* Отступы для заголовков с якорными ссылками */
+.prose h2, .prose h3, .prose h4 {
+  scroll-margin-top: 80px; /* Отступ от header при переходе по якорным ссылкам */
+}
+
+/* Стили для активных ссылок TOC */
+.prose h2:target, .prose h3:target, .prose h4:target {
+  animation: highlight 2s ease-in-out;
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(59, 130, 246, 0.1); }
+  100% { background-color: transparent; }
+}
+
+.sticky-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--background);
+  backdrop-filter: saturate(180%) blur(6px);
+}
+
+/* Navigation styles */
+.nav-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 0.75rem;
+  padding-left: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dark .nav-section-title {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Визуально делаем раздел явно не-кликабельным */
+.nav-section-title::before {
+  content: "—";
+  opacity: 0.6;
+}
+.nav-section-title::after {
+  content: "(раздел)";
+  font-size: 0.65rem;
+  opacity: 0.6;
+}
+
+.nav-item {
+  display: block;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgba(0, 0, 0, 0.8);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+.dark .nav-item {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.nav-item:hover {
+  color: rgba(59, 130, 246, 1);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.nav-item.active {
+  color: rgba(59, 130, 246, 1);
+  font-weight: 500;
+}
+
+/* Copy button styles */
+.copy-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .copy-section {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dark .copy-button {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.copy-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .copy-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Prose improvements */
+.prose {
+  color: var(--foreground);
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.prose h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose h2 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .prose h2 {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.prose h3 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose blockquote {
+  border-left: 4px solid rgba(59, 130, 246, 0.5);
+  background-color: rgba(59, 130, 246, 0.05);
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 0.375rem;
+}
+
+.prose code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.dark .prose code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.prose pre {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+.prose th, .prose td {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.dark .prose th, .dark .prose td {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.prose th {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.dark .prose th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  
+  .prose h1 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+  
+  .prose h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+/* Админская область использует только 2 колонки (sidebar + content) */
+.admin-layout {
+  grid-template-columns: 300px minmax(0, 1fr) !important;
+}
+
+@media (max-width: 1280px) {
+  .admin-layout {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
