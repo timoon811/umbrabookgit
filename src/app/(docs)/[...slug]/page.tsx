@@ -1,3 +1,4 @@
+import React from "react";
 import { prisma } from "@/lib/prisma";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { notFound } from "next/navigation";
@@ -57,8 +58,8 @@ export default async function DocPage({
         <MDXRemote
           source={article.content}
           components={{
-            pre: ({ children }) => {
-              const code = typeof children === "string" ? children : (children as React.ReactElement)?.props?.children ?? "";
+            pre: ({ children }: { children: React.ReactNode }) => {
+              const code = typeof children === "string" ? children : "";
               return (
                 <div className="relative group">
                   <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
