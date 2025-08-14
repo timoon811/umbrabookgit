@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ConditionalNavigation from "@/components/ConditionalNavigation";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -27,26 +28,45 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              try {
-                const theme = localStorage.getItem('theme');
-                const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                const initialTheme = theme || systemTheme;
-                if (initialTheme === 'dark') {
-                  document.documentElement.classList.add('dark');
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  var initialTheme = theme || systemTheme;
+                  
+                  if (initialTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                  } else {
+                    document.documentElement.style.colorScheme = 'light';
+                  }
+                  
+                  // Предотвращаем мерцание
+                  document.documentElement.style.visibility = 'visible';
+                } catch (e) {
+                  // Fallback для случаев, когда localStorage недоступен
+                  var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  if (systemTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                  }
+                  document.documentElement.style.visibility = 'visible';
                 }
-              } catch (e) {}
+              })();
             `,
           }}
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>        
-        <ConditionalNavigation />
-        {children}
+        <ThemeProvider>
+          <ConditionalNavigation />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -5,6 +5,15 @@
 @layer base {
   html {
     font-family: var(--font-geist-sans);
+    visibility: hidden; /* Предотвращаем мерцание до применения темы */
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+  
+  html:not(.dark) {
+    color-scheme: light;
   }
 }
 
@@ -13,11 +22,21 @@
   --foreground: #171717;
   --font-geist-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-geist-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+  
+  /* Дополнительные цвета для лучшей поддержки тем */
+  --border: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.2);
+  --accent: rgba(59, 130, 246, 0.1);
+  --accent-hover: rgba(59, 130, 246, 0.2);
 }
 
 :root.dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --accent: rgba(59, 130, 246, 0.2);
+  --accent-hover: rgba(59, 130, 246, 0.3);
 }
 
 body {
@@ -29,7 +48,7 @@ body {
 }
 
 * {
-  transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Layout helpers */
@@ -78,7 +97,7 @@ body {
 }
 
 @keyframes highlight {
-  0% { background-color: rgba(59, 130, 246, 0.1); }
+  0% { background-color: var(--accent); }
   100% { background-color: transparent; }
 }
 
@@ -88,6 +107,7 @@ body {
   z-index: 50;
   background: var(--background);
   backdrop-filter: saturate(180%) blur(6px);
+  border-bottom: 1px solid var(--border);
 }
 
 /* Navigation styles */
@@ -136,7 +156,7 @@ body {
 
 .nav-item:hover {
   color: rgba(59, 130, 246, 1);
-  background-color: rgba(59, 130, 246, 0.05);
+  background-color: var(--accent);
 }
 
 .nav-item.active {
@@ -151,11 +171,7 @@ body {
   gap: 0.5rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.dark .copy-section {
-  border-top-color: rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border);
 }
 
 .copy-button {
@@ -164,24 +180,16 @@ body {
   gap: 0.25rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
-  background-color: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: var(--accent);
+  border: 1px solid var(--border);
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.dark .copy-button {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
 .copy-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.dark .copy-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--accent-hover);
+  border-color: var(--border-hover);
 }
 
 /* Prose improvements */
@@ -206,11 +214,7 @@ body {
   margin-top: 2rem;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.dark .prose h2 {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border);
 }
 
 .prose h3 {
@@ -222,21 +226,17 @@ body {
 
 .prose blockquote {
   border-left: 4px solid rgba(59, 130, 246, 0.5);
-  background-color: rgba(59, 130, 246, 0.05);
+  background-color: var(--accent);
   padding: 1rem;
   margin: 1.5rem 0;
   border-radius: 0.375rem;
 }
 
 .prose code {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--accent);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
-}
-
-.dark .prose code {
-  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .prose pre {
@@ -247,6 +247,10 @@ body {
   margin: 1.5rem 0;
 }
 
+.dark .prose pre {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 .prose table {
   border-collapse: collapse;
   width: 100%;
@@ -254,22 +258,14 @@ body {
 }
 
 .prose th, .prose td {
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
   padding: 0.75rem;
   text-align: left;
 }
 
-.dark .prose th, .dark .prose td {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
 .prose th {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--accent);
   font-weight: 600;
-}
-
-.dark .prose th {
-  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Mobile improvements */
@@ -301,4 +297,28 @@ body {
   .admin-layout {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+}
+
+/* Улучшенные стили для тем */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Специальные стили для темной темы */
+.dark .sticky-topbar {
+  background: rgba(10, 10, 10, 0.8);
+}
+
+.dark .prose blockquote {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Анимации для переключения тем */
+@keyframes theme-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.theme-fade-in {
+  animation: theme-fade-in 0.3s ease-in-out;
 }
