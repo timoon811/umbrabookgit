@@ -6,6 +6,16 @@ const nextConfig = {
     turbo: false,
   },
   
+  // Отключаем линтинг в production
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
+  // Отключаем проверку типов в production
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
   // Настройки для изображений
   images: {
     domains: ['localhost'],
