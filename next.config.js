@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Отключаем статическую генерацию для динамических страниц
-  output: 'standalone',
-  
   // Настройки для production
   experimental: {
     // Отключаем turbopack в production

@@ -30,12 +30,12 @@ async function checkAdminAuth() {
 // Обновление пользователя (блокировка, одобрение, редактирование)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkAdminAuth();
     
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action, name, email, role, password } = body;
 
@@ -146,12 +146,12 @@ export async function PUT(
 // Удаление пользователя
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkAdminAuth();
     
-    const { id } = params;
+    const { id } = await params;
 
     // Проверяем, что пользователь существует
     const existingUser = await prisma.user.findUnique({
