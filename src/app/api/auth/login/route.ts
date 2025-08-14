@@ -8,6 +8,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_ke
 
 export async function POST(request: NextRequest) {
   try {
+    // Проверяем подключение к базе данных
+    try {
+      await prisma.$connect();
+    } catch (dbError: unknown) {
+      console.error("Ошибка подключения к БД:", dbError);
+      return NextResponse.json(
+        { message: "Ошибка подключения к базе данных" },
+        { status: 503 }
+      );
+    }
+
     const contentType = request.headers.get("content-type")?.toLowerCase() || "";
     let email: string | undefined;
     let password: string | undefined;
@@ -121,18 +132,6 @@ export async function POST(request: NextRequest) {
       maxAge: 7 * 24 * 60 * 60, // 7 дней
     });
 
-    // Логирование события входа
-    await prisma.analytics.create({
-      data: {
-        event: "user_login",
-        data: JSON.stringify({
-          userId: user.id,
-          email: user.email,
-          userAgent: request.headers.get("user-agent"),
-        }),
-      },
-    });
-
     return NextResponse.json({
       message: "Успешный вход",
       user: {
@@ -142,11 +141,37 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Ошибка входа:", error);
+    
+    // Более детальная обработка ошибок
+    if (error && typeof error === 'object' && 'code' in error) {
+      const errorCode = error.code as string;
+      if (errorCode === 'P1001') {
+        return NextResponse.json(
+          { message: "Ошибка подключения к базе данных" },
+          { status: 503 }
+        );
+      }
+      
+      if (errorCode === 'P2024') {
+        return NextResponse.json(
+          { message: "Таймаут подключения к базе данных" },
+          { status: 503 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       { message: "Внутренняя ошибка сервера" },
       { status: 500 }
     );
+  } finally {
+    // Всегда отключаемся от БД
+    try {
+      await prisma.$disconnect();
+    } catch (disconnectError) {
+      console.error("Ошибка отключения от БД:", disconnectError);
+    }
   }
 }

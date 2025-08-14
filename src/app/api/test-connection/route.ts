@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,23 +11,44 @@ export async function GET(request: NextRequest) {
     // Проверяем подключение к базе данных
     let dbConnection = "Не настроено";
     let dbError = null;
+    let dbDetails = null;
     
     if (databaseUrl) {
       try {
         // Пытаемся подключиться к базе данных
-        const { PrismaClient } = require('@prisma/client');
         const prisma = new PrismaClient();
         
         await prisma.$connect();
         dbConnection = "Успешно";
+        
+        // Проверяем структуру БД
+        try {
+          const userCount = await prisma.user.count();
+          const categoryCount = await prisma.category.count();
+          dbDetails = {
+            userCount,
+            categoryCount,
+            tables: ['user', 'category']
+          };
+        } catch (queryError: unknown) {
+          if (queryError && typeof queryError === 'object' && 'message' in queryError) {
+            dbDetails = {
+              error: String(queryError.message),
+              code: 'code' in queryError ? String(queryError.code) : undefined
+            };
+          }
+        }
+        
         await prisma.$disconnect();
-      } catch (error: any) {
+      } catch (error: unknown) {
         dbConnection = "Ошибка";
-        dbError = {
-          code: error.code,
-          message: error.message,
-          name: error.name
-        };
+        if (error && typeof error === 'object') {
+          dbError = {
+            code: 'code' in error ? String(error.code) : undefined,
+            message: 'message' in error ? String(error.message) : undefined,
+            name: 'name' in error ? String(error.name) : undefined
+          };
+        }
       }
     }
     
@@ -40,22 +62,23 @@ export async function GET(request: NextRequest) {
       database: {
         connection: dbConnection,
         error: dbError,
+        details: dbDetails,
         url: databaseUrl ? `${databaseUrl.substring(0, 20)}...` : 'Не настроено'
       },
       timestamp: new Date().toISOString(),
       message: 'Проверка подключения завершена'
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Ошибка проверки подключения:', error);
     
     return NextResponse.json({
       status: 'error',
       message: 'Ошибка проверки подключения',
       error: {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+        name: error && typeof error === 'object' && 'name' in error ? String(error.name) : 'Unknown',
+        message: error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Unknown error',
+        stack: error && typeof error === 'object' && 'stack' in error ? String(error.stack) : undefined
       }
     }, { status: 500 });
   }
