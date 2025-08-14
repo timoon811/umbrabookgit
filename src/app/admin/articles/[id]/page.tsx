@@ -48,7 +48,7 @@ export default function ArticleEditorPage({
             : [{ id: "1", type: "paragraph", content: "" }],
           category: data.category || "getting-started",
           tags: Array.isArray(data.tags) ? data.tags : data.tags ? JSON.parse(data.tags) : [],
-          status: String(data.status || "DRAFT").toLowerCase(),
+          status: (data.status || "DRAFT").toLowerCase(),
         });
       } finally {
         setLoading(false);
