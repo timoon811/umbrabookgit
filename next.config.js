@@ -3,7 +3,14 @@ const nextConfig = {
   // Настройки для production
   experimental: {
     // Отключаем turbopack в production
-    turbo: false,
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   
   // Отключаем линтинг в production
