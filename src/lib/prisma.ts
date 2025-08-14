@@ -19,10 +19,6 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // Обработка ошибок подключения
-prisma.$on("beforeExit", async () => {
-  console.log("Prisma Client отключается...");
-});
-
 prisma.$on("error", (e) => {
   console.error("Prisma Client error:", e);
 });
