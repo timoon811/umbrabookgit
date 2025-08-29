@@ -26,12 +26,10 @@ async function checkAuth() {
         id: true,
         email: true,
         role: true,
-        status: true,
-        isBlocked: true,
       },
     });
 
-    if (!user || user.status !== "APPROVED" || user.isBlocked) {
+    if (!user) {
       return null;
     }
 

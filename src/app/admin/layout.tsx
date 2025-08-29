@@ -38,12 +38,10 @@ export default async function AdminLayout({
         email: true,
         name: true,
         role: true,
-        status: true,
-        isBlocked: true,
       },
     });
 
-    if (!user || user.role !== "ADMIN" || user.status !== "APPROVED" || user.isBlocked) {
+    if (!user || user.role !== "ADMIN") {
       redirect("/");
     }
   } catch (error) {

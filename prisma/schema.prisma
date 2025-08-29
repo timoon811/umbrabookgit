@@ -13,16 +13,12 @@ model users {
   name      String
   password  String
   role      UserRole    @default(USER)
-  status    UserStatus  @default(APPROVED)
-  isBlocked Boolean     @default(false)
-  telegram  String?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   analytics analytics[]
 
   @@index([email])
   @@index([role])
-  @@index([status])
 }
 
 model courses {
@@ -266,13 +262,6 @@ enum UserRole {
   MODERATOR
   MEDIA_BUYER
   SUPPORT
-}
-
-enum UserStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  BANNED
 }
 
 enum TransactionType {

@@ -54,9 +54,8 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         role: true,
-        status: true,
-        isBlocked: true,
         createdAt: true,
+        updatedAt: true,
       },
       orderBy: { createdAt: "desc" },
     });

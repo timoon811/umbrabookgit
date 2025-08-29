@@ -31,9 +31,8 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         role: true,
-
-
         createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -58,8 +57,8 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        status: user.status,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     });
   } catch (error: any) {
