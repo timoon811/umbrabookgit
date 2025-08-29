@@ -259,7 +259,7 @@ export default function UsersPage() {
   const getRoleBadge = (role: string) => {
     const roleConfig = {
       ADMIN: { label: 'Админ', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
-      MODERATOR: { label: 'Модератор', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+      MODERATOR: { label: 'Модератор', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300' },
       MEDIA_BUYER: { label: 'Медиа байер', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
       SUPPORT: { label: 'Поддержка', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
       USER: { label: 'Пользователь', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
@@ -331,7 +331,7 @@ export default function UsersPage() {
               placeholder="Поиск по имени или email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
             />
           </div>
         </div>
@@ -344,7 +344,7 @@ export default function UsersPage() {
             onClick={() => setActiveTab('all')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'all'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-gray-500 text-gray-600 dark:text-gray-400'
                 : 'border-transparent text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed] hover:border-[#171717]/20 dark:hover:border-[#ededed]/20'
             }`}
           >
@@ -354,7 +354,7 @@ export default function UsersPage() {
             onClick={() => setActiveTab('pending')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'pending'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-gray-500 text-gray-600 dark:text-gray-400'
                 : 'border-transparent text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed] hover:border-[#171717]/20 dark:hover:border-[#ededed]/20'
             }`}
           >
@@ -447,14 +447,14 @@ function UsersTable({
   onEdit: (user: User) => void;
   onBlock: (id: string, isBlocked: boolean) => void;
   onDelete: (id: string) => void;
-  getRoleBadge: (role: string) => JSX.Element;
-  getStatusBadge: (status: string, isBlocked?: boolean) => JSX.Element;
+  getRoleBadge: (role: string) => React.ReactElement;
+  getStatusBadge: (status: string, isBlocked?: boolean) => React.ReactElement;
 }) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500"></div>
           <span className="ml-3 text-[#171717]/60 dark:text-[#ededed]/60">Загрузка пользователей...</span>
         </div>
       </div>
@@ -505,7 +505,7 @@ function UsersTable({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
                         <span className="text-sm font-medium text-white">
                             {user.name.charAt(0).toUpperCase()}
                           </span>
@@ -551,7 +551,7 @@ function UsersTable({
           <div key={user.id} className="p-4 border-b border-[#171717]/5 dark:border-[#ededed]/10 last:border-b-0">
             <div className="flex items-start justify-between">
               <div className="flex items-center flex-1">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center flex-shrink-0">
                   <span className="text-sm font-medium text-white">
                     {user.name.charAt(0).toUpperCase()}
                   </span>
@@ -688,13 +688,13 @@ function PendingUsersTable({
   onView: (user: PendingUser) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  getRoleBadge: (role: string) => JSX.Element;
+  getRoleBadge: (role: string) => React.ReactElement;
 }) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500"></div>
           <span className="ml-3 text-[#171717]/60 dark:text-[#ededed]/60">Загрузка заявок...</span>
         </div>
       </div>
@@ -898,8 +898,8 @@ function ViewUserModal({
 }: {
   user: UserModalData;
   onClose: () => void;
-  getRoleBadge: (role: string) => JSX.Element;
-  getStatusBadge: (status: string, isBlocked?: boolean) => JSX.Element;
+  getRoleBadge: (role: string) => React.ReactElement;
+  getStatusBadge: (status: string, isBlocked?: boolean) => React.ReactElement;
 }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -920,7 +920,7 @@ function ViewUserModal({
         
         <div className="p-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
               <span className="text-xl font-medium text-white">
                 {user.name.charAt(0).toUpperCase()}
               </span>
@@ -1028,7 +1028,7 @@ function EditUserModal({
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
                 required
               />
             </div>
@@ -1041,7 +1041,7 @@ function EditUserModal({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
                 required
               />
             </div>
@@ -1053,7 +1053,7 @@ function EditUserModal({
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
               >
                 <option value="USER">Пользователь</option>
                 <option value="MODERATOR">Модератор</option>
@@ -1071,7 +1071,7 @@ function EditUserModal({
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+                className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
                 placeholder="Оставьте пустым для сохранения текущего"
               />
             </div>
@@ -1087,7 +1087,7 @@ function EditUserModal({
               </button>
               <button
               type="submit"
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600 transition-colors"
               >
               Сохранить
               </button>

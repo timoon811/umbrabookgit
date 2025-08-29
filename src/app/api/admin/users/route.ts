@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Получение пользователей
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       where,
       select: {
         id: true,

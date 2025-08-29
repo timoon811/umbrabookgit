@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка уникальности email
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { email: email.toLowerCase() },
     });
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // Проверка уникальности telegram (если указан)
     if (telegram && telegram !== "@") {
-      const existingTelegram = await prisma.user.findFirst({
+      const existingTelegram = await prisma.users.findFirst({
         where: { telegram },
       });
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Создание пользователя
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         name: name.trim(),
         email: email.toLowerCase(),
@@ -98,17 +98,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Логирование события регистрации
-    await prisma.analytics.create({
-      data: {
-        event: "user_registration",
-        data: JSON.stringify({
-          userId: user.id,
-          email: user.email,
-          userAgent: request.headers.get("user-agent"),
-        }),
-      },
-    });
+    // Логирование события регистрации (временно отключено)
+    // await prisma.analytics.create({
+    //   userId: user.id,
+    //   action: 'user_registered',
+    //   metadata: JSON.stringify({
+    //     event: "user_registration",
+    //     email: user.email,
+    //     userAgent: request.headers.get("user-agent"),
+    //   }),
+    // });
 
     return NextResponse.json({
       message: "Регистрация успешна. Ожидайте подтверждения администратора.",

@@ -3,13 +3,21 @@ import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    // Удаление cookie токена
-    const cookieStore = await cookies();
-    cookieStore.delete("auth-token");
-
-    return NextResponse.json({
+    // Создаем ответ
+    const response = NextResponse.json({
       message: "Успешный выход",
     });
+
+    // Правильно удаляем cookie токена
+    response.cookies.set("auth-token", "", {
+      path: "/",
+      httpOnly: true,
+      maxAge: 0,
+      expires: new Date(0),
+      sameSite: "lax",
+    });
+
+    return response;
   } catch (error) {
     console.error("Ошибка выхода:", error);
     return NextResponse.json(
@@ -18,3 +26,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

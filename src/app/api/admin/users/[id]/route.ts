@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -40,7 +40,7 @@ export async function PUT(
     const { action, name, email, role, password } = body;
 
     // Проверяем, что пользователь существует
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { id },
       select: { id: true, role: true, email: true }
     });
@@ -82,7 +82,7 @@ export async function PUT(
       case "update":
         // Проверяем уникальность email
         if (email && email !== existingUser.email) {
-          const emailExists = await prisma.user.findUnique({
+          const emailExists = await prisma.users.findUnique({
             where: { email },
             select: { id: true }
           });
@@ -116,7 +116,7 @@ export async function PUT(
     }
 
     // Обновляем пользователя
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users.update({
       where: { id },
       data: updateData,
       select: {
@@ -154,7 +154,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Проверяем, что пользователь существует
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { id },
       select: { id: true, role: true, email: true }
     });
@@ -175,7 +175,7 @@ export async function DELETE(
     }
 
     // Удаляем пользователя
-    await prisma.user.delete({
+    await prisma.users.delete({
       where: { id },
     });
 

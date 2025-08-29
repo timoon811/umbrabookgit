@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import AdminHeader from "@/components/AdminHeader";
 import AdminSidebar from "@/components/AdminSidebar";
 
@@ -26,7 +27,24 @@ export default async function AdminLayout({
     };
 
     if (decoded.role !== "ADMIN") {
-      redirect("/overview");
+      redirect("/");
+    }
+
+    // Дополнительная проверка пользователя в базе данных
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        isBlocked: true,
+      },
+    });
+
+    if (!user || user.role !== "ADMIN" || user.status !== "APPROVED" || user.isBlocked) {
+      redirect("/");
     }
   } catch (error) {
     redirect("/login");
@@ -38,7 +56,7 @@ export default async function AdminLayout({
       <AdminHeader />
       
       {/* Основная область с сайдбаром и контентом */}
-      <div className="mx-auto max-w-screen-2xl px-6 lg:px-6 md:px-4 sm:px-3">
+      <div className="mx-auto max-w-screen-2xl px-6 lg:px-6 md:px-4 sm:px-3 pt-6">
         <div className="grid layout-root admin-layout">
           {/* Админ сайдбар */}
           <AdminSidebar />

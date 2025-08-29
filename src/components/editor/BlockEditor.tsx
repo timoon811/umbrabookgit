@@ -50,16 +50,17 @@ export default function BlockEditor({
   canMoveDown
 }: BlockEditorProps) {
   // Управляющие оверлеи и меню действий убраны
-  const contentRef = useRef<HTMLElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const updateContent = (content: string) => {
     onUpdate({ ...block, content });
   };
 
   const updateMetadata = (metadata: Partial<Block['metadata']>) => {
-    onUpdate({ 
-      ...block, 
-      metadata: { ...block.metadata, ...metadata } 
+    onUpdate({
+      ...block,
+      metadata: { ...block.metadata, ...metadata }
     });
   };
 
@@ -67,9 +68,8 @@ export default function BlockEditor({
 
   const renderBlockContent = () => {
     const commonProps = {
-      ref: contentRef,
       value: block.content,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => 
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         updateContent(e.target.value),
       onFocus,
       onBlur,

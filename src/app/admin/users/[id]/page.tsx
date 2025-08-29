@@ -181,7 +181,9 @@ export default function UserDetailsPage() {
 
       if (response.ok) {
         success("Пользователь удален");
-        window.history.back();
+        if (typeof window !== 'undefined') {
+          window.history.back();
+        }
       } else {
         error(result.message || "Ошибка удаления");
       }
@@ -219,7 +221,7 @@ export default function UserDetailsPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Пользователь не найден</h2>
-        <Link href="/admin/users" className="mt-4 text-blue-600 hover:text-blue-500">
+        <Link href="/admin/users" className="mt-4 text-gray-600 hover:text-gray-800">
           ← Вернуться к списку
         </Link>
       </div>
@@ -263,7 +265,7 @@ export default function UserDetailsPage() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
                 <div className="mt-2 flex items-center gap-3">
                   {getStatusBadge(user.status, user.isBlocked)}
-                  <span className="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
+                  <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
                     {user.role === "ADMIN" ? "Администратор" : user.role === "MODERATOR" ? "Модератор" : "Пользователь"}
                   </span>
                 </div>
@@ -336,7 +338,7 @@ export default function UserDetailsPage() {
                   type="text"
                   value={editData.name}
                   onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
@@ -348,7 +350,7 @@ export default function UserDetailsPage() {
                   type="email"
                   value={editData.email}
                   onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
@@ -359,7 +361,7 @@ export default function UserDetailsPage() {
                 <select
                   value={editData.role}
                   onChange={(e) => setEditData(prev => ({ ...prev, role: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="USER">Пользователь</option>
                   <option value="MODERATOR">Модератор</option>
@@ -375,7 +377,7 @@ export default function UserDetailsPage() {
                   type="text"
                   value={editData.telegram}
                   onChange={(e) => setEditData(prev => ({ ...prev, telegram: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="@username"
                 />
               </div>
@@ -383,7 +385,7 @@ export default function UserDetailsPage() {
               <div className="md:col-span-2">
                 <button
                   onClick={handleUpdate}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700"
+                  className="px-6 py-2 bg-gray-900 text-white rounded-md font-medium hover:bg-gray-800"
                 >
                   Сохранить изменения
                 </button>
@@ -439,7 +441,7 @@ export default function UserDetailsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="text-2xl font-bold text-blue-600">{user._count.articles}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{user._count.articles}</div>
             <div className="ml-3">
               <div className="text-sm font-medium text-gray-900 dark:text-white">Статьи</div>
               <div className="text-sm text-gray-500 dark:text-gray-400">Создано</div>
@@ -507,10 +509,10 @@ export default function UserDetailsPage() {
           <div className="px-6 py-4">
             <div className="space-y-4">
               {user.comments.map((comment) => (
-                <div key={comment.id} className="border-l-4 border-blue-200 pl-4">
+                <div key={comment.id} className="border-l-4 border-gray-200 pl-4">
                   <p className="text-sm text-gray-900 dark:text-white">{comment.content}</p>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    К статье "{comment.article.title}" • {new Date(comment.createdAt).toLocaleDateString("ru")}
+                    К статье &quot;{comment.article.title}&quot; • {new Date(comment.createdAt).toLocaleDateString("ru")}
                   </div>
                 </div>
               ))}

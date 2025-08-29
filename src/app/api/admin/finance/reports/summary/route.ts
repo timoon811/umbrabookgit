@@ -4,7 +4,10 @@ import { requireAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const authResult = await requireAdmin(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');
     const to = searchParams.get('to');
@@ -12,12 +15,12 @@ export async function GET(request: NextRequest) {
     if (from) where.occurredAt = { gte: new Date(from) };
     if (to) where.occurredAt = { ...(where.occurredAt||{}), lte: new Date(to + 'T23:59:59') };
 
-    const txs = await prisma.financeTransaction.findMany({ where });
+    const txs = await prisma.finance_transactions.findMany({ where });
     const income = txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount), 0);
     const expense = txs.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0);
 
-    const byAccountAgg = await prisma.financeTransaction.groupBy({ by: ['accountId', 'type'], where, _sum: { amount: true } });
-    const accounts = await prisma.financeAccount.findMany({ select: { id: true, name: true } });
+    const byAccountAgg = await prisma.finance_transactions.groupBy({ by: ['accountId', 'type'], where, _sum: { amount: true } });
+    const accounts = await prisma.finance_accounts.findMany({ select: { id: true, name: true } });
     const idToName = Object.fromEntries(accounts.map(a => [a.id, a.name]));
     const byAccountMap: Record<string, { income: number; expense: number }> = {};
     for (const row of byAccountAgg) {
@@ -29,10 +32,10 @@ export async function GET(request: NextRequest) {
     }
     const byAccount = Object.entries(byAccountMap).map(([account, v]) => ({ account, income: v.income.toFixed(2), expense: v.expense.toFixed(2) }));
 
-    const byProjectAgg = await prisma.financeTransaction.groupBy({ by: ['projectKey', 'type'], where, _sum: { amount: true } });
+    const byProjectAgg = await prisma.finance_transactions.groupBy({ by: ['projectId', 'type'], where, _sum: { amount: true } });
     const byProjectMap: Record<string, { income: number; expense: number }> = {};
     for (const row of byProjectAgg) {
-      const key = row.projectKey || '—';
+      const key = row.projectId || '—';
       const bucket = byProjectMap[key] || { income: 0, expense: 0 };
       if (row.type === 'INCOME') bucket.income += Number(row._sum.amount || 0);
       if (row.type === 'EXPENSE') bucket.expense += Number(row._sum.amount || 0);

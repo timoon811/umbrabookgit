@@ -1,18 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
 // Публичные маршруты, которые не требуют аутентификации
 const publicRoutes = [
-  "/",
-  "/login", 
+  "/login",
   "/register",
   "/api/auth/login",
   "/api/auth/register",
+  "/api/auth/refresh",
+  "/api/auth/me", // Добавляем для проверки статуса аутентификации
+  "/api/documentation", // Публичная документация
+  "/api/courses", // Публичные курсы
+  "/api/search", // Поиск
+  "/api/documentation/search", // Поиск в документации
 ];
 
 // Маршруты только для администраторов
 const adminRoutes = ["/admin"];
 
-export function middleware(request: NextRequest) {
+// Внутренние маршруты, требующие авторизации
+const protectedRoutes = [
+  "/", // Главная страница (требует авторизации)
+  "/docs", // Документация
+  "/courses", // Курсы
+  "/profile", // Профиль
+];
+
+// Функция для проверки роли администратора
+async function checkAdminRole(token: string): Promise<boolean> {
+  try {
+    // В Edge Runtime используем decode вместо verify
+    const decoded = jwt.decode(token) as {
+      userId: string;
+      role: string;
+      exp: number;
+    };
+    
+    // Проверяем, что токен декодирован и содержит роль
+    if (!decoded || !decoded.role) {
+      return false;
+    }
+    
+    // Проверяем срок действия токена
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp < now) {
+      return false;
+    }
+    
+    return decoded.role === "ADMIN";
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Разрешаем доступ к статическим файлам и API маршрутам аутентификации
@@ -20,7 +63,6 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api") || // временно разрешаем все API
     pathname.includes(".") // файлы со статическими расширениями
   ) {
     return NextResponse.next();
@@ -31,30 +73,91 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Получаем токен из cookies
-  const token = request.cookies.get("auth-token")?.value;
+  // Проверяем, является ли маршрут только для администраторов
+  if (adminRoutes.some(route => pathname.startsWith(route))) {
+    const token = request.cookies.get("auth-token")?.value;
 
-  // Если токена нет, перенаправляем на страницу входа (кроме корневого маршрута)
-  if (!token && pathname !== "/") {
+    if (!token) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("from", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Проверяем формат токена
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3 || !tokenParts.every(part => part.length > 0)) {
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.set("auth-token", "", {
+        path: "/",
+        httpOnly: true,
+        maxAge: 0,
+        expires: new Date(0),
+        sameSite: "lax",
+      });
+      return response;
+    }
+
+    // Проверяем роль администратора
+    const isAdmin = await checkAdminRole(token);
+    if (!isAdmin) {
+      // Если не администратор, перенаправляем на главную страницу
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  // Проверяем, является ли маршрут защищенным
+  if (protectedRoutes.some(route => pathname.startsWith(route))) {
+    // Получаем токен из cookies
+    const token = request.cookies.get("auth-token")?.value;
+
+    // Если токена нет, перенаправляем на страницу входа
+    if (!token) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("from", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Проверяем, что токен выглядит как JWT (3 части, разделенные точками)
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3 || !tokenParts.every(part => part.length > 0)) {
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.set("auth-token", "", {
+        path: "/",
+        httpOnly: true,
+        maxAge: 0,
+        expires: new Date(0),
+        sameSite: "lax",
+      });
+      return response;
+    }
+
+    return NextResponse.next();
+  }
+
+  // Для всех остальных маршрутов требуем авторизацию
+  const token = request.cookies.get("auth-token")?.value;
+  if (!token) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Если есть токен, проверяем его валидность
-  if (token) {
-    // Простая проверка наличия токена без декодирования
-    // Полную валидацию JWT будут делать серверные компоненты
-    if (token.length > 50) {
-      return NextResponse.next();
-    } else {
-      const response = NextResponse.redirect(new URL("/login", request.url));
-      response.cookies.delete("auth-token");
-      return response;
-    }
+  // Проверяем формат токена
+  const tokenParts = token.split('.');
+  if (tokenParts.length !== 3 || !tokenParts.every(part => part.length > 0)) {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.set("auth-token", "", {
+      path: "/",
+      httpOnly: true,
+      maxAge: 0,
+      expires: new Date(0),
+      sameSite: "lax",
+    });
+    return response;
   }
 
-  // Для корневого маршрута без токена позволяем продолжить
   return NextResponse.next();
 }
 
@@ -62,11 +165,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public files with extensions
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.).*)",
   ],
 };

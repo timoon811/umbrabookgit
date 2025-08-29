@@ -16,7 +16,7 @@ export default function FinanceAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [type, setType] = useState("CASH");
-  const [currency, setCurrency] = useState("RUB");
+  const [currency, setCurrency] = useState("USD");
 
   const load = async () => {
     setLoading(true);
@@ -27,10 +27,19 @@ export default function FinanceAccountsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const createAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch("/api/admin/finance/accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, type, currency }) });
-    if (res.ok) { setName(""); setType("CASH"); setCurrency("RUB"); await load(); }
+    if (res.ok) { setName(""); setType("CASH"); setCurrency("USD"); await load(); }
   };
 
   return (
@@ -45,8 +54,8 @@ export default function FinanceAccountsPage() {
           <option value="OTHER">Другое</option>
         </select>
         <select value={currency} onChange={(e)=>setCurrency(e.target.value)} className="px-2 py-1 rounded border border-black/10 dark:border-white/10 bg-transparent">
-          <option>RUB</option>
           <option>USD</option>
+          <option>RUB</option>
           <option>EUR</option>
           <option>USDT</option>
         </select>
@@ -71,7 +80,7 @@ export default function FinanceAccountsPage() {
                   <td className="p-2">{a.name}</td>
                   <td className="p-2">{a.type}</td>
                   <td className="p-2">{a.currency}</td>
-                  <td className="p-2">{a.balance}</td>
+                  <td className="p-2">{formatCurrency(parseFloat(a.balance), a.currency)}</td>
                 </tr>
               ))}
             </tbody>

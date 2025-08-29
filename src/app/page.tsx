@@ -1,24 +1,26 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import AuthenticatedHome from "@/components/AuthenticatedHome";
+import { verifyToken } from "@/lib/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
-
-export default async function Home() {
+export default async function HomePage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
+  const authToken = cookieStore.get("auth-token")?.value;
 
-  // Если пользователь авторизован, перенаправляем в документацию
-  if (token) {
+  // Если пользователь авторизован, проверяем валидность токена
+  if (authToken && authToken.length > 50) {
     try {
-      jwt.verify(token, JWT_SECRET);
-      redirect("/overview");
+      // Проверяем валидность токена
+      const user = await verifyToken(authToken);
+      if (user) {
+        return <AuthenticatedHome />;
+      }
     } catch (error) {
-      // Токен недействителен, показываем страницу входа
-      redirect("/login");
+      // Ошибка проверки токена - продолжаем с перенаправлением
+      console.error("Ошибка проверки токена:", error);
     }
   }
 
-  // Пользователь не авторизован, перенаправляем на страницу входа
-  redirect("/login");
+  // Если не авторизован или токен невалиден, перенаправляем на login
+  redirect("/login?from=/");
 }

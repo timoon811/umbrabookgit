@@ -1,34 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Настройки для production
-  experimental: {
-    // Отключаем turbopack в production
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
-  },
-  
-  // Отключаем линтинг в production
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
-  // Отключаем проверку типов в production
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  
   // Настройки для изображений
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
     unoptimized: true,
   },
-  
+
   // Настройки для API
   async headers() {
     return [
@@ -42,16 +28,21 @@ const nextConfig = {
       },
     ];
   },
-  
-  // Настройки для перезаписи путей
-  async rewrites() {
-    return [
-      {
-        source: '/docs/:path*',
-        destination: '/:path*',
-      },
-    ];
+
+  // Оптимизация для production
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
+
+  // Настройки для production сборки
+  ...(process.env.NODE_ENV === 'production' && {
+    eslint: {
+      ignoreDuringBuilds: true,
+    },
+    typescript: {
+      ignoreBuildErrors: true,
+    },
+  }),
 };
 
 module.exports = nextConfig;

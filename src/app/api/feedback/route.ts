@@ -1,124 +1,110 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-import { FeedbackType } from "@prisma/client";
 
-// POST /api/feedback - Создание обратной связи
+const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+
+// Проверка авторизации
+async function checkAuth() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
+
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        isBlocked: true,
+      },
+    });
+
+    if (!user || user.status !== "APPROVED" || user.isBlocked) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("Ошибка проверки токена:", error);
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { articleId, type, rating, message, userId } = body;
-
-    // Валидация
-    if (!articleId || !type) {
+    // Проверяем авторизацию
+    const user = await checkAuth();
+    if (!user) {
       return NextResponse.json(
-        { error: "Поля articleId и type обязательны" },
+        { error: "Не авторизован" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { pageId, pageTitle, type, comment } = body;
+
+    // Валидация данных
+    if (!pageId || !pageTitle || !type || !comment) {
+      return NextResponse.json(
+        { error: "Неполные данные" },
         { status: 400 }
       );
     }
 
-    // Проверяем, существует ли статья
-    const article = await prisma.article.findUnique({
-      where: { id: articleId },
-    });
-
-    if (!article) {
+    if (!['positive', 'negative'].includes(type)) {
       return NextResponse.json(
-        { error: "Статья не найдена" },
-        { status: 404 }
+        { error: "Неверный тип фидбека" },
+        { status: 400 }
       );
     }
 
-    // Получаем метаданные из заголовков
-    const userAgent = request.headers.get("user-agent");
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ipAddress = forwarded ? forwarded.split(",")[0] : request.headers.get("x-real-ip");
-
-    const feedback = await prisma.feedback.create({
-      data: {
-        articleId,
-        type: type as FeedbackType,
-        rating,
-        message,
-        userId,
-        userAgent,
-        ipAddress,
-      },
+    // Сохраняем фидбек в базе данных
+    // Примечание: здесь можно создать таблицу feedback в базе данных
+    // Пока что просто логируем для демонстрации
+    console.log('Получен фидбек:', {
+      userId: user.id,
+      userEmail: user.email,
+      pageId,
+      pageTitle,
+      type,
+      comment,
+      timestamp: new Date().toISOString()
     });
 
-    return NextResponse.json(feedback, { status: 201 });
-  } catch (error) {
-    console.error("Error creating feedback:", error);
+    // TODO: Создать таблицу feedback в базе данных
+    // await prisma.feedback.create({
+    //   data: {
+    //     userId: user.id,
+    //     pageId,
+    //     pageTitle,
+    //     type,
+    //     comment,
+    //   }
+    // });
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Фидбек успешно отправлен" 
+    });
+
+  } catch (error: any) {
+    console.error("Ошибка обработки фидбека:", error);
     return NextResponse.json(
-      { error: "Не удалось сохранить обратную связь" },
+      { error: "Ошибка сервера" },
       { status: 500 }
     );
   }
 }
-
-// GET /api/feedback - Получение статистики обратной связи
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const articleId = searchParams.get("articleId");
-
-    const where: any = {};
-    if (articleId) where.articleId = articleId;
-
-    // Общая статистика
-    const stats = await prisma.feedback.groupBy({
-      by: ["type"],
-      where,
-      _count: {
-        type: true,
-      },
-    });
-
-    // Средний рейтинг
-    const avgRating = await prisma.feedback.aggregate({
-      where: {
-        ...where,
-        type: FeedbackType.RATING,
-        rating: { not: null },
-      },
-      _avg: {
-        rating: true,
-      },
-    });
-
-    // Последние отзывы (если запрашивается по конкретной статье)
-    let recentFeedback = null;
-    if (articleId) {
-      recentFeedback = await prisma.feedback.findMany({
-        where: {
-          articleId,
-          message: { not: null },
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      });
-    }
-
-    return NextResponse.json({
-      stats: stats.reduce((acc, item) => {
-        acc[item.type] = item._count.type;
-        return acc;
-      }, {} as Record<string, number>),
-      averageRating: avgRating._avg.rating,
-      recentFeedback,
-    });
-  } catch (error) {
-    console.error("Error fetching feedback stats:", error);
-    return NextResponse.json(
-      { error: "Не удалось получить статистику" },
-      { status: 500 }
-    );
-  }
-}
-

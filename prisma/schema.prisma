@@ -1,13 +1,263 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+model users {
+  id        String      @id @default(cuid())
+  email     String      @unique
+  name      String
+  password  String
+  role      UserRole    @default(USER)
+  status    UserStatus  @default(APPROVED)
+  isBlocked Boolean     @default(false)
+  telegram  String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  analytics analytics[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model courses {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  slug        String            @unique
+  category    String            @default("general")
+  level       String            @default("beginner")
+  isPublished Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  sections    course_sections[]
+
+  @@index([slug])
+  @@index([isPublished])
+  @@index([category])
+}
+
+model course_sections {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  order       Int            @default(0)
+  isPublished Boolean        @default(false)
+  courseId    String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  pages       course_pages[]
+  course      courses        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model course_pages {
+  id          String          @id @default(cuid())
+  title       String
+  content     String?
+  blocks      String?
+  order       Int             @default(0)
+  isPublished Boolean         @default(false)
+  sectionId   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  section     course_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
+
+model documentation_sections {
+  id          String          @id @default(cuid())
+  name        String
+  key         String          @unique
+
+  description String?
+  order       Int             @default(0)
+  isVisible   Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  pages       documentation[]
+}
+
+model documentation {
+  id          String                 @id @default(cuid())
+  title       String
+  description String?
+  slug        String                 @unique
+  content     String?
+  blocks      String?
+  sectionId   String
+  order       Int                    @default(0)
+  isPublished Boolean                @default(false)
+  parentId    String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  section     documentation_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  parent      documentation?         @relation("DocumentationHierarchy", fields: [parentId], references: [id])
+  children    documentation[]        @relation("DocumentationHierarchy")
+}
+
+model finance_accounts {
+  id               String                 @id @default(cuid())
+  name             String
+  type             String                 @default("OTHER")
+  currency         String                 @default("USD")
+  balance          Float                  @default(0)
+  commission       Float                  @default(0)
+  cryptocurrencies String?
+  isArchived       Boolean                @default(false)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  transactions     finance_transactions[]
+}
+
+model finance_counterparties {
+  id           String                 @id @default(cuid())
+  name         String
+  type         String                 @default("CLIENT")
+  email        String?
+  phone        String?
+  address      String?
+  taxNumber    String?
+  bankDetails  String?
+  isArchived   Boolean                @default(false)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  transactions finance_transactions[]
+}
+
+model finance_categories {
+  id           String                 @id @default(cuid())
+  name         String
+  type         String                 @default("EXPENSE")
+  description  String?
+  color        String                 @default("#3B82F6")
+  isArchived   Boolean                @default(false)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  transactions finance_transactions[]
+}
+
+model finance_projects {
+  id             String                 @id @default(cuid())
+  name           String
+  description    String?
+  status         String                 @default("ACTIVE")
+  startDate      DateTime?
+  endDate        DateTime?
+  budget         Float?
+  isArchived     Boolean                @default(false)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  depositSources deposit_sources[]
+  transactions   finance_transactions[]
+}
+
+model finance_transactions {
+  id                String                  @id @default(cuid())
+  accountId         String
+  counterpartyId    String?
+  categoryId        String?
+  projectId         String?
+  projectKey        String?
+  type              TransactionType
+  amount            Float
+  commissionPercent Float                   @default(0)
+  commissionAmount  Float                   @default(0)
+  netAmount         Float
+  originalAmount    Float
+  description       String?
+  date              DateTime                @default(now())
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  project           finance_projects?       @relation(fields: [projectId], references: [id])
+  category          finance_categories?     @relation(fields: [categoryId], references: [id])
+  counterparty      finance_counterparties? @relation(fields: [counterpartyId], references: [id])
+  account           finance_accounts        @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([projectId])
+  @@index([projectKey])
+  @@index([date])
+  @@index([type])
+}
+
+model deposit_sources {
+  id         String           @id @default(cuid())
+  name       String
+  token      String
+  projectId  String
+  commission Float            @default(20.0)
+  isActive   Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  project    finance_projects @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deposits   deposits[]
+
+  @@index([projectId])
+  @@index([isActive])
+}
+
+model deposits {
+  id                  String          @id
+  depositSourceId     String
+  mammothId           String
+  mammothLogin        String
+  mammothCountry      String
+  mammothPromo        String?
+  token               String
+  amount              Float
+  amountUsd           Float
+  commissionPercent   Float
+  commissionAmount    Float
+  commissionAmountUsd Float
+  netAmount           Float
+  netAmountUsd        Float
+  workerPercent       Int
+  domain              String
+  txHash              String?
+  processed           Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+  depositSource       deposit_sources @relation(fields: [depositSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([id, depositSourceId])
+  @@index([depositSourceId])
+  @@index([mammothId])
+  @@index([createdAt])
+  @@index([processed])
+}
+
+model analytics {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  metadata  String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model articles {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?
+  slug        String   @unique
+  category    String   @default("general")
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([category])
+  @@index([isPublished])
 }
 
 enum UserRole {
@@ -25,323 +275,8 @@ enum UserStatus {
   BANNED
 }
 
-enum ArticleStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
-enum ArticleType {
-  PAGE
-  SECTION
-}
-
-enum AccountType {
-  CASH
-  WALLET
-  BANK
-  OTHER
-}
-
 enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
-}
-
-enum FinanceParticipantRole {
-  BUYER
-  PROCESSOR
-  OTHER
-}
-
-enum PayoutRuleRole {
-  BUYER
-  PROCESSOR
-}
-
-enum PayoutRuleMode {
-  SHARE       // фиксированный процент
-  TIER_SHARE  // лесенка (массив порогов)
-}
-
-enum HttpMethod {
-  GET
-  POST
-  PUT
-  DELETE
-  PATCH
-  OPTIONS
-}
-
-enum FeedbackType {
-  HELPFUL
-  NOT_HELPFUL
-  RATING
-  SUGGESTION
-}
-
-model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  name         String
-  password     String
-  role         UserRole    @default(USER)
-  status       UserStatus  @default(PENDING)
-  isBlocked    Boolean     @default(false)
-  apiKey       String?     @unique
-  telegram     String?
-  company      String?
-  website      String?
-  bio          String?
-  avatar           String?
-  lastLoginAt      DateTime?
-  registrationCode String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  // Relations
-  articles     Article[]
-  comments     Comment[]
-  analytics    Analytics[]
-  financeTransactions FinanceTransaction[]
-
-  @@map("users")
-}
-
-model Category {
-  id          String    @id @default(cuid())
-  key         String    @unique
-  name        String
-  description String?
-  order       Int       @default(0)
-  isActive    Boolean   @default(true)
-  isWorkspace Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  articles    Article[]
-  financeTransactions FinanceTransaction[]
-  financePayoutRules  FinancePayoutRule[]
-
-  @@map("categories")
-}
-
-model Article {
-  id              String        @id @default(cuid())
-  title           String
-  slug            String        @unique
-  content         String
-  excerpt         String?
-  status          ArticleStatus @default(DRAFT)
-  type            ArticleType   @default(PAGE)
-  parentId        String?
-  categoryKey     String
-  tags            String?       // JSON array
-  metaTitle       String?
-  metaDescription String?
-  authorId        String
-  orderIndex      Int           @default(0)
-  viewCount       Int           @default(0)
-  likeCount       Int           @default(0)
-  publishedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  // Relations
-  author          User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category        Category      @relation(fields: [categoryKey], references: [key], onDelete: Restrict)
-  comments        Comment[]
-  feedbacks       Feedback[]
-  parent          Article?      @relation("ArticleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children        Article[]     @relation("ArticleHierarchy")
-
-  @@map("articles")
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  articleId String
-  authorId  String
-  parentId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentReplies")
-
-  @@map("comments")
-}
-
-model ApiEndpoint {
-  id          String     @id @default(cuid())
-  name        String
-  method      HttpMethod
-  path        String
-  description String
-  parameters  String?    // JSON
-  responses   String?    // JSON
-  examples    String?    // JSON
-  version     String     @default("v2")
-  deprecated  Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@unique([method, path, version])
-  @@map("api_endpoints")
-}
-
-model SiteSetting {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  type      String   @default("string") // string, number, boolean, json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("site_settings")
-}
-
-model Feedback {
-  id        String       @id @default(cuid())
-  type      FeedbackType
-  message   String?
-  rating    Int?         // 1-5 stars
-  articleId String?
-  userAgent String?
-  ipAddress String?
-  createdAt DateTime     @default(now())
-
-  // Relations
-  article   Article?     @relation(fields: [articleId], references: [id], onDelete: SetNull)
-
-  @@map("feedbacks")
-}
-
-model SearchQuery {
-  id        String   @id @default(cuid())
-  query     String
-  results   Int      @default(0)
-  userId    String?
-  createdAt DateTime @default(now())
-
-  @@map("search_queries")
-}
-
-model Analytics {
-  id        String   @id @default(cuid())
-  event     String
-  data      String?  // JSON
-  userId    String?
-  sessionId String?
-  userAgent String?
-  ipAddress String?
-  referer   String?
-  createdAt DateTime @default(now())
-
-  // Relations
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("analytics")
-}
-
-// Finance domain
-model FinanceAccount {
-  id        String      @id @default(cuid())
-  name      String
-  type      AccountType @default(OTHER)
-  currency  String      // ISO-4217, напр. RUB, USD, EUR
-  balance   Decimal     @default(0)
-  isArchived Boolean    @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  // Relations
-  transactions FinanceTransaction[]
-
-  @@map("finance_accounts")
-}
-
-model FinanceTransaction {
-  id          String           @id @default(cuid())
-  accountId   String
-  type        TransactionType  @default(EXPENSE)
-  amount      Decimal          // знак всегда положительный; направление задаёт type
-  description String?
-  occurredAt  DateTime         @default(now())
-  projectKey  String?
-  projectId   String?
-  userId      String?
-  role        FinanceParticipantRole?
-  categoryId  String?
-
-  // Optional link for transfer
-  relatedId   String?
-
-  // Relations
-  account     FinanceAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  project     Category?        @relation(fields: [projectKey], references: [key], onDelete: SetNull)
-  financeProject FinanceProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  category    FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  @@index([occurredAt])
-  @@index([type])
-  @@map("finance_transactions")
-}
-
-model FinanceCategory {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  kind      TransactionType // INCOME/EXPENSE
-  isActive  Boolean  @default(true)
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  transactions FinanceTransaction[]
-
-  @@map("finance_categories")
-}
-
-model FinancePayoutRule {
-  id          String          @id @default(cuid())
-  projectKey  String?
-  projectId   String?
-  role        PayoutRuleRole
-  mode        PayoutRuleMode  @default(SHARE)
-  percent     Decimal?        // для SHARE
-  tiers       String?         // JSON: [{threshold:number, percent:number}]
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  // Relations
-  project     Category?       @relation(fields: [projectKey], references: [key], onDelete: SetNull)
-  financeProject FinanceProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-
-  @@map("finance_payout_rules")
-}
-
-model FinanceProject {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  transactions FinanceTransaction[]
-  payoutRules  FinancePayoutRule[]
-
-  @@map("finance_projects")
 }

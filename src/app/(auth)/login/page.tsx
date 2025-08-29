@@ -9,17 +9,21 @@ function LoginForm() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('from') || '/overview';
+  const redirectTo = searchParams.get('from') || '/'; // Главная страница с тремя колонками
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
     // Очищаем ошибку при изменении поля
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
@@ -51,6 +55,7 @@ function LoginForm() {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -58,33 +63,43 @@ function LoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Важно для работы с cookies
         body: JSON.stringify(formData),
       });
 
-      const result = await response.json();
-
       if (response.ok) {
+        const result = await response.json();
+
         // Показываем уведомление об успешном входе
         setShowSuccess(true);
         setErrors({});
-        
-        console.log("✅ Успешный вход, перенаправляем на", redirectTo);
-        
-        // Немедленное перенаправление
-        router.push(redirectTo);
-        
-        // Альтернативный способ через window.location если router не работает
+
+        // Добавляем небольшую задержку для показа сообщения об успехе
         setTimeout(() => {
-          if (window.location.pathname === "/login") {
-            console.log("⚠️ Router.push не сработал, используем window.location");
-            window.location.href = redirectTo;
-          }
+          // Немедленное перенаправление
+          router.push(redirectTo);
+
+          // Альтернативный способ через window.location если router не работает
+          setTimeout(() => {
+            if (typeof window !== "undefined" && window.location.pathname === "/login") {
+              window.location.href = redirectTo;
+            }
+          }, 500);
         }, 1000);
       } else {
-        setErrors({ general: result.message || "Ошибка входа" });
+        let errorMessage = "Ошибка входа";
+
+        try {
+          const errorResult = await response.json();
+          errorMessage = errorResult.message || errorMessage;
+        } catch (parseError) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        setErrors({ general: errorMessage });
         setShowSuccess(false);
       }
-    } catch {
+    } catch (fetchError) {
       setErrors({ general: "Ошибка сети. Попробуйте еще раз." });
       setShowSuccess(false);
     } finally {
@@ -105,7 +120,7 @@ function LoginForm() {
           Или{" "}
           <Link
             href="/register"
-            className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
+            className="font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300"
           >
             зарегистрируйтесь бесплатно
           </Link>
@@ -161,7 +176,7 @@ function LoginForm() {
                   autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
                     errors.email ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
                   }`}
                   placeholder="your@email.com"
@@ -184,7 +199,7 @@ function LoginForm() {
                   autoComplete="current-password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
                     errors.password ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
                   }`}
                   placeholder="Введите пароль"
@@ -199,9 +214,11 @@ function LoginForm() {
               <div className="flex items-center">
                 <input
                   id="remember-me"
-                  name="remember-me"
+                  name="rememberMe"
                   type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-black/10 dark:border-white/10 rounded bg-transparent"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-black/10 dark:border-white/10 rounded bg-transparent"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-[#171717] dark:text-[#ededed]">
                   Запомнить меня
@@ -209,7 +226,7 @@ function LoginForm() {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">
+                <a href="#" className="font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300">
                   Забыли пароль?
                 </a>
               </div>
@@ -256,7 +273,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={<div className="flex justify-center items-center min-h-screen">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-600"></div>
     </div>}>
       <LoginForm />
     </Suspense>

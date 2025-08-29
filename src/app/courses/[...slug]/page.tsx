@@ -17,19 +17,17 @@ export default async function CourseDocPage({
     const slug = slugArray.join("/");
 
     // Ищем статьи с пометкой categoryKey, начинающейся на "course-" или отдельной таблицей в будущем
-    const article = await prisma.article.findFirst({
+    const article = await prisma.articles.findFirst({
       where: {
         slug,
-        status: "PUBLISHED",
+        isPublished: true,
         // Временно фильтруем по отдельной категории для курсов
         OR: [
-          { categoryKey: { startsWith: "course-" } },
-          { categoryKey: "courses" },
+          { category: { startsWith: "course-" } },
+          { category: "courses" },
         ],
       },
-      include: {
-        category: { select: { key: true, name: true } },
-      },
+
     });
 
     if (!article) {
@@ -39,17 +37,17 @@ export default async function CourseDocPage({
     return (
       <div>
         <div className="mb-8">
-          <div className="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-400 mb-2">
-            {article.category?.name || "КУРСЫ"}
+          <div className="text-xs uppercase tracking-wide text-gray-700 dark:text-gray-400 mb-2">
+            {article.category || "КУРСЫ"}
           </div>
           <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
-          {article.excerpt && (
-            <p className="text-lg text-black/70 dark:text-white/70 mb-6">{article.excerpt}</p>
+          {article.content && (
+            <p className="text-lg text-black/70 dark:text-white/70 mb-6">{article.content.substring(0, 200)}...</p>
           )}
         </div>
 
         <MDXRemote
-          source={article.content}
+          source={article.content || ''}
           components={{
             pre: ({ children }: { children: React.ReactNode }) => {
               const code = typeof children === "string" ? children : "";

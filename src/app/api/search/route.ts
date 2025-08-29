@@ -1,75 +1,181 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ArticleStatus } from "@prisma/client";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") || "").trim();
+// Интерфейсы для типизации
+interface DocumentationResult {
+  id: string;
+  title: string;
+  description: string | null;
+  slug: string;
+  sectionId: string | null;
+  content: string | null;
+}
+
+interface CourseResult {
+  id: string;
+  title: string;
+  description: string | null;
+  slug: string;
+  category: string | null;
+}
+
+
+
+// Функция для подсчета релевантности результата
+function calculateRelevance(title: string, content: string | null, query: string): number {
+  const queryLower = query.toLowerCase();
+  const titleLower = title.toLowerCase();
+  const contentLower = content?.toLowerCase() || '';
   
-  if (!q) return Response.json([]);
-
-  try {
-    // Сохраняем поисковый запрос в аналитику
-    const userAgent = req.headers.get("user-agent");
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ipAddress = forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip");
-    const sessionId = req.headers.get("x-session-id") || `anon_${Date.now()}_${Math.random()}`;
-
-    // Поиск в базе данных
-    const results = await prisma.article.findMany({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-        OR: [
-          { title: { contains: q } },
-          { content: { contains: q } },
-          { excerpt: { contains: q } },
-        ],
-      },
-      select: {
-        title: true,
-        slug: true,
-        excerpt: true,
-        category: true,
-      },
-      take: 8,
+  let score = 0;
+  
+  // Поиск по заголовку (высший приоритет)
+  if (titleLower.includes(queryLower)) {
+    score += 100;
+    
+    // Бонус за точное совпадение в начале заголовка
+    if (titleLower.startsWith(queryLower)) {
+      score += 50;
+    }
+    
+    // Бонус за совпадение слова целиком
+    const titleWords = titleLower.split(/\s+/);
+    const queryWords = queryLower.split(/\s+/);
+    queryWords.forEach(word => {
+      if (titleWords.includes(word)) {
+        score += 30;
+      }
     });
+  }
+  
+  // Поиск по контенту
+  if (contentLower.includes(queryLower)) {
+    score += 20;
+    
+    // Бонус за частоту встречаемости
+    const matches = (contentLower.match(new RegExp(queryLower, 'gi')) || []).length;
+    score += Math.min(matches * 5, 30); // Максимум 30 баллов за частоту
+  }
+  
+  // Бонус за длину совпадения (более длинные запросы = более точные)
+  score += queryLower.length * 2;
+  
+  return score;
+}
 
-    const searchResults = results.map(article => ({
-      title: article.title,
-      url: `/${article.slug}`,
-      excerpt: article.excerpt,
-      category: article.category,
-    }));
+export async function GET(request: NextRequest) {
+  try {
+    // Публичный поиск - авторизация не требуется для поиска в опубликованном контенте
 
-    // Сохраняем поисковый запрос
-    await Promise.all([
-      prisma.searchQuery.create({
-        data: {
-          query: q,
-          results: searchResults.length,
-          sessionId,
-          ipAddress,
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('q');
+    const type = searchParams.get('type'); // 'all', 'docs', 'courses'
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    if (!query || query.trim().length < 2) {
+      return NextResponse.json([]);
+    }
+
+    const searchTerm = query.trim();
+
+    const results: Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      slug: string;
+      type: 'documentation' | 'course';
+      url: string;
+      displayTitle: string;
+      section?: string;
+      relevance: number;
+    }> = [];
+
+    // Поиск в документации
+    if (type !== 'courses') {
+      const docsResults = await prisma.documentation.findMany({
+        where: {
+          OR: [
+            { title: { contains: searchTerm } },
+            { description: { contains: searchTerm } },
+            { content: { contains: searchTerm } },
+            { slug: { contains: searchTerm } },
+          ],
+          isPublished: true,
         },
-      }).catch(() => {}), // Игнорируем ошибки аналитики
-      
-      prisma.analytics.create({
-        data: {
-          event: "search",
-          data: JSON.stringify({
-            query: q,
-            resultsCount: searchResults.length,
-          }),
-          sessionId,
-          userAgent,
-          ipAddress,
-          referer: req.headers.get("referer"),
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          slug: true,
+          sectionId: true,
+          content: true,
         },
-      }).catch(() => {}), // Игнорируем ошибки аналитики
-    ]);
+        take: limit * 2, // Берем больше для сортировки по релевантности
+      });
 
-    return NextResponse.json(searchResults);
-  } catch (error) {
-    console.error("Search error:", error);
-    return NextResponse.json([], { status: 500 });
+      // Вычисляем релевантность и сортируем
+      const docsWithRelevance = docsResults.map((doc: DocumentationResult) => ({
+        ...doc,
+        relevance: calculateRelevance(doc.title, doc.content, searchTerm),
+        type: 'documentation' as const,
+        url: `/docs/${doc.slug}`,
+        displayTitle: `📚 ${doc.title}`,
+        section: doc.sectionId,
+      }));
+
+      results.push(...docsWithRelevance);
+    }
+
+    // Поиск в курсах
+    if (type !== 'docs') {
+      const coursesResults = await prisma.courses.findMany({
+        where: {
+          OR: [
+            { title: { contains: searchTerm } },
+            { description: { contains: searchTerm } },
+            { slug: { contains: searchTerm } },
+          ],
+          isPublished: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          slug: true,
+          category: true,
+        },
+        take: limit * 2, // Берем больше для сортировки по релевантности
+      });
+
+      // Вычисляем релевантность и сортируем
+      const coursesWithRelevance = coursesResults.map((course: CourseResult) => ({
+        ...course,
+        relevance: calculateRelevance(course.title, course.description, searchTerm),
+        type: 'course' as const,
+        url: `/courses/${course.slug}`,
+        displayTitle: `🎓 ${course.title}`,
+        section: course.category,
+      }));
+
+      results.push(...coursesWithRelevance);
+    }
+
+    // Сортируем по релевантности и берем топ результаты
+    const sortedResults = results
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, limit)
+      .map(({ relevance, type, ...result }) => ({
+        ...result,
+        // Убираем служебные поля relevance и type из результата
+      }));
+
+    return NextResponse.json(sortedResults);
+  } catch (error: unknown) {
+    console.error("Ошибка поиска:", error);
+    return NextResponse.json(
+      { error: "Ошибка сервера" },
+      { status: 500 }
+    );
   }
 }
+

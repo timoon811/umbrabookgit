@@ -1,61 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
+// OPTIONS обработчик для CORS
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Проверяем подключение к базе данных
-    try {
-      await prisma.$connect();
-    } catch (dbError: unknown) {
-      console.error("Ошибка подключения к БД:", dbError);
-      return NextResponse.json(
-        { message: "Ошибка подключения к базе данных" },
-        { status: 503 }
-      );
-    }
+    const body = await request.json();
+    const { email, password } = body;
 
-    const contentType = request.headers.get("content-type")?.toLowerCase() || "";
-    let email: string | undefined;
-    let password: string | undefined;
-
-    // Надежный парсинг тела запроса с поддержкой JSON и form data
-    if (contentType.includes("application/json")) {
-      const raw = await request.text();
-      try {
-        const parsed = raw ? JSON.parse(raw) : {};
-        email = parsed?.email;
-        password = parsed?.password;
-      } catch {
-        return NextResponse.json(
-          { message: "Некорректный JSON в теле запроса" },
-          { status: 400 }
-        );
-      }
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      const form = await request.formData();
-      email = String(form.get("email") || "");
-      password = String(form.get("password") || "");
-    } else {
-      // Пытаемся распарсить как JSON по умолчанию
-      const raw = await request.text();
-      try {
-        const parsed = raw ? JSON.parse(raw) : {};
-        email = parsed?.email;
-        password = parsed?.password;
-      } catch {
-        // Последняя попытка: примитивный парсинг пары ключ=значение
-        const params = new URLSearchParams(raw);
-        email = email ?? params.get("email") ?? undefined;
-        password = password ?? params.get("password") ?? undefined;
-      }
-    }
-
-    // Валидация входных данных
     if (!email || !password) {
       return NextResponse.json(
         { message: "Email и пароль обязательны" },
@@ -63,9 +29,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Поиск пользователя
-    const user = await prisma.user.findUnique({
+    // Ищем пользователя по email
+    const user = await prisma.users.findUnique({
       where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        role: true,
+        status: true,
+        isBlocked: true,
+      },
     });
 
     if (!user) {
@@ -75,38 +50,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверка статуса пользователя
+    // Проверяем статус пользователя
+    if (user.status !== "APPROVED") {
+      return NextResponse.json(
+        { message: "Ваша учетная запись еще не одобрена администратором" },
+        { status: 403 }
+      );
+    }
+
+    // Проверяем, не заблокирован ли пользователь
     if (user.isBlocked) {
       return NextResponse.json(
-        { message: "Аккаунт заблокирован" },
+        { message: "Ваша учетная запись заблокирована" },
         { status: 403 }
       );
     }
 
-    if (user.status === "PENDING") {
-      return NextResponse.json(
-        { message: "Аккаунт ожидает подтверждения администратора" },
-        { status: 403 }
-      );
-    }
+    // Проверяем пароль
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if (user.status === "REJECTED") {
-      return NextResponse.json(
-        { message: "Регистрация отклонена администратором" },
-        { status: 403 }
-      );
-    }
-
-    // Проверка пароля
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
+    if (!isPasswordValid) {
       return NextResponse.json(
         { message: "Неверный email или пароль" },
         { status: 401 }
       );
     }
 
-    // Создание JWT токена
+    // Создаем JWT токен
     const token = jwt.sign(
       {
         userId: user.id,
@@ -117,61 +87,38 @@ export async function POST(request: NextRequest) {
       { expiresIn: "7d" }
     );
 
-    // Обновление времени последнего входа
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+    // Создаем ответ с токеном в cookie
+    const response = NextResponse.json({
+      message: "Вход выполнен успешно",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
     });
 
-    // Установка cookie
-    const cookieStore = await cookies();
-    cookieStore.set("auth-token", token, {
+    // Устанавливаем cookie с токеном
+    response.cookies.set("auth-token", token, {
+      path: "/",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 дней
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
-    return NextResponse.json({
-      message: "Успешный вход",
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error: unknown) {
-    console.error("Ошибка входа:", error);
-    
-    // Более детальная обработка ошибок
-    if (error && typeof error === 'object' && 'code' in error) {
-      const errorCode = error.code as string;
-      if (errorCode === 'P1001') {
-        return NextResponse.json(
-          { message: "Ошибка подключения к базе данных" },
-          { status: 503 }
-        );
-      }
-      
-      if (errorCode === 'P2024') {
-        return NextResponse.json(
-          { message: "Таймаут подключения к базе данных" },
-          { status: 503 }
-        );
-      }
-    }
-    
+    // Устанавливаем заголовки для предотвращения кэширования
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
+
+    return response;
+  } catch (error) {
+    console.error("Ошибка при аутентификации:", error);
     return NextResponse.json(
       { message: "Внутренняя ошибка сервера" },
       { status: 500 }
     );
-  } finally {
-    // Всегда отключаемся от БД
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      console.error("Ошибка отключения от БД:", disconnectError);
-    }
   }
 }

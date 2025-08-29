@@ -27,6 +27,8 @@ export default function AlertModal({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     if (isOpen) {
       setIsVisible(true);
       document.body.style.overflow = 'hidden';
@@ -56,7 +58,7 @@ export default function AlertModal({
       case 'warning':
         return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
       default:
-        return <Info className="w-6 h-6 text-blue-500" />;
+        return <Info className="w-6 h-6 text-gray-500" />;
     }
   };
 

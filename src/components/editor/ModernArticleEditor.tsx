@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { 
   Plus, X, Type, Image, List, Quote, Code, 
   Hash, AlignLeft, Bold, Italic, Link2, 
@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import BlockEditor, { Block } from './BlockEditor';
 import ConfirmModal from '@/components/modals/ConfirmModal';
-import IconEmojiPicker, { IconEmojiValue, stringifyIconEmojiValue, parseIconEmojiValue } from './IconEmojiPicker';
-import React from 'react';
+
+
 import { usePathname, useRouter } from 'next/navigation';
 
 interface ArticleData {
@@ -51,7 +51,7 @@ export default function ModernArticleEditor({
   });
   interface UploadFile { id: string; name: string; url: string; type: string; }
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
-  const initialSelectedId = React.useMemo(() => {
+  const initialSelectedId = useMemo(() => {
     const m = /\/admin\/articles\/(.+)$/.exec(pathname || '');
     const id = m ? m[1] : '';
     return id === 'new' ? '' : id;
@@ -60,11 +60,11 @@ export default function ModernArticleEditor({
   const [selectedType, setSelectedType] = useState<'PAGE' | 'SECTION' | 'UNKNOWN'>('UNKNOWN');
 
   const [activeBlock, setActiveBlock] = useState<string | null>(null);
-  const [showBlockMenu, setShowBlockMenu] = useState<string | null>(null);
+
   const [mode, setMode] = useState<'editor' | 'preview'>('editor');
   const [saving, setSaving] = useState(false);
   const [activeLeftTab, setActiveLeftTab] = useState<'pages' | 'reusable' | 'files'>('pages');
-  const selectedIcon = React.useMemo(() => parseIconEmojiValue(article.icon || null), [article.icon]);
+
 
   // Block operations
   const addBlock = useCallback((type: string, afterId: string) => {
@@ -241,7 +241,9 @@ export default function ModernArticleEditor({
 
   const handleSelectArticle = useCallback(async (id: string) => {
     setSelectedId(id);
-    try { window.history.pushState({}, '', `/admin/articles/${id}`); } catch {}
+    if (typeof window !== 'undefined') {
+      try { window.history.pushState({}, '', `/admin/articles/${id}`); } catch {}
+    }
     await loadArticleById(id);
   }, [loadArticleById]);
 
@@ -362,40 +364,7 @@ export default function ModernArticleEditor({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col overflow-hidden">
             {/* Page header */}
             <div className="p-8 border-b border-gray-100 dark:border-gray-700">
-              {/* Icon/emoji picker */}
-              <div className="relative mb-4">
-                <button
-                  onClick={() => setShowBlockMenu(prev => prev === 'icon' ? null : 'icon')}
-                  className="flex items-center space-x-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 group"
-                  aria-haspopup="dialog"
-                >
-                  <div className="w-8 h-8 rounded border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center group-hover:border-gray-400">
-                    {selectedIcon ? (
-                      selectedIcon.kind === 'emoji' ? (
-                        <span className="text-base leading-none">{selectedIcon.value}</span>
-                      ) : (
-                        (() => {
-                          const Cmp = (require('lucide-react') as any)[selectedIcon.value];
-                          return Cmp ? <Cmp className="w-4 h-4" /> : <Smile className="w-4 h-4" />;
-                        })()
-                      )
-                    ) : (
-                      <Smile className="w-4 h-4" />
-                    )}
-                  </div>
-                  <span className="text-sm">{selectedIcon ? 'Change icon' : 'Add icon'}</span>
-                </button>
-                {showBlockMenu === 'icon' && (
-                  <IconEmojiPicker
-                    onSelect={(val: IconEmojiValue) => {
-                      setShowBlockMenu(null);
-                      // сохраняем выбранный значок в article.icon как сериализованную строку
-                      setArticle(prev => ({ ...prev, icon: stringifyIconEmojiValue(val) }));
-                    }}
-                    onClose={() => setShowBlockMenu(null)}
-                  />
-                )}
-              </div>
+
 
               {/* Title */}
               <input
@@ -536,27 +505,27 @@ function ArticlePreview({ article }: { article: ArticleData }) {
 
 function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onOpenItem?: (id: string) => void }) {
   type TreeItem = { id: string; title: string; slug: string; orderIndex: number; status: string; type: 'PAGE'|'SECTION'; parentId?: string|null; categoryKey?: string };
-  const [items, setItems] = React.useState<TreeItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-  const [query, setQuery] = React.useState('');
+  const [items, setItems] = useState<TreeItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [query, setQuery] = useState('');
   const pathname = usePathname();
   const router = useRouter();
 
-  const [editingId, setEditingId] = React.useState<string>('');
-  const [editingTitle, setEditingTitle] = React.useState<string>('');
-  const [menuId, setMenuId] = React.useState<string>('');
-  const [addMenuOpen, setAddMenuOpen] = React.useState<boolean>(false);
-  const addMenuRef = React.useRef<HTMLDivElement | null>(null);
-  const expandTimerRef = React.useRef<Record<string, number>>({});
-  const [draggingId, setDraggingId] = React.useState<string>('');
-  const [dragOverId, setDragOverId] = React.useState<string>('');
-  const [dragPosition, setDragPosition] = React.useState<'before' | 'after' | 'inside' | ''>('');
-  const [confirmOpen, setConfirmOpen] = React.useState<boolean>(false);
-  const [toDelete, setToDelete] = React.useState<TreeItem | null>(null);
-  const [deleteCount, setDeleteCount] = React.useState<number>(0);
+  const [editingId, setEditingId] = useState<string>('');
+  const [editingTitle, setEditingTitle] = useState<string>('');
+  const [menuId, setMenuId] = useState<string>('');
+  const [addMenuOpen, setAddMenuOpen] = useState<boolean>(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+  const expandTimerRef = useRef<Record<string, number>>({});
+  const [draggingId, setDraggingId] = useState<string>('');
+  const [dragOverId, setDragOverId] = useState<string>('');
+  const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'inside' | ''>('');
+  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  const [toDelete, setToDelete] = useState<TreeItem | null>(null);
+  const [deleteCount, setDeleteCount] = useState<number>(0);
 
-  const activeId = React.useMemo(() => {
+  const activeId = useMemo(() => {
     if (currentId) return currentId;
     const m = /\/admin\/articles\/(.+)$/.exec(pathname || '');
     const id = m ? m[1] : '';
@@ -573,7 +542,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
     setLoading(true);
     try {
       const ws = getWorkspaceKey() || (pathname?.startsWith('/admin/workspaces/courses') ? 'courses' : undefined);
-      const url = new URL('/api/admin/articles', window.location.origin);
+      const url = new URL('/api/admin/articles', typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
       url.searchParams.set('limit','1000');
       url.searchParams.set('sortBy','orderIndex');
       url.searchParams.set('sortOrder','asc');
@@ -605,11 +574,11 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
     }
   };
 
-  React.useEffect(() => { load(); }, []);
-  React.useEffect(() => { if (activeId) { /* авто‑подгрузка текущей страницы при первом открытии */ } }, [activeId]);
+  useEffect(() => { load(); }, []);
+  useEffect(() => { if (activeId) { /* авто‑подгрузка текущей страницы при первом открытии */ } }, [activeId]);
 
   // Генерация следующего стандартного названия: "Страница N" или "Раздел N"
-  const getNextDefaultTitle = React.useCallback((type: 'PAGE'|'SECTION') => {
+  const getNextDefaultTitle = useCallback((type: 'PAGE'|'SECTION') => {
     const base = type === 'PAGE' ? 'Страница' : 'Раздел';
     let maxNum = 0;
     for (const it of items) {
@@ -631,7 +600,9 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
   }, [items]);
 
   // Закрывать выпадающие меню при клике вне
-  React.useEffect(() => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const onClick = (e: MouseEvent) => {
       const target = e.target as Node | null;
       if (addMenuOpen && addMenuRef.current && target && !addMenuRef.current.contains(target)) {
@@ -648,10 +619,12 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
   }, [addMenuOpen, menuId]);
 
   // Сохранение состояния раскрытия в localStorage
-  React.useEffect(() => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try { localStorage.setItem('articles_tree_expanded', JSON.stringify(expanded)); } catch {}
   }, [expanded]);
-  React.useEffect(() => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
       const raw = localStorage.getItem('articles_tree_expanded');
       if (raw) setExpanded(JSON.parse(raw));
@@ -707,6 +680,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
 
   // Находим ближайший скроллируемый контейнер для автоскролла при DnD
   const getScrollParent = (el: HTMLElement | null): HTMLElement | null => {
+    if (typeof window === 'undefined') return null;
     let node: HTMLElement | null = el;
     while (node) {
       const hasScrollableSpace = node.scrollHeight > node.clientHeight;
@@ -749,7 +723,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
 
     // отложенное раскрытие секции при наведении для вложения внутрь
     if (targetType === 'SECTION' && pos === 'inside' && expanded[targetId] === false) {
-      if (!expandTimerRef.current[targetId]) {
+      if (!expandTimerRef.current[targetId] && typeof window !== 'undefined') {
         expandTimerRef.current[targetId] = window.setTimeout(() => {
           setExpanded(prev => ({ ...prev, [targetId]: true }));
           delete expandTimerRef.current[targetId];
@@ -827,7 +801,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
   const allowDrop = (e: React.DragEvent) => e.preventDefault();
   const onDragEnd = () => { setDragOverId(''); setDragPosition(''); setDraggingId(''); };
 
-  const collectDescendants = React.useCallback((id: string): string[] => {
+  const collectDescendants = useCallback((id: string): string[] => {
     const children = items.filter(n => n.parentId === id).map(n => n.id);
     const all: string[] = [];
     for (const cid of children) {
@@ -836,7 +810,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
     return all;
   }, [items]);
 
-  const idToItem = React.useMemo(() => {
+  const idToItem = useMemo(() => {
     const map: Record<string, TreeItem> = {};
     items.forEach(i => { map[i.id] = i; });
     return map;
@@ -861,7 +835,7 @@ function ArticleTreeSidebar({ currentId, onOpenItem }: { currentId?: string; onO
     return true;
   };
 
-  const parentsWithChildren = React.useMemo(() => {
+  const parentsWithChildren = useMemo(() => {
     const set = new Set<string>();
     for (const it of items) if (it.parentId) set.add(it.parentId);
     return set;
@@ -1084,7 +1058,7 @@ function FilesSidebar({ files, onUpload, onRemove }: { files: Array<{ id: string
 }
 
 function BottomNav() {
-  const pathname = React.usePathname?.() as any;
+  const pathname = usePathname();
   // В простом виде: подсказка навигации без реального расчета соседей
   return (
     <div className="mt-8 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4">

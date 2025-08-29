@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Получение текущего пользователя
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { id: decoded.userId },
     });
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
 
     // Обновление пароля в базе данных
-    await prisma.user.update({
+          await prisma.users.update({
       where: { id: user.id },
       data: {
         password: hashedNewPassword,
@@ -86,17 +86,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Логирование события в аналитику
-    await prisma.analytics.create({
-      data: {
-        event: "password_changed",
-        data: JSON.stringify({
-          userId: user.id,
-          email: user.email,
-          timestamp: new Date(),
-        }),
-      },
-    });
+    // Логирование события в аналитику (временно отключено)
+    // await prisma.analytics.create({
+    //   userId: user.id,
+    //   action: 'password_changed',
+    //   metadata: JSON.stringify({
+    //     event: "password_changed",
+    //     email: user.email,
+    //     timestamp: new Date(),
+    //   }),
+    // });
 
     return NextResponse.json(
       { message: "Пароль успешно изменен" },
