@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
-    "build": "node scripts/setup-postgres.js && npx prisma generate && npx prisma migrate deploy && next build",
+    "build": "node scripts/setup-postgres.js && npx prisma generate && next build",
     "start": "node scripts/create-admin.js && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
