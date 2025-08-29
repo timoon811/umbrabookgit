@@ -19,14 +19,12 @@ export async function verifyToken(token: string) {
         email: true,
         name: true,
         role: true,
-        status: true,
-        isBlocked: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    if (!user || user.status !== "APPROVED" || user.isBlocked) {
+    if (!user) {
       return null;
     }
 
@@ -70,13 +68,12 @@ export async function requireAdmin(requestOrToken: NextRequest | string) {
         email: true,
         name: true,
         role: true,
-        status: true,
-        isBlocked: true,
+
       },
     });
 
-    if (!user || user.status !== "APPROVED" || user.isBlocked) {
-      throw new Error("Пользователь не найден или заблокирован");
+    if (!user) {
+      throw new Error("Пользователь не найден");
     }
 
     return user;
@@ -92,8 +89,8 @@ export function isAdminRole(role: string): boolean {
 }
 
 // Функция для проверки прав администратора на клиенте
-export function hasAdminAccess(user: { role: string; status: string; isBlocked: boolean } | null): boolean {
-  return user !== null && user.role === "ADMIN" && user.status === "APPROVED" && !user.isBlocked;
+export function hasAdminAccess(user: { role: string } | null): boolean {
+  return user !== null && user.role === "ADMIN";
 }
 
 // Утилиты для проверки аутентификации в API маршрутах

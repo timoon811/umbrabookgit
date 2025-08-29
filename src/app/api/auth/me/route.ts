@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         role: true,
-        status: true,
-        isBlocked: true,
+
+
         createdAt: true,
       },
     });
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Проверяем статус пользователя
-    if (user.status !== "APPROVED" || user.isBlocked) {
+    if (!user) {
       return NextResponse.json(
         { message: "Учетная запись неактивна" },
         { status: 403 }

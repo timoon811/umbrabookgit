@@ -8,12 +8,15 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
-    "build": "prisma generate && next build",
-    "start": "next start",
+    "build": "node scripts/setup-postgres.js && npx prisma generate && npx prisma migrate deploy && next build",
+    "start": "node scripts/create-admin.js && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:prod": "node scripts/migrate-production.js",
+    "create:admin": "node scripts/create-admin.js",
     "test:security": "node scripts/security-test.js"
   },
   "prisma": {

@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model users {
+  id        String      @id @default(uuid())
+  email     String      @unique
+  name      String
+  password  String
+  role      UserRole    @default(USER)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  profile   user_profiles?
+
+  @@map("users")
+}
+
+model user_profiles {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  bio        String?
+  avatar     String?
+  website    String?
+  location   String?
+  phone      String?
+  birthday   DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model documentation_sections {
+  id          String              @id @default(uuid())
+  key         String              @unique
+  name        String
+  description String?
+  order       Int                 @default(0)
+  visible     Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  pages       documentation[]
+
+  @@map("documentation_sections")
+}
+
+model documentation {
+  id          String                  @id @default(uuid())
+  title       String
+  description String?
+  content     String?
+  slug        String                  @unique
+  sectionId   String
+  order       Int                     @default(0)
+  isPublished Boolean                 @default(false)
+  parentId    String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  section     documentation_sections  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@map("documentation")
+}
+
+model course_sections {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  order       Int        @default(0)
+  courseId    String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  course      courses    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  pages       course_pages[]
+
+  @@map("course_sections")
+}
+
+model course_pages {
+  id          String          @id @default(uuid())
+  title       String
+  content     String?
+  order       Int             @default(0)
+  sectionId   String
+  slug        String
+  isPublished Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  section     course_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, slug])
+  @@map("course_pages")
+}
+
+model courses {
+  id               String            @id @default(uuid())
+  title            String
+  description      String?
+  slug             String            @unique
+  category         String?
+  level            String?
+  duration         Int?
+  price            Decimal?          @db.Decimal(10, 2)
+  isPublished      Boolean           @default(false)
+  featuredImage    String?
+  tags             String?
+  metadata         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  sections         course_sections[]
+
+  @@map("courses")
+}
+
+model projects {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  color       String?
+  isArchived  Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  transactions transactions[]
+
+  @@map("projects")
+}
+
+model categories {
+  id          String         @id @default(uuid())
+  name        String
+  color       String?
+  icon        String?
+  type        CategoryType   @default(EXPENSE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  transactions transactions[]
+
+  @@map("categories")
+}
+
+model counterparties {
+  id          String         @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  description String?
+  type        CounterpartyType @default(VENDOR)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  transactions transactions[]
+
+  @@map("counterparties")
+}
+
+model accounts {
+  id          String         @id @default(uuid())
+  name        String
+  type        AccountType    @default(BANK)
+  balance     Decimal        @default(0) @db.Decimal(15, 2)
+  currency    String         @default("USD")
+  description String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  transactions transactions[]
+
+  @@map("accounts")
+}
+
+model transactions {
+  id             String              @id @default(uuid())
+  amount         Decimal             @db.Decimal(15, 2)
+  type           TransactionType
+  description    String?
+  date           DateTime            @default(now())
+  categoryId     String?
+  projectId      String?
+  accountId      String
+  counterpartyId String?
+  reference      String?
+  tags           String?
+  isRecurring    Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  category       categories?         @relation(fields: [categoryId], references: [id])
+  project        projects?           @relation(fields: [projectId], references: [id])
+  account        accounts            @relation(fields: [accountId], references: [id])
+  counterparty   counterparties?     @relation(fields: [counterpartyId], references: [id])
+
+  @@map("transactions")
+}
+
+model deposit_sources {
+  id          String    @id @default(uuid())
+  name        String
+  type        String
+  description String?
+  rate        Decimal?  @db.Decimal(5, 4)
+  minAmount   Decimal?  @db.Decimal(15, 2)
+  maxAmount   Decimal?  @db.Decimal(15, 2)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("deposit_sources")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum CounterpartyType {
+  VENDOR
+  CLIENT
+  EMPLOYEE
+  OTHER
+}
+
+enum AccountType {
+  BANK
+  CASH
+  CREDIT_CARD
+  INVESTMENT
+  SAVINGS
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}

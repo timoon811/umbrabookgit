@@ -38,8 +38,6 @@ export async function POST(request: NextRequest) {
         name: true,
         password: true,
         role: true,
-        status: true,
-        isBlocked: true,
       },
     });
 
@@ -50,21 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверяем статус пользователя
-    if (user.status !== "APPROVED") {
-      return NextResponse.json(
-        { message: "Ваша учетная запись еще не одобрена администратором" },
-        { status: 403 }
-      );
-    }
-
-    // Проверяем, не заблокирован ли пользователь
-    if (user.isBlocked) {
-      return NextResponse.json(
-        { message: "Ваша учетная запись заблокирована" },
-        { status: 403 }
-      );
-    }
+    // Пользователь найден, проверяем пароль
 
     // Проверяем пароль
     const isPasswordValid = await bcrypt.compare(password, user.password);
