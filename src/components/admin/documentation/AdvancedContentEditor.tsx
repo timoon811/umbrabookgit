@@ -610,13 +610,73 @@ export default function AdvancedContentEditor({
     }, 0);
   };
 
-  // Обработчик команды "/"" для вызова меню блоков
-  const handleSlashCommand = (e: React.KeyboardEvent, blockId: string) => {
-    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const target = e.target as HTMLTextAreaElement | HTMLInputElement;
-      const cursorPos = target.selectionStart || 0;
+  // Обработчик клавиш для команд и навигации
+  const handleKeyDown = (e: React.KeyboardEvent, blockId: string) => {
+    const target = e.target as HTMLTextAreaElement | HTMLInputElement;
+    const cursorPos = target.selectionStart || 0;
+    
+    // Обработка Enter для создания новых элементов списка
+    if (e.key === 'Enter') {
+      const block = blocks.find(b => b.id === blockId);
+      if (!block) return;
+
+      // Для нумерованных списков
+      if (block.type === 'numbered-list') {
+        e.preventDefault();
+        const currentIndex = blocks.findIndex(b => b.id === blockId);
+        
+        // Создаем новый элемент списка
+        const newBlock = createEmptyBlock('numbered-list');
+        
+        // Вставляем после текущего элемента
+        const newBlocks = [...blocks];
+        newBlocks.splice(currentIndex + 1, 0, newBlock);
+        setBlocks(newBlocks);
+        
+        // Фокусируемся на новом блоке
+        setTimeout(() => {
+          setActiveBlockId(newBlock.id);
+          // Дополнительно фокусируем текстовое поле
+          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
+          if (newBlockElement) {
+            (newBlockElement as HTMLElement).focus();
+          }
+        }, 100);
+        return;
+      }
       
-      // Проверяем, что "/" в начале строки или после пробела
+      // Для обычных списков
+      if (block.type === 'list') {
+        e.preventDefault();
+        const currentIndex = blocks.findIndex(b => b.id === blockId);
+        
+        // Создаем новый элемент списка
+        const newBlock = createEmptyBlock('list');
+        
+        // Вставляем после текущего элемента
+        const newBlocks = [...blocks];
+        newBlocks.splice(currentIndex + 1, 0, newBlock);
+        setBlocks(newBlocks);
+        
+        // Фокусируемся на новом блоке
+        setTimeout(() => {
+          setActiveBlockId(newBlock.id);
+          // Дополнительно фокусируем текстовое поле
+          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
+          if (newBlockElement) {
+            (newBlockElement as HTMLElement).focus();
+          }
+        }, 100);
+        return;
+      }
+      
+      // Для обычных блоков - разрешаем стандартное поведение Enter (перевод строки)
+      // Не создаем новый блок, позволяем тексту расширяться в том же блоке
+      return;
+    }
+    
+    // Обработка команды "/"" для вызова меню блоков
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const textBeforeCursor = target.value.substring(0, cursorPos);
       const lastChar = textBeforeCursor[textBeforeCursor.length - 1];
       
@@ -1010,7 +1070,7 @@ export default function AdvancedContentEditor({
     const isActive = activeBlockId === block.id;
 
     return (
-      <div key={block.id} className="group relative mb-4">
+      <div key={block.id} className="group relative mb-4" data-block-id={block.id}>
         {/* Блок контента */}
         <div 
           className={`relative ${isActive ? 'ring-2 ring-gray-400 dark:ring-gray-500 rounded-lg' : ''}`}
@@ -1021,7 +1081,7 @@ export default function AdvancedContentEditor({
             isActive={isActive}
             onUpdate={(updates) => updateBlock(block.id, updates)}
             onTextSelection={handleTextSelection}
-            onSlashCommand={handleSlashCommand}
+            onSlashCommand={handleKeyDown}
             sections={sections}
           />
         </div>
@@ -1464,8 +1524,8 @@ function BlockRenderer({
         // Минимальная высота = одна строка + padding + border
         const minHeight = lineHeight + paddingTop + paddingBottom + borderTop + borderBottom;
         
-        // Максимальная высота = 20 строк для предотвращения чрезмерного роста
-        const maxHeight = lineHeight * 20 + paddingTop + paddingBottom + borderTop + borderBottom;
+        // Максимальная высота = 30 строк для больших блоков текста
+        const maxHeight = lineHeight * 30 + paddingTop + paddingBottom + borderTop + borderBottom;
         
         // Устанавливаем высоту с учетом ограничений
         const newHeight = Math.min(Math.max(element.scrollHeight, minHeight), maxHeight);
