@@ -12,9 +12,10 @@ model users {
   email     String      @unique
   name      String
   password  String
+  telegram  String      @unique
   role      UserRole    @default(USER)
-  status    UserStatus? @default(PENDING)
-  telegram  String?
+  status    UserStatus  @default(PENDING)
+  isBlocked Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   analytics analytics[]
@@ -22,6 +23,7 @@ model users {
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([telegram])
 }
 
 model courses {

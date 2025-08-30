@@ -4,19 +4,12 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, telegram } = await request.json();
+    const { name, email, telegram, password } = await request.json();
 
     // Валидация входных данных
-    if (!name || !email || !password) {
+    if (!name || !email || !telegram || !password) {
       return NextResponse.json(
-        { message: "Имя, email и пароль обязательны" },
-        { status: 400 }
-      );
-    }
-    
-    if (!telegram) {
-      return NextResponse.json(
-        { message: "Telegram обязателен" },
+        { message: "Имя, email, telegram и пароль обязательны" },
         { status: 400 }
       );
     }
@@ -49,24 +42,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Валидация telegram
     if (!telegram.startsWith("@")) {
       return NextResponse.json(
         { message: "Telegram должен начинаться с @" },
         { status: 400 }
       );
     }
-    
-    if (telegram.length < 6) {
+
+    if (telegram.length < 4) {
       return NextResponse.json(
-        { message: "Telegram ник должен содержать минимум 5 символов после @" },
+        { message: "Telegram должен содержать минимум 3 символа после @" },
         { status: 400 }
       );
     }
-    
-    if (!/^@[a-zA-Z0-9_]+$/.test(telegram)) {
+
+    if (!/^@[a-zA-Z0-9_]{3,32}$/.test(telegram)) {
       return NextResponse.json(
-        { message: "Telegram ник может содержать только буквы, цифры и _" },
+        { message: "Telegram может содержать только буквы, цифры и подчеркивания" },
         { status: 400 }
       );
     }
@@ -84,8 +76,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка уникальности telegram
-    const existingTelegram = await prisma.users.findFirst({
-      where: { telegram },
+    const existingTelegram = await prisma.users.findUnique({
+      where: { telegram: telegram.toLowerCase() },
     });
 
     if (existingTelegram) {
@@ -103,10 +95,10 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         email: email.toLowerCase(),
+        telegram: telegram.toLowerCase(),
         password: hashedPassword,
-        telegram: telegram,
-        role: "USER",
-        status: "PENDING", // Требует подтверждения администратора
+        role: "USER", // По умолчанию роль пользователя
+        status: "PENDING", // Требуется одобрение администратора
       },
     });
 
@@ -122,7 +114,7 @@ export async function POST(request: NextRequest) {
     // });
 
     return NextResponse.json({
-      message: "Регистрация успешна. Ожидайте подтверждения администратора.",
+      message: "Заявка на регистрацию отправлена! Администратор рассмотрит её в ближайшее время.",
       user: {
         id: user.id,
         name: user.name,

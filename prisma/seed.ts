@@ -15,6 +15,7 @@ async function main() {
       email: "admin@umbra-platform.dev",
       name: "Umbra Platform Admin",
       password: adminPassword,
+      telegram: "@umbra_admin",
       role: "ADMIN",
       status: "APPROVED",
     },
@@ -31,6 +32,7 @@ async function main() {
       email: "user@umbra-platform.dev",
       name: "Regular User",
       password: userPassword,
+      telegram: "@umbra_user",
       role: "USER",
       status: "APPROVED",
     },
@@ -46,6 +48,7 @@ async function main() {
       email: "moderator@umbra-platform.dev",
       name: "Moderator",
       password: moderatorPassword,
+      telegram: "@umbra_moderator",
       role: "MODERATOR",
       status: "APPROVED",
     },
@@ -195,7 +198,6 @@ async function main() {
     {
       name: "Начало работы",
       key: "getting-started",
-
       description: "Базовое руководство по началу работы с платформой",
       order: 1,
       isVisible: true,
@@ -203,7 +205,6 @@ async function main() {
     {
       name: "Установка",
       key: "installation",
-
       description: "Пошаговая инструкция по установке платформы",
       order: 2,
       isVisible: true,
@@ -211,7 +212,6 @@ async function main() {
     {
       name: "API справочник",
       key: "api-reference",
-
       description: "Полный справочник по API платформы",
       order: 3,
       isVisible: true,

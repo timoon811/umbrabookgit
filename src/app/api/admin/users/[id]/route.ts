@@ -64,15 +64,19 @@ export async function PUT(
 
     switch (action) {
       case "approve":
-        updateData.status = "APPROVED";
+        updateData = { status: "APPROVED" };
         break;
         
       case "reject":
-        updateData.status = "REJECTED";
+        updateData = { status: "REJECTED" };
         break;
         
-      case "delete":
-        // Удаление пользователя
+      case "block":
+        updateData = { isBlocked: true };
+        break;
+        
+      case "unblock":
+        updateData = { isBlocked: false };
         break;
         
       case "update":
@@ -119,9 +123,10 @@ export async function PUT(
         id: true,
         name: true,
         email: true,
+        telegram: true,
         role: true,
         status: true,
-        telegram: true,
+        isBlocked: true,
         createdAt: true,
         updatedAt: true,
       },

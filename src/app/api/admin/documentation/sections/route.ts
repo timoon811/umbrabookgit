@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
         id: true,
         key: true,
         name: true,
-        emoji: true,
         description: true,
         order: true,
         isVisible: true,

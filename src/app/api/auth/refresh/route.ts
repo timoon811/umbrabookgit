@@ -38,12 +38,11 @@ export async function POST(request: NextRequest) {
         id: true,
         email: true,
         role: true,
-        status: true,
       },
     });
 
-    if (!user || user.status !== "APPROVED") {
-      return NextResponse.json({ message: "Пользователь не найден или не подтвержден" }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ message: "Пользователь не найден" }, { status: 403 });
     }
 
     // Создаем новый токен с тем же сроком действия

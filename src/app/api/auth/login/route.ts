@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         password: true,
         role: true,
         status: true,
+        isBlocked: true,
       },
     });
 
@@ -50,19 +51,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем статус пользователя
-    if (user.status !== "APPROVED") {
-      const statusMessages = {
-        PENDING: "Ваша заявка на регистрацию еще не одобрена администратором. Ожидайте подтверждения.",
-        REJECTED: "Ваша заявка на регистрацию была отклонена администратором.",
-      };
-      
+    if (user.status === "PENDING") {
       return NextResponse.json(
-        { message: statusMessages[user.status as keyof typeof statusMessages] || "Доступ запрещен" },
+        { message: "Ваша заявка на регистрацию ещё не одобрена администратором" },
         { status: 403 }
       );
     }
 
-    // Пользователь найден, проверяем пароль
+    if (user.status === "REJECTED") {
+      return NextResponse.json(
+        { message: "Ваша заявка на регистрацию была отклонена" },
+        { status: 403 }
+      );
+    }
+
+    if (user.isBlocked) {
+      return NextResponse.json(
+        { message: "Ваш аккаунт заблокирован" },
+        { status: 403 }
+      );
+    }
 
     // Проверяем пароль
     const isPasswordValid = await bcrypt.compare(password, user.password);

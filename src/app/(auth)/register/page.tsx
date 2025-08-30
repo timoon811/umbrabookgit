@@ -9,9 +9,9 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    telegram: "",
     password: "",
     confirmPassword: "",
-    telegram: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -20,14 +20,17 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    let processedValue = value;
-
-    // Автоматически добавляем @ к telegram если его нет
-    if (name === "telegram" && value && !value.startsWith("@")) {
-      processedValue = "@" + value;
+    
+    // Обработка поля Telegram - автоматическая подстановка @
+    if (name === "telegram") {
+      let telegramValue = value;
+      if (telegramValue && !telegramValue.startsWith("@")) {
+        telegramValue = "@" + telegramValue;
+      }
+      setFormData(prev => ({ ...prev, [name]: telegramValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
-
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
     
     // Очищаем ошибку при изменении поля
     if (errors[name]) {
@@ -66,10 +69,12 @@ export default function RegisterPage() {
 
     if (!formData.telegram) {
       newErrors.telegram = "Telegram обязателен";
-    } else if (formData.telegram.length < 6) {
-      newErrors.telegram = "Telegram ник должен содержать минимум 5 символов после @";
-    } else if (!/^@[a-zA-Z0-9_]+$/.test(formData.telegram)) {
-      newErrors.telegram = "Telegram ник может содержать только буквы, цифры и _";
+    } else if (!formData.telegram.startsWith("@")) {
+      newErrors.telegram = "Telegram должен начинаться с @";
+    } else if (formData.telegram.length < 4) {
+      newErrors.telegram = "Telegram должен содержать минимум 3 символа после @";
+    } else if (!/^@[a-zA-Z0-9_]{3,32}$/.test(formData.telegram)) {
+      newErrors.telegram = "Telegram может содержать только буквы, цифры и подчеркивания";
     }
 
     setErrors(newErrors);
@@ -92,8 +97,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.toLowerCase(),
+          telegram: formData.telegram.trim(),
           password: formData.password,
-          telegram: formData.telegram,
         }),
       });
 
@@ -130,10 +135,10 @@ export default function RegisterPage() {
                 Регистрация успешна!
               </h3>
               <p className="mt-2 text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                Ваша заявка отправлена на модерацию. Администратор рассмотрит её в ближайшее время.
+                Ваша заявка на регистрацию отправлена! Администратор рассмотрит её в ближайшее время.
               </p>
               <p className="mt-1 text-sm text-[#171717]/50 dark:text-[#ededed]/50">
-                Перенаправление на страницу входа...
+                После одобрения вы сможете войти в систему. Перенаправление на страницу входа...
               </p>
             </div>
           </div>
@@ -220,6 +225,29 @@ export default function RegisterPage() {
             </div>
 
             <div>
+              <label htmlFor="telegram" className="block text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                Telegram *
+              </label>
+              <div className="mt-1">
+                <input
+                  id="telegram"
+                  name="telegram"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.telegram}
+                  onChange={handleChange}
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
+                    errors.telegram ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
+                  }`}
+                  placeholder="@username"
+                />
+                {errors.telegram && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.telegram}</p>
+                )}
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-[#171717] dark:text-[#ededed]">
                 Пароль *
               </label>
@@ -265,30 +293,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="telegram" className="block text-sm font-medium text-[#171717] dark:text-[#ededed]">
-                Telegram *
-              </label>
-              <div className="mt-1">
-                <input
-                  id="telegram"
-                  name="telegram"
-                  type="text"
-                  value={formData.telegram}
-                  onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
-                    errors.telegram ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
-                  }`}
-                  placeholder="@username"
-                />
-                {errors.telegram && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.telegram}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500 dark:text-white/60">
-                  Символ @ будет добавлен автоматически
-                </p>
-              </div>
-            </div>
+            {/* Поле Telegram удалено */}
 
             <div>
               <button
