@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_ke
 const publicRoutes = [
   "/login",
   "/register",
+  "/docs", // Документация доступна публично
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/refresh",
@@ -23,7 +24,6 @@ const adminRoutes = ["/admin"];
 // Внутренние маршруты, требующие авторизации
 const protectedRoutes = [
   "/", // Главная страница (требует авторизации)
-  "/docs", // Документация
   "/courses", // Курсы
   "/profile", // Профиль
   "/processing", // Кабинет обработчика
@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Проверяем, является ли маршрут публичным
-  if (publicRoutes.includes(pathname)) {
+  if (publicRoutes.includes(pathname) || pathname.startsWith('/docs/')) {
     return NextResponse.next();
   }
 
