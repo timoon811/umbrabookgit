@@ -15,6 +15,23 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
       const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
       const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
 
+      // ДЕБАГ: Логируем нажатие пробела
+      if (e.key === ' ') {
+        console.log('🔍 SPACEBAR DEBUG:', {
+          key: e.key,
+          target: target.tagName,
+          isInInputField,
+          isInDocumentationEditor,
+          targetElement: target,
+          parentElements: {
+            parent: target.parentElement?.tagName,
+            grandParent: target.parentElement?.parentElement?.tagName,
+            hasDataDocEditor: target.closest('[data-documentation-editor]') !== null,
+            hasSortableHandle: target.closest('[data-sortable-handle]') !== null
+          }
+        });
+      }
+
       // Ctrl/Cmd + комбинации - работают только в редакторе блоков документации
       if (e.ctrlKey || e.metaKey) {
         // Разрешаем только в textarea/input редактора документации

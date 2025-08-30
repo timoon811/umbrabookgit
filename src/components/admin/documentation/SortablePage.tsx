@@ -31,9 +31,19 @@ export default function SortablePage({ page, onClick, children }: SortablePagePr
       {...attributes}
       className="select-none"
     >
-      {/* Создаем обертку для drag handle, чтобы не блокировать поля ввода */}
+      {/* ВРЕМЕННО УБИРАЕМ LISTENERS ДЛЯ ТЕСТИРОВАНИЯ */}
       <div 
-        {...listeners}
+        onKeyDown={(e) => {
+          // ДЕБАГ: Логируем нажатие пробела в SortablePage
+          if (e.key === ' ') {
+            console.log('🔍 SortablePage SPACEBAR (NO LISTENERS):', {
+              key: e.key,
+              target: (e.target as HTMLElement).tagName,
+              currentTarget: (e.currentTarget as HTMLElement).tagName,
+              pageId: page.id
+            });
+          }
+        }}
         onClick={(e) => {
           // Проверяем, что клик не по полю ввода
           const target = e.target as HTMLElement;

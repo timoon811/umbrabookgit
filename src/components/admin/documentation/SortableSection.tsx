@@ -30,9 +30,19 @@ export default function SortableSection({ section, children }: SortableSectionPr
       {...attributes}
       className="select-none"
     >
-      {/* Создаем обертку для drag handle, чтобы не блокировать поля ввода */}
+      {/* ВРЕМЕННО УБИРАЕМ LISTENERS ДЛЯ ТЕСТИРОВАНИЯ */}
       <div 
-        {...listeners}
+        onKeyDown={(e) => {
+          // ДЕБАГ: Логируем нажатие пробела в SortableSection
+          if (e.key === ' ') {
+            console.log('🔍 SortableSection SPACEBAR (NO LISTENERS):', {
+              key: e.key,
+              target: (e.target as HTMLElement).tagName,
+              currentTarget: (e.currentTarget as HTMLElement).tagName,
+              sectionId: section.id
+            });
+          }
+        }}
         className="relative group"
         data-sortable-handle="true"
       >
