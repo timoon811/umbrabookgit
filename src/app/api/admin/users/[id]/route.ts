@@ -63,20 +63,8 @@ export async function PUT(
     let updateData: any = {};
 
     switch (action) {
-      case "block":
-        updateData.isBlocked = true;
-        break;
-        
-      case "unblock":
-        updateData.isBlocked = false;
-        break;
-        
-      case "approve":
-        updateData.status = "APPROVED";
-        break;
-        
-      case "reject":
-        updateData.status = "REJECTED";
+      case "delete":
+        // Только удаление пользователя доступно
         break;
         
       case "update":
@@ -124,9 +112,8 @@ export async function PUT(
         name: true,
         email: true,
         role: true,
-        status: true,
-        isBlocked: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 

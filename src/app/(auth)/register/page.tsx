@@ -11,7 +11,6 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    telegram: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -20,14 +19,7 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    let processedValue = value;
-
-    // Автоматически добавляем @ к telegram если его нет
-    if (name === "telegram" && value && !value.startsWith("@")) {
-      processedValue = "@" + value;
-    }
-
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     
     // Очищаем ошибку при изменении поля
     if (errors[name]) {
@@ -64,13 +56,7 @@ export default function RegisterPage() {
       newErrors.confirmPassword = "Пароли не совпадают";
     }
 
-    if (formData.telegram && formData.telegram !== "@") {
-      if (formData.telegram.length < 6) {
-        newErrors.telegram = "Telegram ник должен содержать минимум 5 символов после @";
-      } else if (!/^@[a-zA-Z0-9_]+$/.test(formData.telegram)) {
-        newErrors.telegram = "Telegram ник может содержать только буквы, цифры и _";
-      }
-    }
+    // Валидация telegram удалена (поле больше не используется)
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -93,7 +79,6 @@ export default function RegisterPage() {
           name: formData.name.trim(),
           email: formData.email.toLowerCase(),
           password: formData.password,
-          telegram: formData.telegram || null,
         }),
       });
 
@@ -130,7 +115,7 @@ export default function RegisterPage() {
                 Регистрация успешна!
               </h3>
               <p className="mt-2 text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                Ваша заявка отправлена на модерацию. Администратор рассмотрит её в ближайшее время.
+                Добро пожаловать в Umbra Platform! Теперь вы можете войти в систему.
               </p>
               <p className="mt-1 text-sm text-[#171717]/50 dark:text-[#ededed]/50">
                 Перенаправление на страницу входа...
@@ -265,30 +250,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="telegram" className="block text-sm font-medium text-[#171717] dark:text-[#ededed]">
-                Telegram (необязательно)
-              </label>
-              <div className="mt-1">
-                <input
-                  id="telegram"
-                  name="telegram"
-                  type="text"
-                  value={formData.telegram}
-                  onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
-                    errors.telegram ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
-                  }`}
-                  placeholder="@username"
-                />
-                {errors.telegram && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.telegram}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500 dark:text-white/60">
-                  Символ @ будет добавлен автоматически
-                </p>
-              </div>
-            </div>
+            {/* Поле Telegram удалено */}
 
             <div>
               <button

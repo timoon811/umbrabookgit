@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, telegram } = await request.json();
+    const { name, email, password } = await request.json();
 
     // Валидация входных данных
     if (!name || !email || !password) {
@@ -42,21 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Валидация telegram (если указан)
-    if (telegram && telegram !== "@") {
-      if (telegram.length < 6) {
-        return NextResponse.json(
-          { message: "Telegram ник должен содержать минимум 5 символов после @" },
-          { status: 400 }
-        );
-      }
-      if (!/^@[a-zA-Z0-9_]+$/.test(telegram)) {
-        return NextResponse.json(
-          { message: "Telegram ник может содержать только буквы, цифры и _" },
-          { status: 400 }
-        );
-      }
-    }
+    // Валидация telegram удалена (поле больше не используется)
 
     // Проверка уникальности email
     const existingUser = await prisma.users.findUnique({
@@ -70,19 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверка уникальности telegram (если указан)
-    if (telegram && telegram !== "@") {
-      const existingTelegram = await prisma.users.findFirst({
-        where: { telegram },
-      });
-
-      if (existingTelegram) {
-        return NextResponse.json(
-          { message: "Пользователь с таким Telegram уже существует" },
-          { status: 409 }
-        );
-      }
-    }
+    // Проверка уникальности telegram удалена (поле больше не используется)
 
     // Хеширование пароля
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -93,8 +67,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.toLowerCase(),
         password: hashedPassword,
-        telegram: telegram && telegram !== "@" ? telegram : null,
-        status: "PENDING", // Требует подтверждения администратора
+        role: "USER", // По умолчанию роль пользователя
       },
     });
 
@@ -110,12 +83,12 @@ export async function POST(request: NextRequest) {
     // });
 
     return NextResponse.json({
-      message: "Регистрация успешна. Ожидайте подтверждения администратора.",
+      message: "Регистрация успешна. Добро пожаловать!",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        status: user.status,
+        role: user.role,
       },
     });
   } catch (error) {

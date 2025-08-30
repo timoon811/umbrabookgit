@@ -10,11 +10,8 @@ interface User {
   name: string;
   email: string;
   role: string;
-  status: string;
-  isBlocked: boolean;
-  telegram?: string;
-  lastLoginAt: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface PasswordChangeData {
@@ -127,23 +124,9 @@ export default function ProfilePage() {
     return roleMap[role] || role;
   };
 
-  const getStatusName = (status: string) => {
-    const statusMap: Record<string, string> = {
-      APPROVED: "Подтвержден",
-      PENDING: "На рассмотрении",
-      BLOCKED: "Заблокирован",
-    };
-    return statusMap[status] || status;
-  };
+  // Функция getStatusName удалена (поле status больше не используется)
 
-  const getStatusColor = (status: string) => {
-    const colorMap: Record<string, string> = {
-      APPROVED: "bg-green-500/15 text-green-700 dark:bg-green-500/30 dark:text-green-300",
-      PENDING: "bg-yellow-500/15 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-300",
-      BLOCKED: "bg-red-500/15 text-red-700 dark:bg-red-500/30 dark:text-red-300",
-    };
-    return colorMap[status] || "bg-black/10 dark:bg-white/20 text-black/70 dark:text-white/70";
-  };
+  // Функция getStatusColor удалена (поле status больше не используется)
 
   const getRoleColor = (role: string) => {
     const colorMap: Record<string, string> = {
@@ -222,13 +205,7 @@ export default function ProfilePage() {
                   {user.email}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(
-                      user.status
-                    )}`}
-                  >
-                    {getStatusName(user.status)}
-                  </span>
+                  {/* Статус пользователя убран */}
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getRoleColor(
                       user.role
@@ -302,30 +279,8 @@ export default function ProfilePage() {
                       {getRoleName(user.role)}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-black/60 dark:text-white/60 mb-1">
-                      Статус аккаунта
-                    </dt>
-                    <dd>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(
-                          user.status
-                        )}`}
-                      >
-                        {getStatusName(user.status)}
-                      </span>
-                    </dd>
-                  </div>
-                  {user.telegram && (
-                    <div>
-                      <dt className="text-sm font-medium text-black/60 dark:text-white/60 mb-1">
-                        Telegram
-                      </dt>
-                      <dd className="text-sm text-black/90 dark:text-white/90 break-words">
-                        {user.telegram}
-                      </dd>
-                    </div>
-                  )}
+                  {/* Статус аккаунта убран */}
+                  {/* Поле Telegram удалено */}
                   <div>
                     <dt className="text-sm font-medium text-black/60 dark:text-white/60 mb-1">
                       Дата регистрации

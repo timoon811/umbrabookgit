@@ -12,10 +12,6 @@ interface UserDetails {
   name: string;
   email: string;
   role: string;
-  status: string;
-  isBlocked: boolean;
-  telegram?: string;
-  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
   articles: Array<{
@@ -192,22 +188,7 @@ export default function UserDetailsPage() {
     }
   };
 
-  const getStatusBadge = (status: string, isBlocked: boolean) => {
-    if (isBlocked) {
-      return <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">Заблокирован</span>;
-    }
-
-    switch (status) {
-      case "APPROVED":
-        return <span className="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">Одобрен</span>;
-      case "PENDING":
-        return <span className="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">Ожидает</span>;
-      case "REJECTED":
-        return <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">Отклонен</span>;
-      default:
-        return <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">{status}</span>;
-    }
-  };
+  // Функция getStatusBadge удалена (поля status/isBlocked больше не используются)
 
   if (loading) {
     return (
@@ -264,7 +245,7 @@ export default function UserDetailsPage() {
               <div className="ml-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
                 <div className="mt-2 flex items-center gap-3">
-                  {getStatusBadge(user.status, user.isBlocked)}
+                  {/* Статус пользователя убран */}
                   <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
                     {user.role === "ADMIN" ? "Администратор" : user.role === "MODERATOR" ? "Модератор" : "Пользователь"}
                   </span>
@@ -280,40 +261,7 @@ export default function UserDetailsPage() {
                 {editMode ? "Отмена" : "Редактировать"}
               </button>
 
-              {user.status === "PENDING" && (
-                <>
-                  <button
-                    onClick={() => handleAction("approve")}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
-                  >
-                    Одобрить
-                  </button>
-                  <button
-                    onClick={() => handleAction("reject")}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
-                  >
-                    Отклонить
-                  </button>
-                </>
-              )}
-
-              {user.status === "APPROVED" && !user.isBlocked && (
-                <button
-                  onClick={() => handleAction("block")}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
-                >
-                  Заблокировать
-                </button>
-              )}
-
-              {user.isBlocked && (
-                <button
-                  onClick={() => handleAction("unblock")}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
-                >
-                  Разблокировать
-                </button>
-              )}
+              {/* Кнопки модерации убраны */}
 
               {user.role !== "ADMIN" && (
                 <button
