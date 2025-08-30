@@ -68,16 +68,6 @@ export default function SectionItem({
   };
 
   const handlePageKeyDown = (e: React.KeyboardEvent) => {
-    // ДЕБАГ: Логируем все нажатия клавиш в поле редактирования страницы
-    console.log('🔍 SectionItem handlePageKeyDown:', {
-      key: e.key,
-      keyCode: e.keyCode,
-      target: (e.target as HTMLElement).tagName,
-      value: (e.target as HTMLInputElement).value,
-      editingPageId,
-      pageEditName
-    });
-    
     if (e.key === 'Enter') {
       handleSavePageName();
     } else if (e.key === 'Escape') {
