@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { extractHeadingsForToc } from "@/lib/docs";
-import FeedbackWidget from "@/components/FeedbackWidget";
+
 import DocumentationRenderer from "@/components/docs/DocumentationRenderer";
 
 interface DocumentationPage {
@@ -121,10 +121,7 @@ export default async function DocumentationArticlePage({ params }: Documentation
         )}
       </div>
 
-      {/* Виджет обратной связи */}
-      <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-700">
-        <FeedbackWidget pageId={page.id} pageTitle={page.title} />
-      </div>
+
     </article>
   );
 }
