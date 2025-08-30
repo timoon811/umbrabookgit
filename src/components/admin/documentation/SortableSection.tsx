@@ -28,10 +28,16 @@ export default function SortableSection({ section, children }: SortableSectionPr
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       className="select-none"
     >
-      {children}
+      {/* Создаем обертку для drag handle, чтобы не блокировать поля ввода */}
+      <div 
+        {...listeners}
+        className="relative group"
+        data-sortable-handle="true"
+      >
+        {children}
+      </div>
     </div>
   );
 }
