@@ -169,8 +169,37 @@ export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
 
     return sectionsResult;
   } catch (error) {
-    console.error("Error loading documentation navigation:", error);
-    // Возвращаем пустой массив вместо статических данных
+    console.error("❌ getDocsNav: Ошибка загрузки навигации документации:", error);
+    
+    // Попробуем упрощенный запрос в случае ошибки
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      const docs = await prisma.documentation.findMany({
+        where: { isPublished: true },
+        select: {
+          title: true,
+          slug: true,
+        },
+        orderBy: { order: 'asc' }
+      });
+      
+      if (docs.length > 0) {
+        console.log('🔄 getDocsNav: Возвращаем упрощенную навигацию с', docs.length, 'страницами');
+        return [{
+          title: 'Документация',
+          sectionKey: 'general',
+          items: docs.map(doc => ({
+            title: doc.title,
+            href: `/docs/${doc.slug}`,
+            depth: 1
+          }))
+        }];
+      }
+    } catch (fallbackError) {
+      console.error("❌ getDocsNav: Упрощенный запрос также провалился:", fallbackError);
+    }
+    
+    // Возвращаем пустой массив в крайнем случае
     return [];
   }
 }
