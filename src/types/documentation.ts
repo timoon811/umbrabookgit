@@ -22,6 +22,8 @@ export interface DocumentationSection {
   pages: DocumentationPage[];
 }
 
+import React from 'react';
+
 export interface SortableItemProps {
   id: string;
   children: React.ReactNode;

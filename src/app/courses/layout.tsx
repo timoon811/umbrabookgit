@@ -1,3 +1,4 @@
+import React from 'react';
 import { getCoursesNav } from "@/lib/courses";
 import CoursesNavigation from "@/components/CoursesNavigation";
 import TableOfContents from "@/components/TableOfContents";

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { getDocsNav } from "@/lib/docs";
 import DocsNavigation from "@/components/DocsNavigation";
 import TableOfContents from "@/components/TableOfContents";

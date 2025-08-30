@@ -32,24 +32,18 @@ const protectedRoutes = [
 // Функция для проверки роли администратора
 async function checkAdminRole(token: string): Promise<boolean> {
   try {
-    // В Edge Runtime используем decode вместо verify
-    const decoded = jwt.decode(token) as {
+    // В Edge Runtime используем verify для проверки подписи
+    const decoded = jwt.verify(token, JWT_SECRET) as {
       userId: string;
       role: string;
       exp: number;
     };
-    
+
     // Проверяем, что токен декодирован и содержит роль
     if (!decoded || !decoded.role) {
       return false;
     }
-    
-    // Проверяем срок действия токена
-    const now = Math.floor(Date.now() / 1000);
-    if (decoded.exp && decoded.exp < now) {
-      return false;
-    }
-    
+
     return decoded.role === "ADMIN";
   } catch (error) {
     return false;
