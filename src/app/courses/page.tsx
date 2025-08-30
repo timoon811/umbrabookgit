@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCourseSectionInfo, getCoursesNav } from "@/lib/courses";
@@ -119,54 +117,45 @@ export default async function CoursesIndexPage({ searchParams }: CoursesPageProp
   const advancedCourses = courses.filter(c => c.category === 'advanced').length;
 
   return (
-    <div className="prose prose-zinc dark:prose-invert max-w-none">
+    <div className="space-y-8" suppressHydrationWarning>
       {selectedSection && selectedSection !== 'all' ? (
         // Показываем конкретный раздел
         <div>
-          <div className="flex items-center gap-2 mb-6">
+          {/* Хлебные крошки */}
+          <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
             <Link
               href="/courses"
-              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
               Курсы
             </Link>
-            <span className="text-gray-400">/</span>
-            <span className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-      
-              <span>{sectionInfo?.name || selectedSection}</span>
+            <span>/</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              {sectionInfo?.name || selectedSection}
             </span>
-          </div>
+          </nav>
 
-          {/* Поиск по курсам */}
-          <div className="mb-8">
-            <div className="max-w-lg">
+          {/* Заголовок раздела */}
+          <div className="mb-6">
+            <div className="mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                {sectionInfo ? sectionInfo.name : selectedSection}
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-300">
+                {sectionInfo?.description || 'Курсы по данному разделу'}
+              </p>
+            </div>
+
+            {/* Поиск в разделе */}
+            <div className="max-w-md">
               <SearchBox />
             </div>
           </div>
-          
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              {sectionInfo ? sectionInfo.name : selectedSection}
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300">
-              {sectionInfo?.description || 'Курсы по данному разделу'}
-            </p>
-          </div>
-
-
 
           {filteredCourses.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Курсы не найдены</h3>
-              <p className="text-gray-600 dark:text-gray-400">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Курсы не найдены</h3>
+              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
                 {searchQuery 
                   ? `По запросу "${searchQuery}" в этом разделе ничего не найдено`
                   : 'В этом разделе пока нет курсов'
@@ -174,24 +163,27 @@ export default async function CoursesIndexPage({ searchParams }: CoursesPageProp
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCourses.map((course) => (
                 <Link
                   key={course.id}
                   href={`/courses/${course.slug}`}
-                  className="block bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6 hover:shadow-lg transition-shadow"
+                  className="group block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
                 >
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
                     {course.title}
                   </h3>
                   {course.description && (
-                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-2">
                       {course.description}
                     </p>
                   )}
-                  <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <span>{new Date(course.createdAt).toLocaleDateString('ru-RU')}</span>
-                    <span className="text-gray-600 dark:text-gray-400">Изучать →</span>
+                  
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    Изучать курс
+                    <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </Link>
               ))}
@@ -200,76 +192,17 @@ export default async function CoursesIndexPage({ searchParams }: CoursesPageProp
         </div>
       ) : (
         // Главная страница курсов
-        <div className="text-center py-20">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            🎓 Курсы обучения Umbra Platform
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
-            Изучайте платформу Umbra с помощью структурированных курсов. 
-            От базовых концепций до продвинутых интеграций - у нас есть курс для каждого уровня.
-          </p>
-          
-          {/* Поиск по всем курсам */}
+        <div className="text-center">
+          {/* Hero секция */}
           <div className="mb-12">
-            <div className="max-w-lg mx-auto">
-              <SearchBox />
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-              Ищите по названиям и описаниям курсов
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Курсы Umbra Platform
+            </h1>
+            <p className="text-lg lg:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed">
+              Изучайте платформу Umbra с помощью структурированных курсов. 
+              От базовых концепций до продвинутых интеграций - у нас есть курс для каждого уровня.
             </p>
           </div>
-          
-
-
-          {/* Краткая статистика */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 max-w-4xl mx-auto">
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6">
-              <div className="text-3xl font-bold text-gray-600 dark:text-gray-400 mb-2">{totalCourses}</div>
-              <div className="text-gray-600 dark:text-gray-400">Всего курсов</div>
-            </div>
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6">
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">{beginnerCourses}</div>
-              <div className="text-gray-600 dark:text-gray-400">Для начинающих</div>
-            </div>
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6">
-              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">{intermediateCourses}</div>
-              <div className="text-gray-600 dark:text-gray-400">Средний уровень</div>
-            </div>
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6">
-              <div className="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-2">{advancedCourses}</div>
-              <div className="text-gray-600 dark:text-gray-400">Продвинутый</div>
-            </div>
-          </div>
-
-          {/* Обзор разделов */}
-          {navSections.length > 0 && (
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                Обзор разделов
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {navSections.map((section) => (
-                  <div
-                    key={section.sectionKey}
-                    className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-black/5 dark:border-white/10 p-6 text-center"
-                  >
-                    <div className="text-2xl mb-2">
-                      
-                    </div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                      {section.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      {getCourseSectionInfo(section.sectionKey).description}
-                    </p>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {section.items.length} курсов
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
