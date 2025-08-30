@@ -1,6 +1,7 @@
 'use client';
 
 import { useTableOfContents } from '@/hooks/useTableOfContents';
+import TOCDiagnostics from './TOCDiagnostics';
 
 interface TableOfContentsProps {
   content?: string;
@@ -51,33 +52,42 @@ export default function TableOfContents({ content, pageType = 'article' }: Table
   }
 
   return (
-    <nav className="text-sm">
-      <ul className="space-y-1">
-        {tocItems.map((item) => (
-          <li key={item.id}>
-            <a
-              href={`#${item.id}`}
-              onClick={(e) => handleClick(item.id, e)}
-              className={`block py-1 px-2 text-xs transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                activeId === item.id
-                  ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              } ${
-                item.depth === 2
-                  ? 'pl-4'
-                  : item.depth === 3
-                  ? 'pl-6'
-                  : ''
-              }`}
-              title={item.text}
-            >
-              <span className="line-clamp-2">
-                {item.text}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <>
+      <nav className="text-sm">
+        <ul className="space-y-1">
+          {tocItems.map((item) => (
+            <li key={item.id}>
+              <a
+                href={`#${item.id}`}
+                onClick={(e) => handleClick(item.id, e)}
+                className={`block py-1 px-2 text-xs transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                  activeId === item.id
+                    ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 font-medium border-l-2 border-blue-500'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                } ${
+                  item.depth === 2
+                    ? 'pl-4'
+                    : item.depth === 3
+                    ? 'pl-6'
+                    : ''
+                }`}
+                title={item.text}
+              >
+                <span className="line-clamp-2">
+                  {item.text}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      
+      {/* Диагностика для режима разработки */}
+      <TOCDiagnostics 
+        tocItems={tocItems} 
+        activeId={activeId} 
+        enabled={process.env.NODE_ENV === 'development'} 
+      />
+    </>
   );
 }

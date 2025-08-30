@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import { useScrollDirection } from './useScrollDirection';
+import { useResponsiveConfig } from './useResponsiveConfig';
 
 interface TocItem {
   id: string;
@@ -23,6 +25,11 @@ export function useTableOfContents(options: UseTableOfContentsOptions = {}) {
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const pathname = usePathname();
+  const responsiveConfig = useResponsiveConfig();
+  const { scrollDirection, isScrollingDown, isScrollingUp } = useScrollDirection({
+    threshold: 5,
+    debounceMs: responsiveConfig.debounceMs
+  });
 
   // Функция для генерации slug ID
   const generateSlugId = useCallback((text: string): string => {
@@ -167,32 +174,173 @@ export function useTableOfContents(options: UseTableOfContentsOptions = {}) {
   useEffect(() => {
     if (!enabled || tocItems.length === 0) return;
 
+    let debounceTimer: NodeJS.Timeout;
+    const visibilityMap = new Map<string, boolean>();
+
+    const updateActiveHeading = () => {
+      // Получаем все заголовки и их позиции
+      const headingElements = tocItems
+        .map(item => {
+          const element = document.getElementById(item.id);
+          if (!element) return null;
+          
+          const rect = element.getBoundingClientRect();
+          return {
+            id: item.id,
+            element,
+            top: rect.top,
+            bottom: rect.bottom,
+            isVisible: visibilityMap.get(item.id) || false
+          };
+        })
+        .filter(Boolean) as Array<{
+          id: string;
+          element: HTMLElement;
+          top: number;
+          bottom: number;
+          isVisible: boolean;
+        }>;
+
+      if (headingElements.length === 0) return;
+
+      // Определяем активный заголовок с учетом направления скролла:
+      // 1. При скролле вниз - активируем заголовок, когда он пересекает верхнюю границу
+      // 2. При скролле вверх - активируем заголовок, когда следующий уходит за верхнюю границу
+      // 3. При отсутствии скролла - используем ближайший к активной зоне
+      
+      const { headerOffset, activeThreshold, toleranceUp, toleranceDown } = responsiveConfig;
+      
+      // Сортируем заголовки по их позиции в документе
+      const sortedHeadings = headingElements.sort((a, b) => {
+        return a.element.offsetTop - b.element.offsetTop;
+      });
+
+      let newActiveId = '';
+
+      if (isScrollingDown) {
+        // При скролле вниз: активируем заголовок, когда он пересекает активную зону сверху
+        for (let i = sortedHeadings.length - 1; i >= 0; i--) {
+          const heading = sortedHeadings[i];
+          if (heading.top <= activeThreshold + toleranceDown) {
+            newActiveId = heading.id;
+            break;
+          }
+        }
+      } else if (isScrollingUp) {
+        // При скролле вверх: более консервативная логика - активируем только когда заголовок четко в зоне
+        for (let i = sortedHeadings.length - 1; i >= 0; i--) {
+          const heading = sortedHeadings[i];
+          if (heading.top <= activeThreshold - toleranceUp) {
+            newActiveId = heading.id;
+            break;
+          }
+        }
+        
+        // Если при скролле вверх ничего не найдено, проверяем видимые заголовки
+        if (!newActiveId) {
+          const visibleHeadings = sortedHeadings.filter(h => h.isVisible && h.top >= 0);
+          if (visibleHeadings.length > 0) {
+            newActiveId = visibleHeadings[0].id;
+          }
+        }
+      } else {
+        // При отсутствии скролла или медленном скролле: стандартная логика
+        for (let i = sortedHeadings.length - 1; i >= 0; i--) {
+          const heading = sortedHeadings[i];
+          if (heading.top <= activeThreshold) {
+            newActiveId = heading.id;
+            break;
+          }
+        }
+      }
+
+      // Fallback: если ни один заголовок не выбран, выбираем первый видимый
+      if (!newActiveId && sortedHeadings.length > 0) {
+        const firstVisible = sortedHeadings.find(h => h.isVisible);
+        newActiveId = firstVisible?.id || sortedHeadings[0].id;
+      }
+
+      // Обновляем активный заголовок только если он изменился
+      setActiveId(prevId => {
+        if (prevId !== newActiveId) {
+          console.log('🎯 TOC: Активный заголовок изменился:', {
+            from: prevId,
+            to: newActiveId,
+            scrollDirection,
+            scrollingDown: isScrollingDown,
+            scrollingUp: isScrollingUp
+          });
+          return newActiveId;
+        }
+        return prevId;
+      });
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleEntries = entries.filter(entry => entry.isIntersecting);
-        if (visibleEntries.length > 0) {
-          const topEntry = visibleEntries.sort((a, b) => {
-            return a.boundingClientRect.top - b.boundingClientRect.top;
-          })[0];
-          setActiveId(topEntry.target.id);
-        }
+        // Обновляем карту видимости элементов
+        entries.forEach(entry => {
+          visibilityMap.set(entry.target.id, entry.isIntersecting);
+        });
+
+        // Debounce обновления активного заголовка
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateActiveHeading, 10);
       },
       { 
-        rootMargin: '-80px 0px -80px 0px',
-        threshold: [0, 0.1, 0.5, 1]
+        // Адаптивные настройки для определения видимости
+        rootMargin: responsiveConfig.rootMargin,
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0] // Более детальное отслеживание
+      }
+    );
+
+    // Дополнительный observer для отслеживания скролла
+    const scrollObserver = new IntersectionObserver(
+      () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateActiveHeading, 10);
+      },
+      {
+        rootMargin: '0px',
+        threshold: 0
       }
     );
 
     const timeoutId = setTimeout(() => {
       tocItems.forEach(item => {
         const element = document.getElementById(item.id);
-        if (element) observer.observe(element);
+        if (element) {
+          observer.observe(element);
+          // Инициализируем видимость
+          const rect = element.getBoundingClientRect();
+          visibilityMap.set(item.id, rect.top >= 0 && rect.bottom <= window.innerHeight);
+        }
       });
+
+      // Наблюдаем за контейнером для отслеживания скролла
+      const container = document.querySelector('#article-content');
+      if (container) {
+        scrollObserver.observe(container);
+      }
+
+      // Первоначальное определение активного заголовка
+      updateActiveHeading();
     }, 50);
+
+    // Слушатель скролла как fallback
+    const handleScroll = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updateActiveHeading, 16); // ~60fps
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(debounceTimer);
       observer.disconnect();
+      scrollObserver.disconnect();
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [enabled, tocItems, pathname]);
 
@@ -200,14 +348,36 @@ export function useTableOfContents(options: UseTableOfContentsOptions = {}) {
   const scrollToHeading = useCallback((id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      const offsetTop = element.offsetTop - 100;
+      // Вычисляем точную позицию с учетом адаптивных настроек
+      const extraOffset = 20; // Дополнительный отступ для удобства чтения
+      const targetPosition = element.offsetTop - responsiveConfig.headerOffset - extraOffset;
+      
+      // Устанавливаем активный ID немедленно для визуальной обратной связи
+      setActiveId(id);
+      
+      // Плавная анимация скролла
       window.scrollTo({
-        top: offsetTop,
+        top: Math.max(0, targetPosition), // Не скроллим выше начала страницы
         behavior: 'smooth'
       });
-      setActiveId(id);
+      
+      // Дополнительная проверка после завершения скролла
+      setTimeout(() => {
+        const rect = element.getBoundingClientRect();
+        const isInCorrectPosition = rect.top >= responsiveConfig.headerOffset - 10 && 
+                                  rect.top <= responsiveConfig.headerOffset + 50;
+        
+        if (!isInCorrectPosition) {
+          // Корректируем позицию если нужно
+          const correctedPosition = element.offsetTop - responsiveConfig.headerOffset - extraOffset;
+          window.scrollTo({
+            top: Math.max(0, correctedPosition),
+            behavior: 'smooth'
+          });
+        }
+      }, 500); // Даем время на завершение анимации
     }
-  }, []);
+  }, [responsiveConfig]);
 
   return {
     tocItems,
