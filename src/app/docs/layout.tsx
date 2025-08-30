@@ -2,6 +2,8 @@
 import { getDocsNav } from "@/lib/docs";
 import DocsNavigation from "@/components/DocsNavigation";
 import TableOfContents from "@/components/TableOfContents";
+import SmartSidebar from "@/components/SmartSidebar";
+import BodyClassManager from "@/components/BodyClassManager";
 
 interface DocsLayoutProps {
   children: React.ReactNode;
@@ -12,16 +14,17 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
   const nav = await getDocsNav('docs');
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Убираем дублирующийся хэдер - используем основной из ConditionalNavigation */}
+    <>
+      <BodyClassManager className="page-with-custom-layout" />
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        {/* Убираем дублирующийся хэдер - используем основной из ConditionalNavigation */}
 
-      <div className="docs-layout">
-        {/* Левый сайдбар - навигация (оптимизированная ширина) */}
+        <div className="docs-layout">
+        {/* Левый сайдбар - навигация (улучшенное позиционирование) */}
         <aside className="docs-sidebar border-r border-gray-200 dark:border-gray-800">
-          <div className="sticky top-[calc(var(--header-height)+0.5rem)] h-[calc(100vh-var(--header-height)-1rem)] overflow-y-auto p-3">
-            {/* Навигация */}
+          <SmartSidebar>
             <DocsNavigation nav={nav} />
-          </div>
+          </SmartSidebar>
         </aside>
 
         {/* Центральный контент */}
@@ -29,17 +32,18 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
           {children}
         </main>
 
-        {/* Правая колонка - TOC (оптимизированная ширина) */}
+        {/* Правая колонка - TOC (улучшенное позиционирование) */}
         <aside className="docs-toc border-l border-gray-200 dark:border-gray-800">
-          <div className="sticky top-[calc(var(--header-height)+0.5rem)] h-[calc(100vh-var(--header-height)-1rem)] overflow-y-auto p-3">
+          <SmartSidebar>
             <div className="text-sm font-medium text-gray-900 dark:text-white mb-3">
               На этой странице
             </div>
             <TableOfContents content="dynamic" />
-          </div>
+          </SmartSidebar>
         </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

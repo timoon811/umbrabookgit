@@ -79,7 +79,18 @@ body {
   font-family: var(--font-geist-sans);
   line-height: 1.6;
   transition: background-color 0.3s ease, color 0.3s ease;
-  padding-top: var(--header-height); /* Отступ для закрепленного header */
+  /* По умолчанию - отступ под хедер для обычных страниц */
+  padding-top: var(--header-height);
+}
+
+/* Класс для страниц, которым нужен отступ под хедер */
+.page-with-header {
+  padding-top: var(--header-height);
+}
+
+/* Класс для страниц с собственным layout (документация, курсы) */
+.page-with-custom-layout {
+  padding-top: 0;
 }
 
 /* Плавные переходы для всех элементов */
@@ -729,15 +740,59 @@ input[type="text"], input[type="url"], input[type="email"], input[type="password
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 240px;
   gap: 0;
-  min-height: calc(100vh - var(--header-height));
+  min-height: 100vh;
   background: var(--background);
   transition: background-color 0.3s ease;
+  padding-top: var(--header-height); /* Отступ только для docs-layout */
 }
 
 .docs-sidebar {
   background: var(--sidebar-bg);
   border-color: var(--sidebar-border);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+}
+
+/* Улучшенное поведение скролла в сайдбаре */
+.docs-sidebar .sticky {
+  /* Плавная прокрутка */
+  scroll-behavior: smooth;
+  /* Тонкий скроллбар только при необходимости */
+  overflow-y: auto;
+  /* Скрываем скроллбар в WebKit браузерах, если контент помещается */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.docs-sidebar .sticky::-webkit-scrollbar {
+  width: 6px;
+}
+
+.docs-sidebar .sticky::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.docs-sidebar .sticky::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background-color 0.3s ease;
+}
+
+.docs-sidebar .sticky::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode скроллбар */
+.dark .docs-sidebar .sticky {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.dark .docs-sidebar .sticky::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .docs-sidebar .sticky::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
 }
 
 .docs-content {
@@ -755,6 +810,15 @@ input[type="text"], input[type="url"], input[type="email"], input[type="password
 
 /* Адаптивность для документации */
 @media (max-width: 1280px) {
+  .docs-layout {
+    grid-template-columns: 240px minmax(0, 1fr) 200px;
+  }
+  .docs-toc {
+    width: 200px;
+  }
+}
+
+@media (max-width: 1180px) {
   .docs-layout {
     grid-template-columns: 240px minmax(0, 1fr);
   }

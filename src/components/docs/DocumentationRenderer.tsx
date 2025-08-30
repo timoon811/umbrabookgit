@@ -39,6 +39,20 @@ interface DocumentationRendererProps {
 export default function DocumentationRenderer({ content }: DocumentationRendererProps) {
   const [blocks, setBlocks] = useState<Block[]>([]);
 
+  // Функция для генерации slug ID (такая же как в TableOfContents)
+  const generateSlugId = (text: string): string => {
+    if (!text || typeof text !== 'string') return '';
+    
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\u0400-\u04FFa-z0-9\-]/gi, '')
+      .replace(/\-\-+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
+  };
+
   useEffect(() => {
     const parsedBlocks = parseMarkdownToBlocks(content);
     setBlocks(parsedBlocks);
@@ -259,7 +273,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         return (
           <h1 
             key={block.id}
-            id={block.content.toLowerCase().replace(/\s+/g, '-')}
+            id={generateSlugId(block.content)}
             className={`text-3xl font-bold text-gray-900 dark:text-white mb-6 ${getAlignmentClass()} ${getTextClasses()}`}
             style={getTextStyles()}
           >
@@ -271,7 +285,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         return (
           <h2 
             key={block.id}
-            id={block.content.toLowerCase().replace(/\s+/g, '-')}
+            id={generateSlugId(block.content)}
             className={`text-2xl font-semibold text-gray-900 dark:text-white mb-4 mt-8 ${getAlignmentClass()} ${getTextClasses()}`}
             style={getTextStyles()}
           >
@@ -283,7 +297,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         return (
           <h3 
             key={block.id}
-            id={block.content.toLowerCase().replace(/\s+/g, '-')}
+            id={generateSlugId(block.content)}
             className={`text-xl font-medium text-gray-900 dark:text-white mb-3 mt-6 ${getAlignmentClass()} ${getTextClasses()}`}
             style={getTextStyles()}
           >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
 import KeyboardShortcuts, { ShortcutsHelp } from './KeyboardShortcuts';
@@ -752,93 +752,256 @@ export default function AdvancedContentEditor({
           setShowShortcutsHelp(false);
         } else if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
+        } else if (showContextMenu) {
+          setShowContextMenu(false);
+        } else if (showToolbar) {
+          setShowToolbar(false);
+        }
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      // Закрываем контекстное меню при клике вне его
+      if (showContextMenu) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.fixed')) {
+          setShowContextMenu(false);
+        }
+      }
+      // Закрываем панель инструментов при клике вне выделения
+      if (showToolbar) {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') {
+          setShowToolbar(false);
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showBlockMenu, showShortcutsHelp, showDeleteConfirm]);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showBlockMenu, showShortcutsHelp, showDeleteConfirm, showContextMenu, showToolbar]);
+
+  // Состояния для дополнительной панели форматирования
+  const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(false);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
+  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large' | 'xlarge'>('normal');
+  const [textColor, setTextColor] = useState('#000000');
+  const [highlightColor, setHighlightColor] = useState('#ffff00');
 
   const renderToolbar = () => {
     if (!showToolbar) return null;
 
+    // Определяем позицию с учетом границ экрана
+    const adjustedLeft = Math.max(10, Math.min(toolbarPosition.left - 150, window.innerWidth - 320));
+    const adjustedTop = Math.max(10, toolbarPosition.top - 60);
+
     return (
       <div 
-        className="fixed z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 px-2 py-1 flex items-center gap-1"
+        className="fixed z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
         style={{ 
-          top: toolbarPosition.top, 
-          left: toolbarPosition.left - 100,
-          transform: 'translateY(-100%)'
+          top: adjustedTop, 
+          left: adjustedLeft,
+          minWidth: '300px'
         }}
       >
-        <button
-          onClick={() => handleShortcut('bold')}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Жирный (Ctrl+B)"
-        >
-          <strong>B</strong>
-        </button>
-        <button
-          onClick={() => handleShortcut('italic')}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded italic"
-          title="Курсив (Ctrl+I)"
-        >
-          I
-        </button>
-        <button
-          onClick={() => handleShortcut('underline')}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded underline"
-          title="Подчеркивание (Ctrl+U)"
-        >
-          U
-        </button>
-        <button
-          onClick={() => handleShortcut('strikethrough')}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded line-through"
-          title="Зачеркивание"
-        >
-          S
-        </button>
-        <button
-          onClick={() => handleShortcut('code')}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded font-mono text-xs"
-          title="Код"
-        >
-          &lt;/&gt;
-        </button>
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-        <button
-          onClick={() => performUndo()}
-          disabled={undoStack.length === 0}
-          className={`p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title="Отменить (Ctrl+Z)"
-        >
-          ↶
-        </button>
-        <button
-          onClick={() => performRedo()}
-          disabled={redoStack.length === 0}
-          className={`p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title="Повторить (Ctrl+Shift+Z)"
-        >
-          ↷
-        </button>
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-        <button
-          onClick={() => setShowLinkModal(true)}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
-          title="Добавить ссылку (Ctrl+K)"
-        >
-          🔗
-        </button>
-        <button
-          onClick={() => setShowInternalLinkModal(true)}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
-          title="Внутренняя ссылка"
-        >
-          📄
-        </button>
+        {/* Основная панель инструментов */}
+        <div className="flex items-center gap-1 mb-2">
+          {/* Форматирование текста */}
+          <button
+            onClick={() => handleShortcut('bold')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="Жирный (Ctrl+B)"
+          >
+            <strong className="text-sm">B</strong>
+          </button>
+          <button
+            onClick={() => handleShortcut('italic')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded italic transition-colors"
+            title="Курсив (Ctrl+I)"
+          >
+            <span className="text-sm">I</span>
+          </button>
+          <button
+            onClick={() => handleShortcut('underline')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded underline transition-colors"
+            title="Подчеркивание (Ctrl+U)"
+          >
+            <span className="text-sm">U</span>
+          </button>
+          <button
+            onClick={() => handleShortcut('strikethrough')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded line-through transition-colors"
+            title="Зачеркивание"
+          >
+            <span className="text-sm">S</span>
+          </button>
+          
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          
+          {/* Размер шрифта */}
+          <select
+            value={fontSize}
+            onChange={(e) => {
+              setFontSize(e.target.value as any);
+              // Применяем размер шрифта к выделенному тексту
+              const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
+              if (activeElement && activeBlockId) {
+                applyTextFormatting(activeElement, `<span style="font-size: ${e.target.value === 'small' ? '0.875rem' : e.target.value === 'large' ? '1.125rem' : e.target.value === 'xlarge' ? '1.25rem' : '1rem'}">`, '</span>');
+              }
+            }}
+            className="px-2 py-1 text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500"
+            title="Размер шрифта"
+          >
+            <option value="small">Малый</option>
+            <option value="normal">Обычный</option>
+            <option value="large">Большой</option>
+            <option value="xlarge">Очень большой</option>
+          </select>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* Цвет текста */}
+          <div className="flex items-center gap-1">
+            <input
+              type="color"
+              value={textColor}
+              onChange={(e) => {
+                setTextColor(e.target.value);
+                const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
+                if (activeElement && activeBlockId) {
+                  applyTextFormatting(activeElement, `<span style="color: ${e.target.value}">`, '</span>');
+                }
+              }}
+              className="w-6 h-6 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+              title="Цвет текста"
+            />
+            <button
+              onClick={() => {
+                const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
+                if (activeElement && activeBlockId) {
+                  applyTextFormatting(activeElement, `<mark style="background-color: ${highlightColor}">`, '</mark>');
+                }
+              }}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Выделить цветом"
+            >
+              <div className="w-4 h-4 bg-yellow-300 rounded"></div>
+            </button>
+            <input
+              type="color"
+              value={highlightColor}
+              onChange={(e) => setHighlightColor(e.target.value)}
+              className="w-6 h-6 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+              title="Цвет выделения"
+            />
+          </div>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* Код */}
+          <button
+            onClick={() => handleShortcut('code')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded font-mono text-xs transition-colors"
+            title="Код (Ctrl+`)"
+          >
+            &lt;/&gt;
+          </button>
+        </div>
+
+        {/* Вторая строка */}
+        <div className="flex items-center gap-1">
+          {/* Отмена/Повтор */}
+          <button
+            onClick={() => performUndo()}
+            disabled={undoStack.length === 0}
+            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Отменить (Ctrl+Z)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 10l6-6m-6 6l6 6" />
+            </svg>
+          </button>
+          <button
+            onClick={() => performRedo()}
+            disabled={redoStack.length === 0}
+            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Повторить (Ctrl+Shift+Z)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H3m18 0l-6-6m6 6l-6 6" />
+            </svg>
+          </button>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* Ссылки */}
+          <button
+            onClick={() => setShowLinkModal(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="Добавить ссылку (Ctrl+K)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setShowInternalLinkModal(true)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="Внутренняя ссылка"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+          {/* Заголовки */}
+          <button
+            onClick={() => handleShortcut('heading', { level: 1 })}
+            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold transition-colors"
+            title="Заголовок 1 (Ctrl+1)"
+          >
+            H1
+          </button>
+          <button
+            onClick={() => handleShortcut('heading', { level: 2 })}
+            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-semibold transition-colors"
+            title="Заголовок 2 (Ctrl+2)"
+          >
+            H2
+          </button>
+          <button
+            onClick={() => handleShortcut('heading', { level: 3 })}
+            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-medium transition-colors"
+            title="Заголовок 3 (Ctrl+3)"
+          >
+            H3
+          </button>
+
+          {/* Кнопка закрытия */}
+          <button
+            onClick={() => setShowToolbar(false)}
+            className="ml-auto p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="Закрыть панель"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Подсказка */}
+        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Выделите текст для форматирования
+          </p>
+        </div>
       </div>
     );
   };
@@ -1082,6 +1245,77 @@ export default function AdvancedContentEditor({
       {/* Плавающая панель инструментов */}
       {renderToolbar()}
 
+      {/* Контекстное меню */}
+      {showContextMenu && (
+        <div
+          className="fixed z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 py-2 min-w-[200px]"
+          style={{
+            top: Math.min(contextMenuPosition.top, window.innerHeight - 200),
+            left: Math.min(contextMenuPosition.left, window.innerWidth - 220)
+          }}
+          onMouseLeave={() => setShowContextMenu(false)}
+        >
+          <button
+            onClick={() => {
+              handleShortcut('bold');
+              setShowContextMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+          >
+            <strong className="text-sm">B</strong>
+            <span className="text-sm">Сделать жирным</span>
+            <span className="ml-auto text-xs text-gray-400">Ctrl+B</span>
+          </button>
+          <button
+            onClick={() => {
+              handleShortcut('italic');
+              setShowContextMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+          >
+            <span className="text-sm italic">I</span>
+            <span className="text-sm">Курсив</span>
+            <span className="ml-auto text-xs text-gray-400">Ctrl+I</span>
+          </button>
+          <button
+            onClick={() => {
+              handleShortcut('underline');
+              setShowContextMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+          >
+            <span className="text-sm underline">U</span>
+            <span className="text-sm">Подчеркнутый</span>
+            <span className="ml-auto text-xs text-gray-400">Ctrl+U</span>
+          </button>
+          <hr className="my-1 border-gray-200 dark:border-gray-600" />
+          <button
+            onClick={() => {
+              setShowLinkModal(true);
+              setShowContextMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span className="text-sm">Добавить ссылку</span>
+            <span className="ml-auto text-xs text-gray-400">Ctrl+K</span>
+          </button>
+          <button
+            onClick={() => {
+              handleShortcut('code');
+              setShowContextMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+          >
+            <span className="text-xs font-mono">&lt;/&gt;</span>
+            <span className="text-sm">Код</span>
+            <span className="ml-auto text-xs text-gray-400">Ctrl+`</span>
+          </button>
+        </div>
+      )}
+
       {/* Модальные окна */}
       <LinkModal 
         isOpen={showLinkModal}
@@ -1105,16 +1339,20 @@ export default function AdvancedContentEditor({
       />
 
       {/* Новое улучшенное меню блоков */}
-      <BlockMenu
-        isOpen={showBlockMenu}
-        onClose={() => {
-          setShowBlockMenu(false);
-          setPendingBlockId(null);
-        }}
-        onSelectType={handleBlockTypeSelect}
-        position={blockMenuPosition}
-        currentBlockType={pendingBlockId ? blocks.find(b => b.id === pendingBlockId)?.type : undefined}
-      />
+      {showBlockMenu && (
+        <div className="relative">
+          <BlockMenu
+            isOpen={showBlockMenu}
+            onClose={() => {
+              setShowBlockMenu(false);
+              setPendingBlockId(null);
+            }}
+            onSelectType={handleBlockTypeSelect}
+            position={blockMenuPosition}
+            currentBlockType={pendingBlockId ? blocks.find(b => b.id === pendingBlockId)?.type : undefined}
+          />
+        </div>
+      )}
 
       {/* Компоненты горячих клавиш */}
       <KeyboardShortcuts onShortcut={handleShortcut} />
@@ -1158,6 +1396,38 @@ function BlockRenderer({
   onSlashCommand?: (e: React.KeyboardEvent, blockId: string) => void;
   sections?: DocumentationSection[];
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Автоматическое изменение размера при загрузке и изменении контента
+  useEffect(() => {
+    if (textareaRef.current && autoResize.current) {
+      // Добавляем небольшую задержку для корректной работы с React рендерингом
+      const timeoutId = setTimeout(() => {
+        if (textareaRef.current && autoResize.current) {
+          autoResize.current(textareaRef.current);
+        }
+      }, 10);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [block.content]);
+
+  // Наблюдатель за изменениями размера для responsive поведения
+  useEffect(() => {
+    if (!textareaRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (textareaRef.current && autoResize.current) {
+        autoResize.current(textareaRef.current);
+      }
+    });
+
+    resizeObserver.observe(textareaRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
   const updateContent = (content: string) => {
     onUpdate({ content });
   };
@@ -1166,12 +1436,91 @@ function BlockRenderer({
     onUpdate({ metadata: { ...block.metadata, ...metadata } });
   };
 
+  // Улучшенная функция для автоматического изменения размера textarea
+  const autoResize = useRef<((element: HTMLTextAreaElement) => void) | null>(null);
+  
+  if (!autoResize.current) {
+    // Создаем функцию с debouncing для лучшей производительности
+    autoResize.current = (element: HTMLTextAreaElement) => {
+      requestAnimationFrame(() => {
+        // Сохраняем текущую позицию курсора
+        const cursorPosition = element.selectionStart;
+        
+        // Временно скрываем scrollbar для точного расчета
+        const originalOverflow = element.style.overflow;
+        element.style.overflow = 'hidden';
+        
+        // Сбрасываем высоту для точного расчета
+        element.style.height = 'auto';
+        
+        // Рассчитываем нужную высоту с учетом padding и border
+        const computed = window.getComputedStyle(element);
+        const paddingTop = parseInt(computed.paddingTop, 10);
+        const paddingBottom = parseInt(computed.paddingBottom, 10);
+        const borderTop = parseInt(computed.borderTopWidth, 10);
+        const borderBottom = parseInt(computed.borderBottomWidth, 10);
+        const lineHeight = parseInt(computed.lineHeight, 10) || 20;
+        
+        // Минимальная высота = одна строка + padding + border
+        const minHeight = lineHeight + paddingTop + paddingBottom + borderTop + borderBottom;
+        
+        // Максимальная высота = 20 строк для предотвращения чрезмерного роста
+        const maxHeight = lineHeight * 20 + paddingTop + paddingBottom + borderTop + borderBottom;
+        
+        // Устанавливаем высоту с учетом ограничений
+        const newHeight = Math.min(Math.max(element.scrollHeight, minHeight), maxHeight);
+        element.style.height = newHeight + 'px';
+        
+        // Если контент больше максимальной высоты, показываем скролл
+        if (element.scrollHeight > maxHeight) {
+          element.style.overflowY = 'auto';
+        } else {
+          element.style.overflowY = 'hidden';
+        }
+        
+        // Восстанавливаем overflow если он был изменен
+        if (originalOverflow) {
+          element.style.overflow = originalOverflow;
+        }
+        
+        // Восстанавливаем позицию курсора
+        element.setSelectionRange(cursorPosition, cursorPosition);
+      });
+    };
+  }
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateContent(e.target.value);
+    if (autoResize.current) {
+      autoResize.current(e.target);
+    }
+  };
+
+  // Обработчик контекстного меню
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPosition({ top: e.clientY, left: e.clientX });
+    setShowContextMenu(true);
+  };
+
   const baseInputProps = {
     value: block.content,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateContent(e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if (e.target.tagName === 'TEXTAREA') {
+        handleTextareaChange(e.target as HTMLTextAreaElement);
+      } else {
+        updateContent(e.target.value);
+      }
+    },
     onMouseUp: onTextSelection,
     onKeyDown: (e: React.KeyboardEvent) => onSlashCommand?.(e, block.id),
-    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0"
+    onContextMenu: handleContextMenu,
+    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0",
+    onInput: (e: React.FormEvent<HTMLTextAreaElement>) => {
+      if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA' && autoResize.current) {
+        autoResize.current(e.target as HTMLTextAreaElement);
+      }
+    }
   };
 
   switch (block.type) {
@@ -1207,8 +1556,10 @@ function BlockRenderer({
         <div className="border-l-4 border-gray-400 dark:border-gray-500 pl-4 bg-gray-50 dark:bg-gray-800/50 rounded-r-lg">
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Цитата..."
             className={`${baseInputProps.className} text-gray-700 dark:text-gray-300 italic py-3 min-h-[80px]`}
+            style={{ minHeight: '80px', overflow: 'hidden' }}
           />
         </div>
       );
@@ -1219,8 +1570,10 @@ function BlockRenderer({
           <span className="text-gray-400 mt-1">•</span>
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Элемент списка..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
+            style={{ minHeight: '24px', overflow: 'hidden' }}
           />
         </div>
       );
@@ -1231,8 +1584,10 @@ function BlockRenderer({
           <span className="text-gray-400 mt-1">1.</span>
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Элемент списка..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
+            style={{ minHeight: '24px', overflow: 'hidden' }}
           />
         </div>
       );
@@ -1260,8 +1615,10 @@ function BlockRenderer({
           </div>
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Код..."
             className={`${baseInputProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4 min-h-[120px]`}
+            style={{ minHeight: '120px', overflow: 'hidden' }}
           />
         </div>
       );
@@ -1500,8 +1857,10 @@ function BlockRenderer({
           </div>
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Содержимое выноски..."
             className={`${baseInputProps.className} min-h-[60px]`}
+            style={{ minHeight: '60px', overflow: 'hidden' }}
           />
         </div>
       );
@@ -1518,8 +1877,10 @@ function BlockRenderer({
         <div className="relative">
           <textarea 
             {...baseInputProps}
+            ref={textareaRef}
             placeholder="Начните писать или введите / для команд..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white min-h-[24px] leading-relaxed py-1`}
+            style={{ minHeight: '24px', overflow: 'hidden' }}
           />
           {!block.content && isActive && (
             <div className="absolute top-full left-0 mt-1 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">

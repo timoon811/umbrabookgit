@@ -35,7 +35,7 @@ export default async function CourseDocPage({
     }
 
     return (
-      <div>
+      <div id="article-content">
         <div className="mb-8">
           <div className="text-xs uppercase tracking-wide text-gray-700 dark:text-gray-400 mb-2">
             {article.category || "КУРСЫ"}

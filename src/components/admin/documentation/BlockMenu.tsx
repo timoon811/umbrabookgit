@@ -140,11 +140,10 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-white dark:bg-gray-800 shadow-2xl rounded-lg border border-gray-200 dark:border-gray-700 w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="absolute z-50 bg-white dark:bg-gray-800 shadow-2xl rounded-lg border border-gray-200 dark:border-gray-700 w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
       style={{
         top: position.top,
-        left: position.left,
-        transform: 'translateY(-100%)'
+        left: position.left
       }}
     >
       {/* Поиск */}
@@ -243,28 +242,37 @@ export function useBlockMenuPosition() {
     const menuWidth = window.innerWidth > 640 ? 384 : 320; // адаптивная ширина
     const menuHeight = 400; // примерная высота меню
     const padding = 16;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
     
-    let left = rect.left;
-    let top = rect.bottom + 8;
+    // Получаем абсолютные координаты с учетом прокрутки
+    let left = rect.left + scrollLeft;
+    let top = rect.bottom + scrollTop + 8;
     
     // Проверяем, помещается ли меню справа
-    if (left + menuWidth > window.innerWidth - padding) {
-      left = Math.max(padding, window.innerWidth - menuWidth - padding);
+    if (left + menuWidth > window.innerWidth + scrollLeft - padding) {
+      left = Math.max(padding + scrollLeft, window.innerWidth + scrollLeft - menuWidth - padding);
     }
     
     // Для мобильных устройств центрируем по горизонтали
     if (window.innerWidth < 640) {
-      left = Math.max(padding, (window.innerWidth - menuWidth) / 2);
+      left = Math.max(padding + scrollLeft, (window.innerWidth - menuWidth) / 2 + scrollLeft);
     }
     
     // Проверяем, помещается ли меню снизу
-    if (top + menuHeight > window.innerHeight - padding) {
-      top = Math.max(padding, rect.top - menuHeight - 8);
+    if (top + menuHeight > window.innerHeight + scrollTop - padding) {
+      // Показываем меню сверху от элемента
+      top = Math.max(padding + scrollTop, rect.top + scrollTop - menuHeight - 8);
     }
     
     // Убеждаемся, что меню не выходит за верхний край
-    if (top < padding) {
-      top = padding;
+    if (top < padding + scrollTop) {
+      top = padding + scrollTop;
+    }
+    
+    // Убеждаемся, что меню не выходит за левый край
+    if (left < padding + scrollLeft) {
+      left = padding + scrollLeft;
     }
     
     return { top, left };

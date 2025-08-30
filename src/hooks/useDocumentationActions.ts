@@ -210,11 +210,9 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return null;
   };
 
-  // Удаление страницы
+  // Удаление страницы (без подтверждения - подтверждение должно быть в UI)
   const handleDeletePage = async (pageId: string) => {
     if (!pageId) return false;
-    
-    if (!confirm('Вы уверены, что хотите удалить эту страницу?')) return false;
 
     try {
       const response = await fetch(`/api/admin/documentation/${pageId}`, {
@@ -223,10 +221,15 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
 
       if (response.ok) {
         await loadDocumentation();
+        showSuccess('Страница удалена', 'Страница успешно удалена');
         return true;
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить страницу');
       }
     } catch (error) {
       console.error('Ошибка удаления страницы:', error);
+      showError('Ошибка удаления', 'Произошла ошибка при удалении страницы');
     }
     return false;
   };

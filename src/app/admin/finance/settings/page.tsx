@@ -6,7 +6,7 @@ import { Edit, Trash2, Plus } from "lucide-react";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 import FinanceEntityModal from "@/components/modals/FinanceEntityModal";
 import DepositSourceModal from "@/components/modals/DepositSourceModal";
-import TransactionModal from "@/components/modals/TransactionModal";
+
 import FinanceEntityList from "@/components/FinanceEntityList";
 
 interface Counterparty {
@@ -61,12 +61,11 @@ interface Account {
 }
 
 function FinanceSettingsContent() {
-  const [activeTab, setActiveTab] = useState<'counterparties' | 'categories' | 'projects' | 'accounts' | 'transactions' | 'deposits'>('counterparties');
+  const [activeTab, setActiveTab] = useState<'counterparties' | 'categories' | 'projects' | 'accounts' | 'deposits'>('counterparties');
   const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
   const [depositSources, setDepositSources] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
   const [depositStats, setDepositStats] = useState<any>(null);
@@ -74,7 +73,6 @@ function FinanceSettingsContent() {
 
   // Modal states
   const [entityModalOpen, setEntityModalOpen] = useState(false);
-  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [depositSourceModalOpen, setDepositSourceModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -118,13 +116,7 @@ function FinanceSettingsContent() {
             setAccounts(data.accounts || []);
           }
           break;
-        case 'transactions':
-          const transactionsResponse = await fetch('/api/admin/finance/transactions');
-          if (transactionsResponse.ok) {
-            const data = await transactionsResponse.json();
-            setTransactions(data.transactions || []);
-          }
-          break;
+
         case 'deposits':
           // Загружаем источники депозитов и последние депозиты
           const [sourcesResponse, depositsResponse] = await Promise.all([
@@ -252,7 +244,6 @@ function FinanceSettingsContent() {
       category: 'статью',
       project: 'проект',
       account: 'счет',
-      transaction: 'транзакцию',
       'deposit-source': 'источник депозитов'
     };
 
@@ -264,9 +255,7 @@ function FinanceSettingsContent() {
     setConfirmModalOpen(true);
   };
 
-  const openTransactionModal = () => {
-    setTransactionModalOpen(true);
-  };
+
 
   // API functions
   const handleSaveEntity = async (data: any) => {
@@ -346,28 +335,7 @@ function FinanceSettingsContent() {
     }
   };
 
-  const handleSaveTransaction = async (data: any) => {
-    try {
-      const response = await fetch('/api/admin/finance/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
 
-      if (response.ok) {
-        await fetchData(); // Перезагружаем данные
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Ошибка создания транзакции');
-      }
-    } catch (error) {
-      console.error('Ошибка создания транзакции:', error);
-      throw error;
-    }
-  };
 
   const handleDeleteEntity = async () => {
     if (!entityToDelete) return;
@@ -432,7 +400,6 @@ function FinanceSettingsContent() {
             { id: 'categories', label: 'Статьи' },
             { id: 'projects', label: 'Проекты' },
             { id: 'accounts', label: 'Счета' },
-            { id: 'transactions', label: 'Транзакции' },
             { id: 'deposits', label: 'Депозиты' },
           ].map((tab) => (
             <button
@@ -653,118 +620,7 @@ function FinanceSettingsContent() {
         </div>
       )}
 
-      {/* Транзакции */}
-      {activeTab === 'transactions' && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-[#171717] dark:text-[#ededed]">
-              Транзакции
-            </h2>
-            <button
-              onClick={openTransactionModal}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Создать транзакцию
-            </button>
-          </div>
 
-          {transactions.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-[#171717]/5 dark:bg-[#ededed]/5 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-[#171717]/40 dark:text-[#ededed]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                Транзакции не найдены
-              </h3>
-              <p className="text-[#171717]/60 dark:text-[#ededed]/60 mb-6">
-                Создайте первую транзакцию для учета финансовых операций
-              </p>
-              <button
-                onClick={openTransactionModal}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Создать транзакцию
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#171717]/5 dark:bg-[#ededed]/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Дата
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Тип
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Сумма
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Комиссия
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Счет
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Контрагент
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                        Описание
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id} className="hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717] dark:text-[#ededed]">
-                          {new Date(transaction.date).toLocaleDateString('ru-RU')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            transaction.type === 'INCOME'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
-                            {transaction.type === 'INCOME' ? 'Пополнение' : 'Расход'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#171717] dark:text-[#ededed]">
-                          <div className="flex flex-col">
-                            <span>{formatCurrency(transaction.amount, transaction.account?.currency)}</span>
-                            {transaction.commissionAmount > 0 && (
-                              <span className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
-                                Комиссия: {formatCurrency(transaction.commissionAmount, transaction.account?.currency)}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                          {transaction.commissionPercent > 0 ? `${transaction.commissionPercent}%` : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717] dark:text-[#ededed]">
-                          {transaction.account?.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717] dark:text-[#ededed]">
-                          {transaction.counterparty?.name || '-'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-[#171717] dark:text-[#ededed] max-w-xs truncate">
-                          {transaction.description || '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Депозиты */}
       {activeTab === 'deposits' && (
@@ -1082,15 +938,7 @@ function FinanceSettingsContent() {
         initialData={currentDepositSource}
       />
 
-      <TransactionModal
-        isOpen={transactionModalOpen}
-        onClose={() => setTransactionModalOpen(false)}
-        onSave={handleSaveTransaction}
-        accounts={accounts}
-        counterparties={counterparties}
-        categories={categories}
-        projects={projects}
-      />
+
     </div>
   );
 }

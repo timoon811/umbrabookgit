@@ -103,11 +103,9 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
     return null;
   };
 
-  // Удаление страницы курса
+  // Удаление страницы курса (без подтверждения - подтверждение должно быть в UI)
   const handleDeletePage = async (pageId: string) => {
     if (!pageId) return false;
-    
-    if (!confirm('Вы уверены, что хотите удалить эту страницу курса?')) return false;
 
     try {
       const response = await fetch(`/api/admin/courses/pages/${pageId}`, {
@@ -116,10 +114,15 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
 
       if (response.ok) {
         await loadCourses();
+        showSuccess('Страница удалена', 'Страница курса успешно удалена');
         return true;
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить страницу курса');
       }
     } catch (error) {
       console.error('Ошибка удаления страницы курса:', error);
+      showError('Ошибка удаления', 'Произошла ошибка при удалении страницы курса');
     }
     return false;
   };

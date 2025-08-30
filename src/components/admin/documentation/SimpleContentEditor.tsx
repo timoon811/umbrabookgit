@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { DocumentationPage } from '@/types/documentation';
+import ConfirmModal from '@/components/modals/ConfirmModal';
 
 interface SimpleContentEditorProps {
   selectedPage: DocumentationPage | null;
@@ -13,6 +15,7 @@ export default function SimpleContentEditor({
   onDeletePage,
   saving
 }: SimpleContentEditorProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   if (!selectedPage) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
@@ -58,7 +61,7 @@ export default function SimpleContentEditor({
             {/* Кнопка удаления страницы */}
             {onDeletePage && (
               <button
-                onClick={() => onDeletePage(selectedPage.id)}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                 title="Удалить страницу"
               >
@@ -87,6 +90,26 @@ export default function SimpleContentEditor({
           />
         </div>
       </div>
+
+      {/* Модальное окно подтверждения удаления */}
+      {selectedPage && (
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={() => {
+            if (onDeletePage) {
+              onDeletePage(selectedPage.id);
+              setShowDeleteConfirm(false);
+            }
+          }}
+          title="Удалить страницу документации?"
+          message={`Вы уверены, что хотите удалить страницу "${selectedPage.title}"? Это действие нельзя отменить. Все содержимое страницы будет безвозвратно утеряно.`}
+          type="danger"
+          actionType="delete-page"
+          confirmText="Удалить страницу"
+          cancelText="Отменить"
+        />
+      )}
     </div>
   );
 }

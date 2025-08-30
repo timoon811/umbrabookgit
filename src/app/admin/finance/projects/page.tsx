@@ -8,12 +8,16 @@ interface ProjectWithStats {
   name: string;
   description: string | null;
   status: string;
+  startDate: string | null;
+  endDate: string | null;
+  budget: number | null;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
   income: number;
   expenses: number;
   netProfit: number;
+  budgetUtilization: number;
   transactionCount: number;
   counterparties: Array<{
     id: string;
@@ -50,7 +54,9 @@ interface Transaction {
 }
 
 export default function FinanceProjectsPage() {
-  console.log('FinanceProjectsPage: Компонент инициализирован');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('FinanceProjectsPage: Компонент инициализирован');
+  }
 
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +89,9 @@ export default function FinanceProjectsPage() {
         setProjectTransactions(data.transactions || []);
       }
     } catch (error) {
-      console.error('Ошибка загрузки операций:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Ошибка загрузки операций:', error);
+      }
     } finally {
       setTransactionsLoading(false);
     }
@@ -91,7 +99,9 @@ export default function FinanceProjectsPage() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      console.log('FinanceProjectsPage: fetchProjects вызвана');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: fetchProjects вызвана');
+      }
       setLoading(true);
       setError(null);
 
@@ -110,43 +120,63 @@ export default function FinanceProjectsPage() {
       }
 
       const url = `/api/admin/finance/projects/stats?${params.toString()}`;
-      console.log('FinanceProjectsPage: Запрос к URL:', url);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: Запрос к URL:', url);
+      }
 
       const response = await fetch(url);
-      console.log('FinanceProjectsPage: Ответ API:', response.status, response.statusText);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: Ответ API:', response.status, response.statusText);
+      }
 
       if (response.ok) {
         const data = await response.json();
-        console.log('FinanceProjectsPage: Получены данные:', data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('FinanceProjectsPage: Получены данные:', data);
+        }
         setProjects(data.projects || []);
-        console.log('FinanceProjectsPage: Проекты установлены:', data.projects?.length || 0);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('FinanceProjectsPage: Проекты установлены:', data.projects?.length || 0);
+        }
       } else {
         let errorMessage = `HTTP ${response.status}`;
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          console.warn('FinanceProjectsPage: Не удалось распарсить ошибку API:', parseError);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('FinanceProjectsPage: Не удалось распарсить ошибку API:', parseError);
+          }
         }
-        console.error('FinanceProjectsPage: Ошибка API:', errorMessage);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('FinanceProjectsPage: Ошибка API:', errorMessage);
+        }
         setError(errorMessage);
       }
     } catch (error) {
-      console.error('FinanceProjectsPage: Ошибка сети:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('FinanceProjectsPage: Ошибка сети:', error);
+      }
       setError('Ошибка сети при загрузке проектов');
     } finally {
       setLoading(false);
-      console.log('FinanceProjectsPage: Загрузка завершена');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: Загрузка завершена');
+      }
     }
   }, [filter, archiveFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     // Загружаем проекты только на клиенте
     if (typeof window !== 'undefined') {
-      console.log('FinanceProjectsPage: Начинаем загрузку данных...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: Начинаем загрузку данных...');
+      }
       fetchProjects();
     } else {
-      console.log('FinanceProjectsPage: SSR режим, пропускаем загрузку данных');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('FinanceProjectsPage: SSR режим, пропускаем загрузку данных');
+      }
     }
   }, [fetchProjects]);
 
@@ -203,7 +233,9 @@ export default function FinanceProjectsPage() {
   };
 
   if (loading) {
-    console.log('FinanceProjectsPage: Отображаем состояние загрузки');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('FinanceProjectsPage: Отображаем состояние загрузки');
+    }
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-500"></div>
@@ -213,7 +245,9 @@ export default function FinanceProjectsPage() {
   }
 
   if (error) {
-    console.log('FinanceProjectsPage: Отображаем ошибку:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('FinanceProjectsPage: Отображаем ошибку:', error);
+    }
     return (
       <div className="prose prose-zinc dark:prose-invert max-w-none">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
@@ -239,7 +273,9 @@ export default function FinanceProjectsPage() {
     );
   }
 
-  console.log('FinanceProjectsPage: Рендерим основной контент, проектов:', projects.length);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('FinanceProjectsPage: Рендерим основной контент, проектов:', projects.length);
+  }
 
   return (
     <>
@@ -429,6 +465,287 @@ export default function FinanceProjectsPage() {
           </div>
         </div>
       )}
+
+      <div className="space-y-6">
+        {/* Заголовок */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#171717] dark:text-[#ededed]">
+              Финансовые проекты
+            </h1>
+            <p className="text-[#171717]/60 dark:text-[#ededed]/60 mt-2">
+              Обзор проектов с финансовой статистикой
+            </p>
+          </div>
+          <div className="text-sm text-[#171717]/40 dark:text-[#ededed]/40">
+            Обновлено: {typeof window !== 'undefined' ? new Date().toLocaleString('ru-RU') : 'Загрузка...'}
+          </div>
+        </div>
+
+        {/* Фильтры */}
+        <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
+          <div className="flex flex-wrap gap-4">
+            {/* Фильтр по статусу */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                Статус проекта
+              </label>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as any)}
+                className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              >
+                <option value="all">Все статусы</option>
+                <option value="active">Активные</option>
+                <option value="completed">Завершенные</option>
+                <option value="on_hold">На паузе</option>
+                <option value="cancelled">Отмененные</option>
+              </select>
+            </div>
+
+            {/* Фильтр архива */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                Архив
+              </label>
+              <select
+                value={archiveFilter}
+                onChange={(e) => setArchiveFilter(e.target.value as any)}
+                className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              >
+                <option value="active">Активные</option>
+                <option value="archived">Архивные</option>
+              </select>
+            </div>
+
+            {/* Фильтр по дате создания - От */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                Дата создания от
+              </label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              />
+            </div>
+
+            {/* Фильтр по дате создания - До */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                Дата создания до
+              </label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+              />
+            </div>
+
+            {/* Кнопка сброса фильтров */}
+            {(dateFrom || dateTo) && (
+              <div className="flex flex-col justify-end">
+                <button
+                  onClick={resetDateFilters}
+                  className="px-4 py-2 text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 bg-[#171717]/5 dark:bg-[#ededed]/5 hover:bg-[#171717]/10 dark:hover:bg-[#ededed]/10 rounded-md transition-colors"
+                >
+                  Сбросить даты
+                </button>
+              </div>
+            )}
+
+            {/* Сортировка */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                Сортировка
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={sortField}
+                  onChange={(e) => setSortField(e.target.value as any)}
+                  className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent"
+                >
+                  <option value="name">По названию</option>
+                  <option value="income">По доходам</option>
+                  <option value="expenses">По расходам</option>
+                  <option value="netProfit">По прибыли</option>
+                  <option value="createdAt">По дате создания</option>
+                </select>
+                <button
+                  onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+                  className="px-3 py-2 border border-[#171717]/20 dark:border-[#ededed]/20 rounded-md bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] text-sm hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-colors"
+                  title={sortDirection === 'asc' ? 'По возрастанию' : 'По убыванию'}
+                >
+                  {sortDirection === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Список проектов */}
+        {sortedProjects.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10">
+            <div className="w-16 h-16 mx-auto mb-4 bg-[#171717]/5 dark:bg-[#ededed]/5 rounded-full flex items-center justify-center">
+              <FileText className="w-8 h-8 text-[#171717]/40 dark:text-[#ededed]/40" />
+            </div>
+            <h3 className="text-lg font-medium text-[#171717] dark:text-[#ededed] mb-2">
+              Проекты не найдены
+            </h3>
+            <p className="text-[#171717]/60 dark:text-[#ededed]/60">
+              {filter !== 'all' || archiveFilter === 'archived' || dateFrom || dateTo
+                ? 'Попробуйте изменить фильтры поиска'
+                : 'Создайте первый проект для отслеживания финансов'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {sortedProjects.map((project) => (
+              <div
+                key={project.id}
+                className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-6 hover:shadow-lg transition-all duration-200 hover:border-[#2563eb]/20 dark:hover:border-[#60a5fa]/20"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 bg-[#2563eb]/10 dark:bg-[#2563eb]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-6 h-6 text-[#2563eb]" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold text-[#171717] dark:text-[#ededed] truncate">
+                          {project.name}
+                        </h3>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                          {getStatusLabel(project.status)}
+                        </span>
+                        {project.isArchived && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                            Архив
+                          </span>
+                        )}
+                      </div>
+                      
+                      {project.description && (
+                        <p className="text-[#171717]/60 dark:text-[#ededed]/60 text-sm mb-3">
+                          {project.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-6 text-sm text-[#171717]/50 dark:text-[#ededed]/50">
+                        <span>Создан: {formatDate(project.createdAt)}</span>
+                        <span>Операций: {project.transactionCount}</span>
+                        <span>Контрагентов: {project.counterpartyCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => openOperationsModal(project)}
+                    className="px-4 py-2 text-sm font-medium text-[#2563eb] dark:text-[#60a5fa] bg-[#2563eb]/10 dark:bg-[#60a5fa]/10 hover:bg-[#2563eb]/20 dark:hover:bg-[#60a5fa]/20 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Операции
+                  </button>
+                </div>
+
+                {/* Финансовая статистика */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-[#171717]/10 dark:border-[#ededed]/10">
+                  {/* Доходы */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">Доходы</p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {formatCurrency(project.income)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Расходы */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                      <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">Расходы</p>
+                      <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                        {formatCurrency(project.expenses)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Прибыль */}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      project.netProfit >= 0 
+                        ? 'bg-purple-100 dark:bg-purple-900/30' 
+                        : 'bg-orange-100 dark:bg-orange-900/30'
+                    }`}>
+                      <DollarSign className={`w-5 h-5 ${
+                        project.netProfit >= 0 
+                          ? 'text-purple-600 dark:text-purple-400' 
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">Прибыль</p>
+                      <p className={`text-lg font-bold ${
+                        project.netProfit >= 0 
+                          ? 'text-purple-600 dark:text-purple-400' 
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`}>
+                        {formatCurrency(project.netProfit)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Контрагенты */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-900/30 rounded-lg flex items-center justify-center">
+                      <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">Контрагенты</p>
+                      <p className="text-lg font-bold text-[#171717] dark:text-[#ededed]">
+                        {project.counterpartyCount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Список контрагентов (если есть) */}
+                {project.counterparties.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[#171717]/10 dark:border-[#ededed]/10">
+                    <p className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                      Связанные контрагенты:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {project.counterparties.slice(0, 5).map((counterparty) => (
+                        <span
+                          key={counterparty.id}
+                          className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-[#171717]/5 dark:bg-[#ededed]/5 text-[#171717]/70 dark:text-[#ededed]/70"
+                        >
+                          {counterparty.name}
+                        </span>
+                      ))}
+                      {project.counterparties.length > 5 && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-[#171717]/5 dark:bg-[#ededed]/5 text-[#171717]/70 dark:text-[#ededed]/70">
+                          +{project.counterparties.length - 5} еще
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }
