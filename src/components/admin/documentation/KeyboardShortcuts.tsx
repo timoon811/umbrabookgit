@@ -11,17 +11,14 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       
-      // Проверяем, что мы НЕ в поле ввода (кроме textarea/input для блочного редактора)
+      // Проверяем, находимся ли мы в поле ввода
       const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
       const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
-      
-      // Для всех клавиш кроме Ctrl/Cmd комбинаций проверяем, что мы в редакторе документации
-      const shouldProcessKey = !isInInputField || isInDocumentationEditor;
 
-      // Ctrl/Cmd + комбинации - работают только когда мы НЕ в обычных полях ввода
+      // Ctrl/Cmd + комбинации - работают только в редакторе блоков документации
       if (e.ctrlKey || e.metaKey) {
-        // Для Ctrl/Cmd комбинаций разрешаем только в textarea/input редактора документации
-        if (!shouldProcessKey) return;
+        // Разрешаем только в textarea/input редактора документации
+        if (!isInInputField || !isInDocumentationEditor) return;
         
         switch (e.key) {
           case 'b':
@@ -73,7 +70,7 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
         return; // Выходим, чтобы не обрабатывать другие клавиши
       }
 
-      // Другие клавиши - только для textarea/input В РЕДАКТОРЕ документации
+      // Обычные клавиши (Tab, Enter) - только для textarea/input В РЕДАКТОРЕ документации
       if (!isInInputField || !isInDocumentationEditor) return;
       
       switch (e.key) {
