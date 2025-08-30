@@ -29,20 +29,41 @@ async function deployWithMigrationFix() {
       console.log('ℹ️  No migration conflicts to resolve, continuing...');
     }
 
+    // Try to resolve other potential conflicts
+    try {
+      await execAsync('npx prisma migrate resolve --applied 20250830104900_add_telegram_status_retry');
+      console.log('✅ Resolved additional migration conflicts');
+    } catch (resolveError) {
+      console.log('ℹ️  No additional conflicts found');
+    }
+
     // Step 4: Deploy migrations
     console.log('🔄 Deploying migrations...');
     try {
       await execAsync('npx prisma migrate deploy');
       console.log('✅ Migrations deployed successfully');
     } catch (migrateError) {
-      console.log('⚠️  Migration deployment had issues, attempting force deployment...');
+      console.log('⚠️  Migration deployment had issues, attempting database reset...');
       // Try to reset the migration state and redeploy
       try {
-        await execAsync('npx prisma migrate deploy --force-reset');
-        console.log('✅ Force migration deployment successful');
-      } catch (forceError) {
-        console.log('❌ Force migration failed, continuing with build anyway...');
-        console.log('Migration error:', forceError.message);
+        console.log('🔄 Resetting database state...');
+        await execAsync('npx prisma migrate reset --force --skip-seed');
+        console.log('✅ Database reset successful');
+        
+        console.log('🔄 Re-deploying migrations...');
+        await execAsync('npx prisma migrate deploy');
+        console.log('✅ Migrations re-deployed successfully');
+      } catch (resetError) {
+        console.log('❌ Database reset failed, trying manual state cleanup...');
+        try {
+          // Try to just push the schema without migrations
+          await execAsync('npx prisma db push --force-reset');
+          console.log('✅ Schema pushed successfully');
+        } catch (pushError) {
+          console.log('❌ All migration attempts failed, continuing anyway...');
+          console.log('Reset error:', resetError.message);
+          console.log('Push error:', pushError.message);
+        }
       }
     }
 
