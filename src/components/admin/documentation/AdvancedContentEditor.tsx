@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { DocumentationPage } from '@/types/documentation';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { DocumentationPage, DocumentationSection } from '@/types/documentation';
 import KeyboardShortcuts, { ShortcutsHelp } from './KeyboardShortcuts';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
 import ConfirmModal from '@/components/modals/ConfirmModal';
@@ -39,15 +40,19 @@ export interface Block {
 interface AdvancedContentEditorProps {
   selectedPage: DocumentationPage | null;
   onUpdateContent: (content: string) => void;
+  onUpdateTitle?: (title: string) => void;
+  onUpdateDescription?: (description: string) => void;
   onDeletePage?: (pageId: string) => void;
   onTogglePublication?: (pageId: string) => void;
   saving: boolean;
-  sections?: any[]; // Для внутренних ссылок
+  sections?: DocumentationSection[]; // Для внутренних ссылок
 }
 
 export default function AdvancedContentEditor({
   selectedPage,
   onUpdateContent,
+  onUpdateTitle,
+  onUpdateDescription,
   onDeletePage,
   onTogglePublication,
   saving,
@@ -82,7 +87,7 @@ export default function AdvancedContentEditor({
     }
     // Устанавливаем флаг завершения загрузки после короткой задержки
     setTimeout(() => setIsInitialLoad(false), 100);
-  }, [selectedPage?.id]);
+  }, [selectedPage?.id, selectedPage?.content]);
 
   // Автосохранение при изменении блоков (только если не начальная загрузка)
   useEffect(() => {
@@ -105,7 +110,6 @@ export default function AdvancedContentEditor({
   const parseMarkdownToBlocks = (markdown: string): Block[] => {
     const lines = markdown.split('\n');
     const blocks: Block[] = [];
-    let currentBlock: Block | null = null;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -380,7 +384,7 @@ export default function AdvancedContentEditor({
   const getAllPages = () => {
     const pages: Array<{id: string, title: string, sectionName: string}> = [];
     sections.forEach(section => {
-      section.pages?.forEach((page: any) => {
+      section.pages?.forEach((page) => {
         pages.push({
           id: page.id,
           title: page.title,
@@ -392,7 +396,7 @@ export default function AdvancedContentEditor({
   };
 
   // Обработчик горячих клавиш
-  const handleShortcut = (action: string, data?: any) => {
+  const handleShortcut = (action: string, data?: { level?: number; prefix?: string }) => {
     const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
     
     switch (action) {
@@ -592,7 +596,6 @@ export default function AdvancedContentEditor({
         e.preventDefault();
         
         // Получаем позицию элемента для размещения меню
-        const rect = target.getBoundingClientRect();
         const position = getMenuPosition(target);
         
         setBlockMenuPosition(position);
@@ -722,7 +725,7 @@ export default function AdvancedContentEditor({
     );
   };
 
-  const renderBlock = (block: Block, index: number) => {
+  const renderBlock = (block: Block) => {
     const isActive = activeBlockId === block.id;
 
     return (
@@ -787,15 +790,7 @@ export default function AdvancedContentEditor({
     );
   };
 
-  const BlockTypeButton = ({ onClick, title, icon }: { onClick: () => void, title: string, icon: string }) => (
-    <button
-      onClick={onClick}
-      className="w-8 h-8 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-center text-xs"
-      title={title}
-    >
-      {icon}
-    </button>
-  );
+
 
   if (!selectedPage) {
     return (
@@ -822,13 +817,38 @@ export default function AdvancedContentEditor({
       {/* Шапка редактора */}
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className={`w-2.5 h-2.5 rounded-full ${
               selectedPage.isPublished ? 'bg-green-500' : 'bg-yellow-500'
             }`} />
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {selectedPage.title}
-            </h1>
+            <div className="flex-1 space-y-2">
+              {/* Редактируемый заголовок */}
+              <input
+                type="text"
+                value={selectedPage.title}
+                onChange={(e) => {
+                  // Обновляем локальное состояние немедленно
+                  if (onUpdateTitle) {
+                    onUpdateTitle(e.target.value);
+                  }
+                }}
+                className="text-xl font-semibold text-gray-900 dark:text-white bg-transparent border-none outline-none w-full focus:ring-0 focus:bg-gray-50 dark:focus:bg-gray-800 rounded px-1 py-1"
+                placeholder="Заголовок страницы..."
+              />
+              {/* Редактируемое описание */}
+              <input
+                type="text"
+                value={selectedPage.description || ''}
+                onChange={(e) => {
+                  // Обновляем локальное состояние немедленно
+                  if (onUpdateDescription) {
+                    onUpdateDescription(e.target.value);
+                  }
+                }}
+                className="text-sm text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none w-full focus:ring-0 focus:bg-gray-50 dark:focus:bg-gray-800 rounded px-1 py-1"
+                placeholder="Описание страницы (необязательно)..."
+              />
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -911,7 +931,7 @@ export default function AdvancedContentEditor({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div onMouseUp={handleTextSelection}>
-            {blocks.map((block, index) => renderBlock(block, index))}
+            {blocks.map((block) => renderBlock(block))}
           </div>
           
           {/* Кнопка добавления нового блока */}
@@ -932,7 +952,7 @@ export default function AdvancedContentEditor({
         isOpen={showLinkModal}
         onClose={() => setShowLinkModal(false)}
         selectedText={selectedText}
-        onApply={(url, title) => {
+        onApply={() => {
           // Логика применения ссылки
           setShowLinkModal(false);
         }}
@@ -943,7 +963,7 @@ export default function AdvancedContentEditor({
         onClose={() => setShowInternalLinkModal(false)}
         selectedText={selectedText}
         pages={getAllPages()}
-        onApply={(pageId, title) => {
+        onApply={() => {
           // Логика применения внутренней ссылки
           setShowInternalLinkModal(false);
         }}
@@ -995,14 +1015,13 @@ function BlockRenderer({
   onUpdate, 
   onTextSelection,
   onSlashCommand,
-  sections = []
 }: {
   block: Block;
   isActive: boolean;
   onUpdate: (updates: Partial<Block>) => void;
   onTextSelection: () => void;
   onSlashCommand?: (e: React.KeyboardEvent, blockId: string) => void;
-  sections?: any[];
+  sections?: DocumentationSection[];
 }) {
   const updateContent = (content: string) => {
     onUpdate({ content });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -22,6 +22,7 @@ import { useDocumentationActions } from '@/hooks/useDocumentationActions';
 import SortableSection from '@/components/admin/documentation/SortableSection';
 import SectionItem from '@/components/admin/documentation/SectionItem';
 import AdvancedContentEditor from '@/components/admin/documentation/AdvancedContentEditor';
+import ToastContainer from '@/components/Toast';
 
 export default function DocumentationAdminPage() {
   const [selectedPage, setSelectedPage] = useState<DocumentationPage | null>(null);
@@ -29,8 +30,9 @@ export default function DocumentationAdminPage() {
   const { sections, setSections, loading, loadDocumentation } = useDocumentationData();
   const {
     saving,
-    autoSave,
     handleUpdateContent,
+    handleUpdateTitle,
+    handleUpdateDescription,
     handleCreatePage,
     handleDeletePage,
     handleTogglePagePublication,
@@ -68,7 +70,7 @@ export default function DocumentationAdminPage() {
     
     // Возвращаем текущую версию или оригинальную, если не найдена
     return currentPage || selectedPage;
-  }, [selectedPage?.id, sections]);
+  }, [selectedPage, sections]);
 
   // Создание новой страницы с автовыбором
   const handleCreatePageAndSelect = async (sectionId: string) => {
@@ -88,21 +90,16 @@ export default function DocumentationAdminPage() {
 
 
 
-  // Удаление выбранной страницы
-  const handleDeleteSelectedPage = async () => {
-    if (!selectedPage?.id) return;
-    
-    const success = await handleDeletePage(selectedPage.id);
-    if (success) {
-      setSelectedPage(null);
-    }
-  };
 
-  // Drag and drop
+
+  // Drag and drop с улучшенной обработкой ошибок
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over || active.id === over.id) return;
+
+    // Сохраняем текущее состояние для возможного отката
+    const originalSections = [...sections];
 
     try {
       // Перемещение разделов
@@ -267,7 +264,10 @@ export default function DocumentationAdminPage() {
       }
     } catch (error) {
       console.error('Ошибка перемещения:', error);
-      await loadDocumentation();
+      // Откатываем изменения при ошибке
+      setSections(originalSections);
+      // В случае критической ошибки, перезагружаем данные
+      setTimeout(() => loadDocumentation(), 1000);
     }
   };
 
@@ -364,6 +364,8 @@ export default function DocumentationAdminPage() {
           <AdvancedContentEditor
             selectedPage={memoizedSelectedPage}
             onUpdateContent={(content) => handleUpdateContent(content, selectedPage || undefined)}
+            onUpdateTitle={(title: string) => handleUpdateTitle(title, selectedPage || undefined)}
+            onUpdateDescription={(description: string) => handleUpdateDescription(description, selectedPage || undefined)}
             onDeletePage={handleDeletePageAndClear}
             onTogglePublication={handleTogglePagePublication}
             saving={saving}
@@ -371,6 +373,7 @@ export default function DocumentationAdminPage() {
           />
         </div>
       </div>
+      <ToastContainer />
     </DndContext>
   );
 }

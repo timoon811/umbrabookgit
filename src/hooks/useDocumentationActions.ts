@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
+import { useToast } from '@/components/Toast';
 
 interface UseDocumentationActionsProps {
   sections: DocumentationSection[];
@@ -10,6 +11,7 @@ interface UseDocumentationActionsProps {
 export function useDocumentationActions({ sections, setSections, loadDocumentation }: UseDocumentationActionsProps) {
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { showSuccess, showError, showWarning } = useToast();
 
   // Умное обновление страницы в локальном состоянии (без перезагрузки)
   const updatePageInState = useCallback((updatedPage: DocumentationPage) => {
@@ -64,8 +66,8 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return `section-${sectionNumber}`;
   };
 
-  // Автосохранение с задержкой
-  const autoSave = useCallback(async (page: DocumentationPage) => {
+  // Улучшенное автосохранение с задержкой для всех полей
+  const autoSave = useCallback(async (page: DocumentationPage, fieldsToSave?: Partial<DocumentationPage>) => {
     if (!page.id) return; // Не сохраняем новые страницы автоматически
     
     if (saveTimeoutRef.current) {
@@ -75,29 +77,44 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         setSaving(true);
+        
+        // Определяем, какие поля сохранять
+        const dataToSave = fieldsToSave || {
+          title: page.title,
+          description: page.description,
+          content: page.content,
+          isPublished: page.isPublished
+        };
+        
         const response = await fetch(`/api/admin/documentation/${page.id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            content: page.content
-          })
+          body: JSON.stringify(dataToSave)
         });
 
         if (response.ok) {
+          const updatedPage = await response.json();
           // Умно обновляем только эту страницу в локальном состоянии
-          updatePageInState(page);
+          updatePageInState(updatedPage);
+          // Показываем уведомление о успешном сохранении только для важных изменений
+          if (fieldsToSave && Object.keys(fieldsToSave).some(key => key !== 'content')) {
+            showSuccess('Изменения сохранены', 'Данные страницы успешно обновлены');
+          }
         } else {
-          console.error('Ошибка при сохранении страницы');
+          const errorData = await response.json();
+          console.error('Ошибка при сохранении страницы:', errorData.error);
+          showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить изменения');
         }
       } catch (error) {
         console.error('Ошибка автосохранения:', error);
+        showWarning('Проблемы с сетью', 'Изменения могут быть потеряны. Проверьте подключение к интернету.');
       } finally {
         setSaving(false);
       }
     }, 1000); // Сохраняем через 1 секунду после последнего изменения
-  }, [updatePageInState]);
+  }, [updatePageInState, showSuccess, showError, showWarning]);
 
   // Обработчик обновления контента
   const handleUpdateContent = useCallback(async (content: string, page?: DocumentationPage | null) => {
@@ -109,8 +126,36 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     // Создаем обновленную страницу с новым контентом
     const updatedPage = { ...page, content };
     
-    // Запускаем автосохранение
-    await autoSave(updatedPage);
+    // Запускаем автосохранение только для контента
+    await autoSave(updatedPage, { content });
+  }, [autoSave]);
+
+  // Новый обработчик для обновления заголовков с автосохранением
+  const handleUpdateTitle = useCallback(async (title: string, page?: DocumentationPage | null) => {
+    if (!page || !page.id) {
+      console.warn('Нет выбранной страницы для автосохранения заголовка');
+      return;
+    }
+
+    // Создаем обновленную страницу с новым заголовком
+    const updatedPage = { ...page, title };
+    
+    // Запускаем автосохранение только для заголовка
+    await autoSave(updatedPage, { title });
+  }, [autoSave]);
+
+  // Обработчик для обновления описания с автосохранением
+  const handleUpdateDescription = useCallback(async (description: string, page?: DocumentationPage | null) => {
+    if (!page || !page.id) {
+      console.warn('Нет выбранной страницы для автосохранения описания');
+      return;
+    }
+
+    // Создаем обновленную страницу с новым описанием
+    const updatedPage = { ...page, description };
+    
+    // Запускаем автосохранение только для описания
+    await autoSave(updatedPage, { description });
   }, [autoSave]);
 
   // Создание новой страницы
@@ -138,7 +183,11 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       if (response.ok) {
         const newPage = await response.json();
         await loadDocumentation();
+        showSuccess('Страница создана', `Новая страница "${newPage.title}" успешно создана`);
         return newPage;
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка создания', errorData.error || 'Не удалось создать страницу');
       }
     } catch (error) {
       console.error('Ошибка создания страницы:', error);
@@ -215,7 +264,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     }
   };
 
-  // Переименование страницы
+  // Переименование страницы без полной перезагрузки
   const handleUpdatePageName = async (pageId: string, newTitle: string) => {
     try {
       const response = await fetch(`/api/admin/documentation/${pageId}`, {
@@ -229,8 +278,13 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        const updatedPage = await response.json();
+        // Обновляем только эту страницу в локальном состоянии
+        updatePageInState(updatedPage);
         return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка обновления названия страницы:', errorData.error);
       }
     } catch (error) {
       console.error('Ошибка обновления названия страницы:', error);
@@ -262,7 +316,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     }
   };
 
-  // Переключение статуса публикации страницы
+  // Переключение статуса публикации страницы без полной перезагрузки
   const handleTogglePagePublication = async (pageId: string) => {
     const page = sections.flatMap(s => s.pages).find(p => p.id === pageId);
     if (!page) return false;
@@ -279,8 +333,13 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        const updatedPage = await response.json();
+        // Обновляем только эту страницу в локальном состоянии
+        updatePageInState(updatedPage);
         return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка изменения статуса публикации:', errorData.error);
       }
     } catch (error) {
       console.error('Ошибка изменения статуса публикации:', error);
@@ -317,6 +376,8 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     saving,
     autoSave,
     handleUpdateContent,
+    handleUpdateTitle,
+    handleUpdateDescription,
     handleCreatePage,
     handleDeletePage,
     handleTogglePagePublication,
