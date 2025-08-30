@@ -7,9 +7,16 @@ export async function POST(request: NextRequest) {
     const { name, email, password, telegram } = await request.json();
 
     // Валидация входных данных
-    if (!name || !email || !password || !telegram) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { message: "Имя, email, пароль и Telegram обязательны" },
+        { message: "Имя, email и пароль обязательны" },
+        { status: 400 }
+      );
+    }
+    
+    if (!telegram) {
+      return NextResponse.json(
+        { message: "Telegram обязателен" },
         { status: 400 }
       );
     }
@@ -77,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка уникальности telegram
-    const existingTelegram = await prisma.users.findUnique({
+    const existingTelegram = await prisma.users.findFirst({
       where: { telegram },
     });
 
