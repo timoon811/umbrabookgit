@@ -4,12 +4,12 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, telegram } = await request.json();
 
     // Валидация входных данных
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !telegram) {
       return NextResponse.json(
-        { message: "Имя, email и пароль обязательны" },
+        { message: "Имя, email, пароль и Telegram обязательны" },
         { status: 400 }
       );
     }
@@ -42,7 +42,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Валидация telegram удалена (поле больше не используется)
+    // Валидация telegram
+    if (!telegram.startsWith("@")) {
+      return NextResponse.json(
+        { message: "Telegram должен начинаться с @" },
+        { status: 400 }
+      );
+    }
+    
+    if (telegram.length < 6) {
+      return NextResponse.json(
+        { message: "Telegram ник должен содержать минимум 5 символов после @" },
+        { status: 400 }
+      );
+    }
+    
+    if (!/^@[a-zA-Z0-9_]+$/.test(telegram)) {
+      return NextResponse.json(
+        { message: "Telegram ник может содержать только буквы, цифры и _" },
+        { status: 400 }
+      );
+    }
 
     // Проверка уникальности email
     const existingUser = await prisma.users.findUnique({
@@ -56,7 +76,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверка уникальности telegram удалена (поле больше не используется)
+    // Проверка уникальности telegram
+    const existingTelegram = await prisma.users.findUnique({
+      where: { telegram },
+    });
+
+    if (existingTelegram) {
+      return NextResponse.json(
+        { message: "Пользователь с таким Telegram уже существует" },
+        { status: 409 }
+      );
+    }
 
     // Хеширование пароля
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -67,7 +97,9 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: "USER", // По умолчанию роль пользователя
+        telegram: telegram,
+        role: "USER",
+        status: "PENDING", // Требует подтверждения администратора
       },
     });
 
@@ -83,12 +115,14 @@ export async function POST(request: NextRequest) {
     // });
 
     return NextResponse.json({
-      message: "Регистрация успешна. Добро пожаловать!",
+      message: "Регистрация успешна. Ожидайте подтверждения администратора.",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
+        telegram: user.telegram,
         role: user.role,
+        status: user.status,
       },
     });
   } catch (error) {

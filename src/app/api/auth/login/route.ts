@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         name: true,
         password: true,
         role: true,
+        status: true,
       },
     });
 
@@ -45,6 +46,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: "Неверный email или пароль" },
         { status: 401 }
+      );
+    }
+
+    // Проверяем статус пользователя
+    if (user.status !== "APPROVED") {
+      const statusMessages = {
+        PENDING: "Ваша заявка на регистрацию еще не одобрена администратором. Ожидайте подтверждения.",
+        REJECTED: "Ваша заявка на регистрацию была отклонена администратором.",
+      };
+      
+      return NextResponse.json(
+        { message: statusMessages[user.status as keyof typeof statusMessages] || "Доступ запрещен" },
+        { status: 403 }
       );
     }
 

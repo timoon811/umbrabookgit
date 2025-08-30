@@ -63,8 +63,16 @@ export async function PUT(
     let updateData: any = {};
 
     switch (action) {
+      case "approve":
+        updateData.status = "APPROVED";
+        break;
+        
+      case "reject":
+        updateData.status = "REJECTED";
+        break;
+        
       case "delete":
-        // Только удаление пользователя доступно
+        // Удаление пользователя
         break;
         
       case "update":
@@ -112,6 +120,8 @@ export async function PUT(
         name: true,
         email: true,
         role: true,
+        status: true,
+        telegram: true,
         createdAt: true,
         updatedAt: true,
       },

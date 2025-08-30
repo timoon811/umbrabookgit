@@ -51,10 +51,10 @@ export async function GET(request: NextRequest) {
       blockedUsers,
       rejectedUsers,
     ] = await Promise.all([
-      prisma.users.count(),
-      0, // pending users (removed status field)
-      0, // blocked users (removed isBlocked field)
-      0, // rejected users (removed status field)
+      prisma.users.count({ where: { status: "APPROVED" } }),
+      prisma.users.count({ where: { status: "PENDING" } }),
+      0, // blocked users (field не существует)
+      prisma.users.count({ where: { status: "REJECTED" } }),
     ]);
 
     // Статистика курсов
