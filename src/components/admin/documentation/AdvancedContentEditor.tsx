@@ -44,6 +44,7 @@ interface AdvancedContentEditorProps {
   onUpdateDescription?: (description: string) => void;
   onDeletePage?: (pageId: string) => void;
   onTogglePublication?: (pageId: string) => void;
+  onForceSave?: (page: DocumentationPage) => Promise<boolean>;
   saving: boolean;
   sections?: DocumentationSection[]; // Для внутренних ссылок
 }
@@ -55,6 +56,7 @@ export default function AdvancedContentEditor({
   onUpdateDescription,
   onDeletePage,
   onTogglePublication,
+  onForceSave,
   saving,
   sections = []
 }: AdvancedContentEditorProps) {
@@ -73,29 +75,106 @@ export default function AdvancedContentEditor({
   const [redoStack, setRedoStack] = useState<Block[][]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const { getMenuPosition } = useBlockMenuPosition();
 
-  // Инициализация блоков из контента страницы
+  // Инициализация блоков из контента страницы с защитой от race conditions
   useEffect(() => {
-    setIsInitialLoad(true);
-    if (selectedPage?.content) {
-      const parsedBlocks = parseMarkdownToBlocks(selectedPage.content);
-      setBlocks(parsedBlocks.length > 0 ? parsedBlocks : [createEmptyBlock()]);
-    } else {
+    if (!selectedPage) {
       setBlocks([createEmptyBlock()]);
+      setIsInitialLoad(false);
+      return;
     }
-    // Устанавливаем флаг завершения загрузки после короткой задержки
-    setTimeout(() => setIsInitialLoad(false), 100);
-  }, [selectedPage?.id, selectedPage?.content]);
 
-  // Автосохранение при изменении блоков (только если не начальная загрузка)
+    setIsInitialLoad(true);
+    
+    // Добавляем небольшую задержку для предотвращения race conditions
+    const initTimer = setTimeout(() => {
+      if (selectedPage?.content) {
+        try {
+          const parsedBlocks = parseMarkdownToBlocks(selectedPage.content);
+          setBlocks(parsedBlocks.length > 0 ? parsedBlocks : [createEmptyBlock()]);
+        } catch (error) {
+          console.error('Ошибка парсинга контента:', error);
+          setBlocks([createEmptyBlock()]);
+        }
+      } else {
+        setBlocks([createEmptyBlock()]);
+      }
+      
+      // Устанавливаем флаг завершения загрузки
+      setTimeout(() => setIsInitialLoad(false), 200);
+    }, 50);
+
+    return () => clearTimeout(initTimer);
+  }, [selectedPage?.id]);
+
+  // Улучшенное автосохранение при изменении блоков с localStorage backup
   useEffect(() => {
-    if (!isInitialLoad && blocks.length > 0 && selectedPage) {
+    if (!isInitialLoad && blocks.length > 0 && selectedPage?.id) {
       const markdown = convertBlocksToMarkdown(blocks);
-      onUpdateContent(markdown);
+      
+      // Проверяем, изменился ли контент
+      if (markdown !== selectedPage.content) {
+        setHasUnsavedChanges(true);
+        
+        // Сохраняем в localStorage как backup
+        try {
+          localStorage.setItem(`doc-backup-${selectedPage.id}`, JSON.stringify({
+            content: markdown,
+            timestamp: Date.now(),
+            title: selectedPage.title,
+            description: selectedPage.description
+          }));
+        } catch (error) {
+          console.warn('Не удалось сохранить backup в localStorage:', error);
+        }
+        
+        onUpdateContent(markdown);
+        
+        // Сбрасываем флаг после задержки
+        const timer = setTimeout(() => setHasUnsavedChanges(false), 1500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [blocks, selectedPage, onUpdateContent, isInitialLoad]);
+  }, [blocks, selectedPage?.id, selectedPage?.content, onUpdateContent, isInitialLoad]);
+
+  // Восстановление из localStorage при монтировании компонента
+  useEffect(() => {
+    if (selectedPage?.id) {
+      try {
+        const backupKey = `doc-backup-${selectedPage.id}`;
+        const backup = localStorage.getItem(backupKey);
+        
+        if (backup) {
+          const backupData = JSON.parse(backup);
+          const backupAge = Date.now() - backupData.timestamp;
+          
+          // Если backup свежий (менее 10 минут) и отличается от текущего контента
+          if (backupAge < 10 * 60 * 1000 && backupData.content !== selectedPage.content) {
+            const restoreBackup = confirm(
+              'Найдена несохраненная версия этой страницы. Восстановить из резервной копии?'
+            );
+            
+            if (restoreBackup) {
+              // Восстанавливаем контент из backup
+              const backupBlocks = parseMarkdownToBlocks(backupData.content);
+              setBlocks(backupBlocks);
+              onUpdateContent(backupData.content);
+            }
+          }
+          
+          // Очищаем старые backups (старше 1 дня)
+          if (backupAge > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem(backupKey);
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка при восстановлении из localStorage:', error);
+      }
+    }
+  }, [selectedPage?.id]);
 
   const createEmptyBlock = (): Block => ({
     id: generateId(),
@@ -614,6 +693,63 @@ export default function AdvancedContentEditor({
     setShowBlockMenu(false);
   };
 
+  // Обработчик выхода со страницы - надежное принудительное сохранение
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (selectedPage?.id && hasUnsavedChanges && !saving) {
+        // Принудительно сохраняем перед выходом с помощью sendBeacon
+        const currentContent = convertBlocksToMarkdown(blocks);
+        
+        // Проверяем, изменился ли контент
+        if (currentContent !== selectedPage.content) {
+          try {
+            // Используем Blob с правильным MIME типом для sendBeacon
+            const data = new FormData();
+            data.append('content', currentContent);
+            data.append('title', selectedPage.title);
+            data.append('description', selectedPage.description || '');
+            
+            // sendBeacon автоматически отправляет данные даже при закрытии страницы
+            const sent = navigator.sendBeacon(
+              `/api/admin/documentation/${selectedPage.id}`, 
+              data
+            );
+            
+            if (!sent) {
+              console.warn('Не удалось отправить данные через sendBeacon');
+            }
+          } catch (error) {
+            console.error('Ошибка при отправке данных через sendBeacon:', error);
+          }
+          
+          // Показываем предупреждение пользователю
+          e.preventDefault();
+          e.returnValue = 'У вас есть несохраненные изменения. Вы уверены, что хотите покинуть страницу?';
+          return e.returnValue;
+        }
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      // Сохраняем при смене вкладки/минимизации окна
+      if (document.visibilityState === 'hidden' && selectedPage?.id && hasUnsavedChanges && onForceSave) {
+        const currentContent = convertBlocksToMarkdown(blocks);
+        if (currentContent !== selectedPage.content) {
+          const updatedPage = { ...selectedPage, content: currentContent };
+          await onForceSave(updatedPage);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [selectedPage, blocks, hasUnsavedChanges, onForceSave, saving]);
+
   // Обработчик нажатия клавиши ? для показа справки
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -862,6 +998,11 @@ export default function AdvancedContentEditor({
                 <>
                   <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-white rounded-full animate-spin"></div>
                   <span className="text-gray-500 dark:text-gray-400">Сохранение...</span>
+                </>
+              ) : hasUnsavedChanges ? (
+                <>
+                  <div className="w-4 h-4 rounded-full bg-orange-500 animate-pulse"></div>
+                  <span className="text-orange-600 dark:text-orange-400">Несохраненные изменения</span>
                 </>
               ) : (
                 <>

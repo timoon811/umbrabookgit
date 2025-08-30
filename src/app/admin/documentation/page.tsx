@@ -30,6 +30,7 @@ export default function DocumentationAdminPage() {
   const { sections, setSections, loading, loadDocumentation } = useDocumentationData();
   const {
     saving,
+    forceSave,
     handleUpdateContent,
     handleUpdateTitle,
     handleUpdateDescription,
@@ -54,8 +55,40 @@ export default function DocumentationAdminPage() {
     })
   );
 
-  // Выбор страницы (сразу в режиме редактирования)
-  const handlePageSelect = (page: DocumentationPage) => {
+  // Улучшенный выбор страницы с надежным сохранением предыдущей
+  const handlePageSelect = async (page: DocumentationPage) => {
+    // Если есть выбранная страница и она отличается от новой
+    if (selectedPage && selectedPage.id !== page.id) {
+      try {
+        // Принудительно сохраняем текущую страницу перед переключением
+        const currentPageData = sections
+          .flatMap(section => section.pages)
+          .find(p => p.id === selectedPage.id);
+        
+        if (currentPageData) {
+          const saveResult = await forceSave(currentPageData);
+          if (!saveResult) {
+            // Если сохранение не удалось, спрашиваем пользователя
+            const confirmSwitch = confirm(
+              'Не удалось сохранить изменения текущей страницы. Переключиться на другую страницу? Несохраненные изменения будут потеряны.'
+            );
+            if (!confirmSwitch) {
+              return; // Отменяем переключение
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка при сохранении перед переключением страницы:', error);
+        const confirmSwitch = confirm(
+          'Произошла ошибка при сохранении. Переключиться на другую страницу? Несохраненные изменения могут быть потеряны.'
+        );
+        if (!confirmSwitch) {
+          return; // Отменяем переключение
+        }
+      }
+    }
+    
+    // Переключаемся на новую страницу
     setSelectedPage(page);
   };
 
@@ -368,6 +401,7 @@ export default function DocumentationAdminPage() {
             onUpdateDescription={(description: string) => handleUpdateDescription(description, selectedPage || undefined)}
             onDeletePage={handleDeletePageAndClear}
             onTogglePublication={handleTogglePagePublication}
+            onForceSave={forceSave}
             saving={saving}
             sections={sections}
           />

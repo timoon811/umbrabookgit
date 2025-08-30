@@ -61,7 +61,31 @@ export async function PATCH(
     await checkAdminAuth();
     
     const { id } = await params;
-    const body = await request.json();
+    
+    // Обработка разных типов контента (включая sendBeacon и FormData)
+    let body;
+    const contentType = request.headers.get('content-type');
+    
+    if (contentType?.includes('application/json')) {
+      body = await request.json();
+    } else if (contentType?.includes('multipart/form-data') || contentType?.includes('application/x-www-form-urlencoded')) {
+      // Для sendBeacon с FormData
+      const formData = await request.formData();
+      body = {
+        content: formData.get('content')?.toString(),
+        title: formData.get('title')?.toString(),
+        description: formData.get('description')?.toString()
+      };
+    } else {
+      // Для sendBeacon (text/plain) или других форматов
+      const text = await request.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = { content: text };
+      }
+    }
+    
     const { title, description, slug, content, sectionId, order, isPublished, parentId } = body;
     
     // Проверяем, существует ли страница

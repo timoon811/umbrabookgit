@@ -66,7 +66,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return `section-${sectionNumber}`;
   };
 
-  // Улучшенное автосохранение с задержкой для всех полей
+  // Улучшенное автосохранение с надежной обработкой ошибок
   const autoSave = useCallback(async (page: DocumentationPage, fieldsToSave?: Partial<DocumentationPage>) => {
     if (!page.id) return; // Не сохраняем новые страницы автоматически
     
@@ -96,27 +96,40 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
 
         if (response.ok) {
           const updatedPage = await response.json();
-          // Умно обновляем только эту страницу в локальном состоянии
+          // Синхронизируем данные с сервером (особенно updatedAt)
           updatePageInState(updatedPage);
+          
+          // Очищаем localStorage backup после успешного сохранения
+          try {
+            localStorage.removeItem(`doc-backup-${page.id}`);
+          } catch (error) {
+            console.warn('Не удалось очистить backup из localStorage:', error);
+          }
+          
           // Показываем уведомление о успешном сохранении только для важных изменений
           if (fieldsToSave && Object.keys(fieldsToSave).some(key => key !== 'content')) {
             showSuccess('Изменения сохранены', 'Данные страницы успешно обновлены');
           }
+          
+          // Возвращаем true для успешного сохранения
+          return true;
         } else {
           const errorData = await response.json();
           console.error('Ошибка при сохранении страницы:', errorData.error);
           showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить изменения');
+          return false;
         }
       } catch (error) {
         console.error('Ошибка автосохранения:', error);
         showWarning('Проблемы с сетью', 'Изменения могут быть потеряны. Проверьте подключение к интернету.');
+        return false;
       } finally {
         setSaving(false);
       }
-    }, 1000); // Сохраняем через 1 секунду после последнего изменения
+    }, 800); // Уменьшаем время до 800мс для более быстрого отклика
   }, [updatePageInState, showSuccess, showError, showWarning]);
 
-  // Обработчик обновления контента
+  // Обработчик обновления контента с немедленным обновлением UI
   const handleUpdateContent = useCallback(async (content: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
       console.warn('Нет выбранной страницы для автосохранения');
@@ -126,11 +139,14 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     // Создаем обновленную страницу с новым контентом
     const updatedPage = { ...page, content };
     
+    // Немедленно обновляем UI, чтобы пользователь видел изменения
+    updatePageInState(updatedPage);
+    
     // Запускаем автосохранение только для контента
     await autoSave(updatedPage, { content });
-  }, [autoSave]);
+  }, [autoSave, updatePageInState]);
 
-  // Новый обработчик для обновления заголовков с автосохранением
+  // Обработчик для обновления заголовков с немедленным обновлением UI
   const handleUpdateTitle = useCallback(async (title: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
       console.warn('Нет выбранной страницы для автосохранения заголовка');
@@ -140,11 +156,14 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     // Создаем обновленную страницу с новым заголовком
     const updatedPage = { ...page, title };
     
+    // Немедленно обновляем UI
+    updatePageInState(updatedPage);
+    
     // Запускаем автосохранение только для заголовка
     await autoSave(updatedPage, { title });
-  }, [autoSave]);
+  }, [autoSave, updatePageInState]);
 
-  // Обработчик для обновления описания с автосохранением
+  // Обработчик для обновления описания с немедленным обновлением UI
   const handleUpdateDescription = useCallback(async (description: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
       console.warn('Нет выбранной страницы для автосохранения описания');
@@ -154,9 +173,12 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     // Создаем обновленную страницу с новым описанием
     const updatedPage = { ...page, description };
     
+    // Немедленно обновляем UI
+    updatePageInState(updatedPage);
+    
     // Запускаем автосохранение только для описания
     await autoSave(updatedPage, { description });
-  }, [autoSave]);
+  }, [autoSave, updatePageInState]);
 
   // Создание новой страницы
   const handleCreatePage = async (sectionId: string): Promise<DocumentationPage | null> => {
@@ -372,9 +394,63 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     }
   };
 
+  // Принудительное сохранение (для случаев смены страницы)
+  const forceSave = useCallback(async (page: DocumentationPage) => {
+    if (!page.id) return false;
+    
+    // Отменяем отложенное сохранение
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    try {
+      setSaving(true);
+      
+      const response = await fetch(`/api/admin/documentation/${page.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: page.title,
+          description: page.description,
+          content: page.content,
+          isPublished: page.isPublished
+        })
+      });
+
+      if (response.ok) {
+        const updatedPage = await response.json();
+        updatePageInState(updatedPage);
+        
+        // Очищаем localStorage backup после успешного принудительного сохранения
+        try {
+          localStorage.removeItem(`doc-backup-${page.id}`);
+        } catch (error) {
+          console.warn('Не удалось очистить backup из localStorage:', error);
+        }
+        
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка при принудительном сохранении:', errorData.error);
+        showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить изменения');
+        return false;
+      }
+    } catch (error) {
+      console.error('Ошибка принудительного сохранения:', error);
+      showWarning('Проблемы с сетью', 'Изменения могут быть потеряны. Проверьте подключение к интернету.');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, [updatePageInState, showSuccess, showError, showWarning]);
+
   return {
     saving,
     autoSave,
+    forceSave,
     handleUpdateContent,
     handleUpdateTitle,
     handleUpdateDescription,
