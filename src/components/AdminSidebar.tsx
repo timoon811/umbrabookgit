@@ -17,7 +17,6 @@ const navigationSections = [
     title: "КУРСЫ",
     items: [
       { name: "Курсы", href: "/admin/courses" },
-      { name: "Создать курс", href: "/admin/courses/new" },
     ],
   },
   {
