@@ -11,11 +11,6 @@ const navigationSections = [
       { name: "Дашборд", href: "/admin" },
       { name: "Все пользователи", href: "/admin/users" },
       { name: "Документация", href: "/admin/documentation" },
-    ],
-  },
-  {
-    title: "КУРСЫ",
-    items: [
       { name: "Курсы", href: "/admin/courses" },
     ],
   },
