@@ -56,9 +56,11 @@ export function getSectionInfo(sectionKey: string): { name: string; description:
 // Функция получения навигации для документации из базы данных
 export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
   try {
+    console.log('🔍 getDocsNav: Начинаем получение навигации для workspace:', workspaceKey);
+
     // Импортируем prisma только на сервере
     const { prisma } = await import('@/lib/prisma');
-    
+
     // Принудительно обновляем кэш для получения актуальных данных
     await prisma.$queryRaw`SELECT 1`;
 
@@ -166,6 +168,9 @@ export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
         items: sortedItems,
       });
     });
+
+    console.log('✅ getDocsNav: Навигация успешно сформирована:', sectionsResult.length, 'секций');
+    console.log('📄 getDocsNav: Результат:', JSON.stringify(sectionsResult, null, 2));
 
     return sectionsResult;
   } catch (error) {

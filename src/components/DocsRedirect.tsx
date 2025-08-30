@@ -21,7 +21,7 @@ export default function DocsRedirect({ fallbackSlug }: DocsRedirectProps) {
         
         // Сначала попробуем fallback, если он есть
         if (fallbackSlug) {
-          console.log(`🔄 DocsRedirect: Используем fallback редирект на /docs/${fallbackSlug}`);
+          console.log(`🔄 DocsRedirect: Немедленный редирект на fallback /docs/${fallbackSlug}`);
           router.replace(`/docs/${fallbackSlug}`);
           return;
         }
@@ -37,10 +37,20 @@ export default function DocsRedirect({ fallbackSlug }: DocsRedirectProps) {
         console.log('📄 DocsRedirect: Получены данные:', data);
         setDebugData({ response: data, fallbackSlug });
 
-        if (data.documentation && data.documentation.length > 0) {
+        // Проверяем различные форматы данных
+        if (data.documentation && Array.isArray(data.documentation) && data.documentation.length > 0) {
           const firstDoc = data.documentation[0];
-          console.log(`🔄 DocsRedirect: Клиентский редирект на /docs/${firstDoc.slug}`);
-          router.replace(`/docs/${firstDoc.slug}`);
+          if (firstDoc && firstDoc.slug) {
+            console.log(`🔄 DocsRedirect: Клиентский редирект на /docs/${firstDoc.slug}`);
+            router.replace(`/docs/${firstDoc.slug}`);
+            return;
+          }
+        }
+
+        // Если данных нет, пробуем редирект на известную страницу
+        if (fallbackSlug) {
+          console.log(`🔄 DocsRedirect: Редирект на fallback /docs/${fallbackSlug}`);
+          router.replace(`/docs/${fallbackSlug}`);
         } else {
           console.log('⚠️ DocsRedirect: Документация не найдена');
           setError('Документация не найдена');
@@ -53,7 +63,12 @@ export default function DocsRedirect({ fallbackSlug }: DocsRedirectProps) {
       }
     }
 
-    redirectToFirstDoc();
+    // Добавляем небольшую задержку для надежности
+    const timer = setTimeout(() => {
+      redirectToFirstDoc();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [router, fallbackSlug]);
 
   if (loading) {
