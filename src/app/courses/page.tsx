@@ -184,9 +184,11 @@ export default async function CoursesIndexPage({ searchParams }: CoursesPageProp
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     {course.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                    {course.description || 'Описание курса скоро будет добавлено'}
-                  </p>
+                  {course.description && (
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                      {course.description}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                     <span>{new Date(course.createdAt).toLocaleDateString('ru-RU')}</span>
                     <span className="text-gray-600 dark:text-gray-400">Изучать →</span>

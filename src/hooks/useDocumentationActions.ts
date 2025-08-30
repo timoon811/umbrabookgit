@@ -129,56 +129,47 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     }, 800); // Уменьшаем время до 800мс для более быстрого отклика
   }, [updatePageInState, showSuccess, showError, showWarning]);
 
-  // Обработчик обновления контента с немедленным обновлением UI
+  // Обработчик обновления контента только для локального состояния (без автосохранения)
   const handleUpdateContent = useCallback(async (content: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
-      console.warn('Нет выбранной страницы для автосохранения');
+      console.warn('Нет выбранной страницы для обновления контента');
       return;
     }
 
     // Создаем обновленную страницу с новым контентом
     const updatedPage = { ...page, content };
     
-    // Немедленно обновляем UI, чтобы пользователь видел изменения
+    // Обновляем только локальное состояние, без отправки на сервер
     updatePageInState(updatedPage);
-    
-    // Запускаем автосохранение только для контента
-    await autoSave(updatedPage, { content });
-  }, [autoSave, updatePageInState]);
+  }, [updatePageInState]);
 
-  // Обработчик для обновления заголовков с немедленным обновлением UI
+  // Обработчик для обновления заголовков только локально
   const handleUpdateTitle = useCallback(async (title: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
-      console.warn('Нет выбранной страницы для автосохранения заголовка');
+      console.warn('Нет выбранной страницы для обновления заголовка');
       return;
     }
 
     // Создаем обновленную страницу с новым заголовком
     const updatedPage = { ...page, title };
     
-    // Немедленно обновляем UI
+    // Обновляем только локальное состояние
     updatePageInState(updatedPage);
-    
-    // Запускаем автосохранение только для заголовка
-    await autoSave(updatedPage, { title });
-  }, [autoSave, updatePageInState]);
+  }, [updatePageInState]);
 
-  // Обработчик для обновления описания с немедленным обновлением UI
+  // Обработчик для обновления описания только локально
   const handleUpdateDescription = useCallback(async (description: string, page?: DocumentationPage | null) => {
     if (!page || !page.id) {
-      console.warn('Нет выбранной страницы для автосохранения описания');
+      console.warn('Нет выбранной страницы для обновления описания');
       return;
     }
 
     // Создаем обновленную страницу с новым описанием
     const updatedPage = { ...page, description };
     
-    // Немедленно обновляем UI
+    // Обновляем только локальное состояние
     updatePageInState(updatedPage);
-    
-    // Запускаем автосохранение только для описания
-    await autoSave(updatedPage, { description });
-  }, [autoSave, updatePageInState]);
+  }, [updatePageInState]);
 
   // Создание новой страницы
   const handleCreatePage = async (sectionId: string): Promise<DocumentationPage | null> => {

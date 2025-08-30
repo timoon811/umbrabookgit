@@ -76,6 +76,7 @@ export default function AdvancedContentEditor({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isManualSaving, setIsManualSaving] = useState(false);
   
   const { getMenuPosition } = useBlockMenuPosition();
 
@@ -110,7 +111,7 @@ export default function AdvancedContentEditor({
     return () => clearTimeout(initTimer);
   }, [selectedPage?.id]);
 
-  // Улучшенное автосохранение при изменении блоков с localStorage backup
+  // Отслеживание изменений без автосохранения
   useEffect(() => {
     if (!isInitialLoad && blocks.length > 0 && selectedPage?.id) {
       const markdown = convertBlocksToMarkdown(blocks);
@@ -119,7 +120,7 @@ export default function AdvancedContentEditor({
       if (markdown !== selectedPage.content) {
         setHasUnsavedChanges(true);
         
-        // Сохраняем в localStorage как backup
+        // Сохраняем в localStorage как backup (но не отправляем на сервер)
         try {
           localStorage.setItem(`doc-backup-${selectedPage.id}`, JSON.stringify({
             content: markdown,
@@ -130,15 +131,9 @@ export default function AdvancedContentEditor({
         } catch (error) {
           console.warn('Не удалось сохранить backup в localStorage:', error);
         }
-        
-        onUpdateContent(markdown);
-        
-        // Сбрасываем флаг после задержки
-        const timer = setTimeout(() => setHasUnsavedChanges(false), 1500);
-        return () => clearTimeout(timer);
       }
     }
-  }, [blocks, selectedPage?.id, selectedPage?.content, onUpdateContent, isInitialLoad]);
+  }, [blocks, selectedPage?.id, selectedPage?.content, isInitialLoad]);
 
   // Восстановление из localStorage при монтировании компонента
   useEffect(() => {
@@ -693,6 +688,41 @@ export default function AdvancedContentEditor({
     setShowBlockMenu(false);
   };
 
+  // Функция ручного сохранения
+  const handleManualSave = async () => {
+    if (!selectedPage?.id || !hasUnsavedChanges) return;
+
+    setIsManualSaving(true);
+    try {
+      const currentContent = convertBlocksToMarkdown(blocks);
+      const updatedPage = {
+        ...selectedPage,
+        content: currentContent
+      };
+
+      // Обновляем контент
+      onUpdateContent(currentContent);
+      
+      // Принудительно сохраняем
+      if (onForceSave) {
+        const saveResult = await onForceSave(updatedPage);
+        if (saveResult) {
+          setHasUnsavedChanges(false);
+          // Очищаем localStorage backup после успешного сохранения
+          try {
+            localStorage.removeItem(`doc-backup-${selectedPage.id}`);
+          } catch (error) {
+            console.warn('Не удалось очистить backup из localStorage:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при ручном сохранении:', error);
+    } finally {
+      setIsManualSaving(false);
+    }
+  };
+
   // Обработчик выхода со страницы - надежное принудительное сохранение
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -992,24 +1022,43 @@ export default function AdvancedContentEditor({
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Индикатор автосохранения */}
-            <div className="flex items-center gap-2 text-sm">
-              {saving ? (
+            {/* Кнопка ручного сохранения */}
+            <button
+              onClick={handleManualSave}
+              disabled={!hasUnsavedChanges || isManualSaving}
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
+                hasUnsavedChanges && !isManualSaving
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+              title={hasUnsavedChanges ? "Сохранить изменения" : "Нет изменений для сохранения"}
+            >
+              {isManualSaving ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-white rounded-full animate-spin"></div>
-                  <span className="text-gray-500 dark:text-gray-400">Сохранение...</span>
-                </>
-              ) : hasUnsavedChanges ? (
-                <>
-                  <div className="w-4 h-4 rounded-full bg-orange-500 animate-pulse"></div>
-                  <span className="text-orange-600 dark:text-orange-400">Несохраненные изменения</span>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Сохранение...
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <span className="text-green-600 dark:text-green-400">Автосохранение</span>
+                  Сохранить
+                </>
+              )}
+            </button>
+
+            {/* Индикатор статуса */}
+            <div className="flex items-center gap-2 text-sm">
+              {hasUnsavedChanges ? (
+                <>
+                  <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                  <span className="text-orange-600 dark:text-orange-400">Есть изменения</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-green-600 dark:text-green-400">Сохранено</span>
                 </>
               )}
             </div>

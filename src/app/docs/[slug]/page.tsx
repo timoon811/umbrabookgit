@@ -101,9 +101,11 @@ export default async function DocumentationArticlePage({ params }: Documentation
           <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
             {page.title}
           </h1>
-          <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed">
-            {page.description || 'Описание статьи скоро будет добавлено'}
-          </p>
+          {page.description && (
+            <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed">
+              {page.description}
+            </p>
+          )}
         </div>
       </header>
 
