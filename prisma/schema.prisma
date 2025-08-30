@@ -24,6 +24,7 @@ model users {
   @@index([role])
   @@index([status])
   @@index([telegram])
+  @@map("users")
 }
 
 model courses {
@@ -41,10 +42,11 @@ model courses {
   @@index([slug])
   @@index([isPublished])
   @@index([category])
+  @@map("courses")
 }
 
 model course_sections {
-  id          String         @id @default(cuid())
+  id          String         @id @default(uuid())
   title       String
   description String?
   order       Int            @default(0)
@@ -54,10 +56,12 @@ model course_sections {
   updatedAt   DateTime       @updatedAt
   pages       course_pages[]
   course      courses        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("course_sections")
 }
 
 model course_pages {
-  id          String          @id @default(cuid())
+  id          String          @id @default(uuid())
   title       String
   content     String?
   blocks      String?
@@ -67,23 +71,26 @@ model course_pages {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   section     course_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@map("course_pages")
 }
 
 model documentation_sections {
-  id          String          @id @default(cuid())
+  id          String          @id @default(uuid())
   name        String
   key         String          @unique
-
   description String?
   order       Int             @default(0)
   isVisible   Boolean         @default(true)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   pages       documentation[]
+
+  @@map("documentation_sections")
 }
 
 model documentation {
-  id          String                 @id @default(cuid())
+  id          String                 @id @default(uuid())
   title       String
   description String?
   slug        String                 @unique
@@ -98,10 +105,12 @@ model documentation {
   section     documentation_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   parent      documentation?         @relation("DocumentationHierarchy", fields: [parentId], references: [id])
   children    documentation[]        @relation("DocumentationHierarchy")
+
+  @@map("documentation")
 }
 
 model finance_accounts {
-  id               String                 @id @default(cuid())
+  id               String                 @id @default(uuid())
   name             String
   type             String                 @default("OTHER")
   currency         String                 @default("USD")
@@ -112,10 +121,12 @@ model finance_accounts {
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   transactions     finance_transactions[]
+
+  @@map("finance_accounts")
 }
 
 model finance_counterparties {
-  id           String                 @id @default(cuid())
+  id           String                 @id @default(uuid())
   name         String
   type         String                 @default("CLIENT")
   email        String?
@@ -127,10 +138,12 @@ model finance_counterparties {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   transactions finance_transactions[]
+
+  @@map("finance_counterparties")
 }
 
 model finance_categories {
-  id           String                 @id @default(cuid())
+  id           String                 @id @default(uuid())
   name         String
   type         String                 @default("EXPENSE")
   description  String?
@@ -139,6 +152,8 @@ model finance_categories {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   transactions finance_transactions[]
+
+  @@map("finance_categories")
 }
 
 model finance_projects {
@@ -154,10 +169,12 @@ model finance_projects {
   updatedAt      DateTime               @updatedAt
   depositSources deposit_sources[]
   transactions   finance_transactions[]
+
+  @@map("finance_projects")
 }
 
 model finance_transactions {
-  id                String                  @id @default(cuid())
+  id                String                  @id @default(uuid())
   accountId         String
   counterpartyId    String?
   categoryId        String?
@@ -184,6 +201,7 @@ model finance_transactions {
   @@index([projectKey])
   @@index([date])
   @@index([type])
+  @@map("finance_transactions")
 }
 
 model deposit_sources {
@@ -200,6 +218,7 @@ model deposit_sources {
 
   @@index([projectId])
   @@index([isActive])
+  @@map("deposit_sources")
 }
 
 model deposits {
@@ -229,10 +248,11 @@ model deposits {
   @@index([mammothId])
   @@index([createdAt])
   @@index([processed])
+  @@map("deposits")
 }
 
 model analytics {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String
   action    String
   metadata  String?
@@ -244,10 +264,11 @@ model analytics {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+  @@map("analytics")
 }
 
 model articles {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   title       String
   content     String?
   slug        String   @unique
@@ -259,6 +280,7 @@ model articles {
   @@index([slug])
   @@index([category])
   @@index([isPublished])
+  @@map("articles")
 }
 
 enum UserRole {
