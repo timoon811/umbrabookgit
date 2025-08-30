@@ -144,13 +144,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ID раздела обязателен" }, { status: 400 });
     }
     
-    // Проверяем уникальность slug
+    // Проверяем уникальность slug глобально
     const existingPage = await prisma.documentation.findUnique({
       where: { slug }
     });
     
     if (existingPage) {
-      return NextResponse.json({ error: "Страница с таким slug уже существует" }, { status: 400 });
+      return NextResponse.json({ 
+        error: `Страница с URL "${slug}" уже существует. Попробуйте создать страницу еще раз.` 
+      }, { status: 400 });
+    }
+
+    // Дополнительно проверяем уникальность title в том же разделе
+    const existingTitle = await prisma.documentation.findFirst({
+      where: { 
+        title,
+        sectionId 
+      }
+    });
+    
+    if (existingTitle) {
+      return NextResponse.json({ 
+        error: `Страница с названием "${title}" уже существует в данном разделе` 
+      }, { status: 400 });
     }
 
     // Проверяем существование раздела

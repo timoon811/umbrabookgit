@@ -12,6 +12,7 @@ const navigationSections = [
       { name: "Все пользователи", href: "/admin/users" },
       { name: "Документация", href: "/admin/documentation" },
       { name: "Курсы", href: "/admin/courses" },
+      { name: "Обработка", href: "/admin/processing" },
     ],
   },
   {

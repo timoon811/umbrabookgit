@@ -8,22 +8,31 @@ datasource db {
 }
 
 model users {
-  id        String      @id @default(cuid())
-  email     String      @unique
-  name      String
-  password  String
-  telegram  String      @unique
-  role      UserRole    @default(USER)
-  status    UserStatus  @default(PENDING)
-  isBlocked Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  analytics analytics[]
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  name                 String
+  password             String
+  telegram             String                @unique
+  role                 UserRole              @default(USER)
+  status               UserStatus            @default(PENDING)
+  isBlocked            Boolean               @default(false)
+  assignedBuyerId      String?               // ID байера, к которому прикреплен процессор
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  analytics            analytics[]
+  
+  // Связи для процессоров
+  assignedBuyer        users?                @relation("BuyerProcessors", fields: [assignedBuyerId], references: [id])
+  assignedProcessors   users[]               @relation("BuyerProcessors")
+  processorDeposits    processor_deposits[]
+  salaryRequests       salary_requests[]
+  bonusPayments        bonus_payments[]
 
   @@index([email])
   @@index([role])
   @@index([status])
   @@index([telegram])
+  @@index([assignedBuyerId])
   @@map("users")
 }
 
@@ -283,12 +292,110 @@ model articles {
   @@map("articles")
 }
 
+// Модели для системы обработки
+model processor_deposits {
+  id               String                 @id @default(uuid())
+  processorId      String
+  playerId         String                 // ID игрока
+  playerNick       String?                // Ник игрока
+  offerId          String?                // ID оффера/компании
+  offerName        String?                // Название оффера
+  geo              String?                // Гео
+  amount           Float                  // Сумма депозита
+  currency         String                 @default("USD")
+  paymentMethod    String?                // Метод платежа
+  leadSource       String?                // Источник лида
+  proofs           String?                // Доказательства (JSON массив ссылок)
+  notes            String?                // Примечания
+  status           DepositStatus          @default(PENDING)
+  moderatorId      String?                // ID модератора
+  moderatorComment String?                // Комментарий модератора
+  moderatedAt      DateTime?              // Дата модерации
+  commissionRate   Float                  @default(30.0) // Процент комиссии
+  bonusRate        Float                  @default(5.0)  // Процент бонуса обработчика
+  bonusAmount      Float                  @default(0)    // Сумма бонуса
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  
+  processor        users                  @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([playerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("processor_deposits")
+}
+
+model salary_requests {
+  id              String               @id @default(uuid())
+  processorId     String
+  periodStart     DateTime             // Начало периода
+  periodEnd       DateTime             // Конец периода
+  requestedAmount Float                // Запрошенная сумма
+  calculatedAmount Float?              // Рассчитанная сумма системой
+  paymentDetails  String?              // Реквизиты для выплаты (JSON)
+  comment         String?              // Комментарий от процессора
+  adminComment    String?              // Комментарий администратора
+  status          SalaryRequestStatus  @default(PENDING)
+  processedAt     DateTime?            // Дата обработки
+  paidAt          DateTime?            // Дата выплаты
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  
+  processor       users                @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([status])
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@map("salary_requests")
+}
+
+model bonus_payments {
+  id            String           @id @default(uuid())
+  processorId   String
+  type          BonusType        @default(DEPOSIT_BONUS)
+  description   String?          // Описание бонуса
+  amount        Float            // Сумма бонуса
+  depositId     String?          // ID депозита (если бонус за депозит)
+  period        DateTime?        // Период (если периодический бонус)
+  conditions    String?          // Условия бонуса (JSON)
+  status        BonusStatus      @default(PENDING)
+  processedAt   DateTime?        // Дата обработки
+  paidAt        DateTime?        // Дата выплаты
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  processor     users            @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([type])
+  @@index([status])
+  @@index([period])
+  @@map("bonus_payments")
+}
+
+model bonus_settings {
+  id                 String              @id @default(uuid())
+  name               String              // Название настройки
+  description        String?             // Описание
+  baseCommissionRate Float               @default(30.0) // Базовая комиссия (%)
+  baseBonusRate      Float               @default(5.0)  // Базовый бонус (%)
+  tiers              String              // JSON с сеткой бонусов
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@map("bonus_settings")
+}
+
 enum UserRole {
   USER
   ADMIN
   MODERATOR
   MEDIA_BUYER
   SUPPORT
+  PROCESSOR
 }
 
 enum UserStatus {
@@ -301,4 +408,32 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+}
+
+enum DepositStatus {
+  PENDING      // В ожидании модерации
+  APPROVED     // Подтвержден
+  REJECTED     // Отклонен
+  PROCESSING   // В обработке
+}
+
+enum SalaryRequestStatus {
+  PENDING      // В ожидании обработки
+  APPROVED     // Одобрена
+  REJECTED     // Отклонена
+  PAID         // Выплачена
+}
+
+enum BonusType {
+  DEPOSIT_BONUS    // Бонус за депозит
+  PERIODIC_BONUS   // Периодический бонус
+  ACHIEVEMENT_BONUS // Бонус за достижение
+  MANUAL_BONUS     // Ручной бонус
+}
+
+enum BonusStatus {
+  PENDING      // В ожидании
+  APPROVED     // Одобрен
+  REJECTED     // Отклонен
+  PAID         // Выплачен
 }

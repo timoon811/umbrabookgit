@@ -29,24 +29,31 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
 
   // Генерация системных названий
   const generateSystemPageName = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section) return 'page1';
+    // Получаем все страницы из всех секций для проверки глобальной уникальности title
+    const allPages = sections.flatMap(s => s.pages);
     
     let pageNumber = 1;
-    while (section.pages.some(page => page.title === `page${pageNumber}`)) {
+    while (allPages.some(page => page.title === `page${pageNumber}`)) {
       pageNumber++;
     }
     return `page${pageNumber}`;
   };
 
   const generateSystemSlug = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section) return 'page-1';
+    // Получаем все страницы из всех секций для проверки глобальной уникальности slug
+    const allPages = sections.flatMap(s => s.pages);
     
+    // Сначала пробуем простую нумерацию
     let pageNumber = 1;
-    while (section.pages.some(page => page.slug === `page-${pageNumber}`)) {
+    while (allPages.some(page => page.slug === `page-${pageNumber}`)) {
       pageNumber++;
     }
+    
+    // Если достигли большого числа, добавляем timestamp для гарантированной уникальности
+    if (pageNumber > 1000) {
+      return `page-${Date.now()}`;
+    }
+    
     return `page-${pageNumber}`;
   };
 
