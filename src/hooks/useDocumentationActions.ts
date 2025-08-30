@@ -99,12 +99,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
           // Синхронизируем данные с сервером (особенно updatedAt)
           updatePageInState(updatedPage);
           
-          // Очищаем localStorage backup после успешного сохранения
-          try {
-            localStorage.removeItem(`doc-backup-${page.id}`);
-          } catch (error) {
-            console.warn('Не удалось очистить backup из localStorage:', error);
-          }
+
           
           // Показываем уведомление о успешном сохранении только для важных изменений
           if (fieldsToSave && Object.keys(fieldsToSave).some(key => key !== 'content')) {
@@ -415,12 +410,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
         const updatedPage = await response.json();
         updatePageInState(updatedPage);
         
-        // Очищаем localStorage backup после успешного принудительного сохранения
-        try {
-          localStorage.removeItem(`doc-backup-${page.id}`);
-        } catch (error) {
-          console.warn('Не удалось очистить backup из localStorage:', error);
-        }
+
         
         return true;
       } else {

@@ -119,57 +119,11 @@ export default function AdvancedContentEditor({
       // Проверяем, изменился ли контент
       if (markdown !== selectedPage.content) {
         setHasUnsavedChanges(true);
-        
-        // Сохраняем в localStorage как backup (но не отправляем на сервер)
-        try {
-          localStorage.setItem(`doc-backup-${selectedPage.id}`, JSON.stringify({
-            content: markdown,
-            timestamp: Date.now(),
-            title: selectedPage.title,
-            description: selectedPage.description
-          }));
-        } catch (error) {
-          console.warn('Не удалось сохранить backup в localStorage:', error);
-        }
       }
     }
   }, [blocks, selectedPage?.id, selectedPage?.content, isInitialLoad]);
 
-  // Восстановление из localStorage при монтировании компонента
-  useEffect(() => {
-    if (selectedPage?.id) {
-      try {
-        const backupKey = `doc-backup-${selectedPage.id}`;
-        const backup = localStorage.getItem(backupKey);
-        
-        if (backup) {
-          const backupData = JSON.parse(backup);
-          const backupAge = Date.now() - backupData.timestamp;
-          
-          // Если backup свежий (менее 10 минут) и отличается от текущего контента
-          if (backupAge < 10 * 60 * 1000 && backupData.content !== selectedPage.content) {
-            const restoreBackup = confirm(
-              'Найдена несохраненная версия этой страницы. Восстановить из резервной копии?'
-            );
-            
-            if (restoreBackup) {
-              // Восстанавливаем контент из backup
-              const backupBlocks = parseMarkdownToBlocks(backupData.content);
-              setBlocks(backupBlocks);
-              onUpdateContent(backupData.content);
-            }
-          }
-          
-          // Очищаем старые backups (старше 1 дня)
-          if (backupAge > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem(backupKey);
-          }
-        }
-      } catch (error) {
-        console.warn('Ошибка при восстановлении из localStorage:', error);
-      }
-    }
-  }, [selectedPage?.id]);
+
 
   const createEmptyBlock = (): Block => ({
     id: generateId(),
@@ -708,12 +662,6 @@ export default function AdvancedContentEditor({
         const saveResult = await onForceSave(updatedPage);
         if (saveResult) {
           setHasUnsavedChanges(false);
-          // Очищаем localStorage backup после успешного сохранения
-          try {
-            localStorage.removeItem(`doc-backup-${selectedPage.id}`);
-          } catch (error) {
-            console.warn('Не удалось очистить backup из localStorage:', error);
-          }
         }
       }
     } catch (error) {
