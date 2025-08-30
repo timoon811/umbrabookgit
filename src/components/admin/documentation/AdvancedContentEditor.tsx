@@ -617,9 +617,13 @@ export default function AdvancedContentEditor({
   // Обработчик нажатия клавиши ? для показа справки
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         const target = e.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        // Только если НЕ в поле ввода или НЕ в редакторе документации
+        const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+        const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
+        
+        if (!isInInputField || !isInDocumentationEditor) {
           e.preventDefault();
           setShowShortcutsHelp(true);
         }
@@ -813,7 +817,7 @@ export default function AdvancedContentEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900" data-documentation-editor="true">
       {/* Шапка редактора */}
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">

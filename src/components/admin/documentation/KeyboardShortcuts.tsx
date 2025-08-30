@@ -9,8 +9,20 @@ interface KeyboardShortcutsProps {
 export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + комбинации
+      const target = e.target as HTMLElement;
+      
+      // Проверяем, что мы НЕ в поле ввода (кроме textarea/input для блочного редактора)
+      const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
+      
+      // Для всех клавиш кроме Ctrl/Cmd комбинаций проверяем, что мы в редакторе документации
+      const shouldProcessKey = !isInInputField || isInDocumentationEditor;
+
+      // Ctrl/Cmd + комбинации - работают только когда мы НЕ в обычных полях ввода
       if (e.ctrlKey || e.metaKey) {
+        // Для Ctrl/Cmd комбинаций разрешаем только в textarea/input редактора документации
+        if (!shouldProcessKey) return;
+        
         switch (e.key) {
           case 'b':
             e.preventDefault();
@@ -58,48 +70,47 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
             onShortcut('code');
             break;
         }
+        return; // Выходим, чтобы не обрабатывать другие клавиши
       }
 
-      // Другие клавиши
+      // Другие клавиши - только для textarea/input В РЕДАКТОРЕ документации
+      if (!isInInputField || !isInDocumentationEditor) return;
+      
       switch (e.key) {
         case 'Tab':
-          if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
-            // Проверяем, находимся ли мы в списке
-            const value = e.target.value;
-            const cursorPos = e.target.selectionStart;
-            const lineStart = value.lastIndexOf('\n', cursorPos - 1) + 1;
-            const currentLine = value.substring(lineStart, cursorPos);
-            
-            if (currentLine.match(/^[-*]\s/) || currentLine.match(/^\d+\.\s/)) {
-              e.preventDefault();
-              if (e.shiftKey) {
-                onShortcut('outdent');
-              } else {
-                onShortcut('indent');
-              }
+          // Проверяем, находимся ли мы в списке
+          const value = (target as HTMLTextAreaElement | HTMLInputElement).value;
+          const cursorPos = (target as HTMLTextAreaElement | HTMLInputElement).selectionStart;
+          const lineStart = value.lastIndexOf('\n', cursorPos - 1) + 1;
+          const currentLine = value.substring(lineStart, cursorPos);
+          
+          if (currentLine.match(/^[-*]\s/) || currentLine.match(/^\d+\.\s/)) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              onShortcut('outdent');
+            } else {
+              onShortcut('indent');
             }
           }
           break;
         case 'Enter':
-          if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
-            const value = e.target.value;
-            const cursorPos = e.target.selectionStart;
-            const lineStart = value.lastIndexOf('\n', cursorPos - 1) + 1;
-            const currentLine = value.substring(lineStart, cursorPos);
-            
-            // Автопродолжение списков
-            const listMatch = currentLine.match(/^([-*]\s|(\d+)\.\s)/);
-            if (listMatch) {
-              e.preventDefault();
-              if (currentLine.trim() === listMatch[0].trim()) {
-                // Пустой элемент списка - выходим из списка
-                onShortcut('exitList');
-              } else {
-                // Продолжаем список
-                const nextNumber = listMatch[2] ? parseInt(listMatch[2]) + 1 : null;
-                const prefix = nextNumber ? `${nextNumber}. ` : listMatch[1];
-                onShortcut('continueList', { prefix });
-              }
+          const valueEnter = (target as HTMLTextAreaElement | HTMLInputElement).value;
+          const cursorPosEnter = (target as HTMLTextAreaElement | HTMLInputElement).selectionStart;
+          const lineStartEnter = valueEnter.lastIndexOf('\n', cursorPosEnter - 1) + 1;
+          const currentLineEnter = valueEnter.substring(lineStartEnter, cursorPosEnter);
+          
+          // Автопродолжение списков
+          const listMatch = currentLineEnter.match(/^([-*]\s|(\d+)\.\s)/);
+          if (listMatch) {
+            e.preventDefault();
+            if (currentLineEnter.trim() === listMatch[0].trim()) {
+              // Пустой элемент списка - выходим из списка
+              onShortcut('exitList');
+            } else {
+              // Продолжаем список
+              const nextNumber = listMatch[2] ? parseInt(listMatch[2]) + 1 : null;
+              const prefix = nextNumber ? `${nextNumber}. ` : listMatch[1];
+              onShortcut('continueList', { prefix });
             }
           }
           break;
