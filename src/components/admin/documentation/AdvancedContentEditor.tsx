@@ -414,9 +414,31 @@ export default function AdvancedContentEditor({
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
       const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
       
+      // Определяем размеры панели инструментов
+      const toolbarWidth = 300;
+      const toolbarHeight = 120; // Примерная высота панели
+      const offset = 10; // Отступ от выделенного текста
+      
+      // Вычисляем оптимальную позицию
+      let top = rect.top + scrollTop - toolbarHeight - offset;
+      let left = rect.left + scrollLeft + (rect.width / 2) - (toolbarWidth / 2);
+      
+      // Если панель не помещается сверху, размещаем снизу
+      if (rect.top < toolbarHeight + offset) {
+        top = rect.bottom + scrollTop + offset;
+      }
+      
+      // Корректируем горизонтальную позицию, чтобы панель не выходила за границы
+      const viewportWidth = window.innerWidth;
+      if (left < 10) {
+        left = 10;
+      } else if (left + toolbarWidth > viewportWidth - 10) {
+        left = viewportWidth - toolbarWidth - 10;
+      }
+      
       setToolbarPosition({
-        top: rect.top + scrollTop - 60, // Позиция сверху от выделения
-        left: rect.left + scrollLeft + (rect.width / 2) - 150 // Центрируем относительно выделения
+        top,
+        left
       });
       setShowToolbar(true);
     } else {
@@ -860,41 +882,30 @@ export default function AdvancedContentEditor({
       }
     };
 
+    // Обработчик прокрутки для скрытия панели инструментов
+    const handleScroll = () => {
+      if (showToolbar) {
+        setShowToolbar(false);
+      }
+    };
+
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleScroll);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [showBlockMenu, showShortcutsHelp, showDeleteConfirm, showContextMenu, showToolbar]);
 
   const renderToolbar = () => {
     if (!showToolbar) return null;
 
-    // Определяем позицию с учетом границ экрана
-    const viewportWidth = window.innerWidth;
-    const toolbarWidth = 300;
-    const padding = 10;
-    
-    // Корректируем позицию, чтобы панель не выходила за границы экрана
-    let adjustedLeft = toolbarPosition.left;
-    let adjustedTop = toolbarPosition.top;
-    
-    // Проверяем правую границу
-    if (adjustedLeft + toolbarWidth > viewportWidth - padding) {
-      adjustedLeft = viewportWidth - toolbarWidth - padding;
-    }
-    
-    // Проверяем левую границу
-    if (adjustedLeft < padding) {
-      adjustedLeft = padding;
-    }
-    
-    // Проверяем верхнюю границу (с учётом прокрутки)
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    if (adjustedTop < scrollTop + padding) {
-      adjustedTop = scrollTop + padding;
-    }
+    // Используем позицию, уже вычисленную в handleTextSelection
+    // Дополнительная корректировка не требуется, так как логика уже улучшена
+    const adjustedLeft = toolbarPosition.left;
+    const adjustedTop = toolbarPosition.top;
 
     return (
       <div 
