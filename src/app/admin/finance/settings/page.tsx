@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Edit, Trash2, Plus } from "lucide-react";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 import FinanceEntityModal from "@/components/modals/FinanceEntityModal";
-import DepositSourceModal from "@/components/modals/DepositSourceModal";
 
 import FinanceEntityList from "@/components/FinanceEntityList";
 
@@ -61,23 +60,19 @@ interface Account {
 }
 
 function FinanceSettingsContent() {
-  const [activeTab, setActiveTab] = useState<'counterparties' | 'categories' | 'projects' | 'accounts' | 'deposits'>('counterparties');
+  const [activeTab, setActiveTab] = useState<'counterparties' | 'categories' | 'projects' | 'accounts'>('counterparties');
   const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [depositSources, setDepositSources] = useState<any[]>([]);
-  const [deposits, setDeposits] = useState<any[]>([]);
-  const [depositStats, setDepositStats] = useState<any>(null);
+
   const [loading, setLoading] = useState(true);
 
   // Modal states
   const [entityModalOpen, setEntityModalOpen] = useState(false);
-  const [depositSourceModalOpen, setDepositSourceModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [currentEntity, setCurrentEntity] = useState<any>(null);
-  const [currentDepositSource, setCurrentDepositSource] = useState<any>(null);
   const [entityToDelete, setEntityToDelete] = useState<{id: string, name: string, type: string} | null>(null);
 
   useEffect(() => {
@@ -114,25 +109,6 @@ function FinanceSettingsContent() {
           if (accountsResponse.ok) {
             const data = await accountsResponse.json();
             setAccounts(data.accounts || []);
-          }
-          break;
-
-        case 'deposits':
-          // Загружаем источники депозитов и последние депозиты
-          const [sourcesResponse, depositsResponse] = await Promise.all([
-            fetch('/api/admin/finance/deposit-sources'),
-            fetch('/api/admin/finance/deposits?limit=20')
-          ]);
-
-          if (sourcesResponse.ok) {
-            const sourcesData = await sourcesResponse.json();
-            setDepositSources(sourcesData.depositSources || []);
-          }
-
-          if (depositsResponse.ok) {
-            const depositsData = await depositsResponse.json();
-            setDeposits(depositsData.deposits || []);
-            setDepositStats(depositsData.stats || null);
           }
           break;
       }
@@ -216,26 +192,16 @@ function FinanceSettingsContent() {
   };
 
   // Modal functions
-  const openCreateModal = (entityType: 'counterparty' | 'category' | 'project' | 'account' | 'deposit-source') => {
-    if (entityType === 'deposit-source') {
-      setCurrentDepositSource(null);
-      setDepositSourceModalOpen(true);
-    } else {
-      setCurrentEntity({ type: entityType });
-      setModalMode('create');
-      setEntityModalOpen(true);
-    }
+  const openCreateModal = (entityType: 'counterparty' | 'category' | 'project' | 'account') => {
+    setCurrentEntity({ type: entityType });
+    setModalMode('create');
+    setEntityModalOpen(true);
   };
 
-  const openEditModal = (entityType: 'counterparty' | 'category' | 'project' | 'account' | 'deposit-source', entity: any) => {
-    if (entityType === 'deposit-source') {
-      setCurrentDepositSource(entity);
-      setDepositSourceModalOpen(true);
-    } else {
-      setCurrentEntity(entity);
-      setModalMode('edit');
-      setEntityModalOpen(true);
-    }
+  const openEditModal = (entityType: 'counterparty' | 'category' | 'project' | 'account', entity: any) => {
+    setCurrentEntity(entity);
+    setModalMode('edit');
+    setEntityModalOpen(true);
   };
 
   const openDeleteModal = (entity: any) => {
@@ -296,44 +262,7 @@ function FinanceSettingsContent() {
     }
   };
 
-  const handleSaveDepositSource = async (data: any) => {
-    const endpoint = '/api/admin/finance/deposit-sources';
 
-    try {
-      let response;
-      if (currentDepositSource) {
-        // Редактирование
-        response = await fetch(`${endpoint}/${currentDepositSource.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(data),
-        });
-      } else {
-        // Создание
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(data),
-        });
-      }
-
-      if (response.ok) {
-        await fetchData(); // Перезагружаем данные
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Ошибка сохранения источника депозитов');
-      }
-    } catch (error) {
-      console.error('Ошибка сохранения источника депозитов:', error);
-      throw error;
-    }
-  };
 
 
 
@@ -341,13 +270,7 @@ function FinanceSettingsContent() {
     if (!entityToDelete) return;
 
     const entityType = activeTab.slice(0, -1);
-    let endpoint = '';
-
-    if (entityType === 'deposit-source') {
-      endpoint = `/api/admin/finance/deposit-sources/${entityToDelete.id}`;
-    } else {
-      endpoint = `/api/admin/finance/${entityType === 'counterparty' ? 'counterparties' : entityType === 'category' ? 'categories' : entityType === 'project' ? 'projects' : 'accounts'}/${entityToDelete.id}`;
-    }
+    const endpoint = `/api/admin/finance/${entityType === 'counterparty' ? 'counterparties' : entityType === 'category' ? 'categories' : entityType === 'project' ? 'projects' : 'accounts'}/${entityToDelete.id}`;
 
     try {
       const response = await fetch(endpoint, {
@@ -400,7 +323,6 @@ function FinanceSettingsContent() {
             { id: 'categories', label: 'Статьи' },
             { id: 'projects', label: 'Проекты' },
             { id: 'accounts', label: 'Счета' },
-            { id: 'deposits', label: 'Депозиты' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -622,292 +544,7 @@ function FinanceSettingsContent() {
 
 
 
-      {/* Депозиты */}
-      {activeTab === 'deposits' && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-[#171717] dark:text-[#ededed]">
-              Депозиты
-            </h2>
-            <button
-              onClick={() => openCreateModal('deposit-source')}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Добавить источник
-            </button>
-          </div>
 
-          {/* Источники депозитов */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed] mb-4">
-              Источники депозитов
-            </h3>
-
-            {depositSources.length === 0 ? (
-              <div className="text-center py-8 bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10">
-                <div className="w-12 h-12 mx-auto mb-4 bg-[#171717]/5 dark:bg-[#ededed]/5 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-[#171717]/40 dark:text-[#ededed]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <h4 className="text-base font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                  Источники депозитов не найдены
-                </h4>
-                <p className="text-[#171717]/60 dark:text-[#ededed]/60 mb-4">
-                  Создайте первый источник для приема депозитов
-                </p>
-                <button
-                  onClick={() => openCreateModal('deposit-source')}
-                  className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Добавить источник
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {depositSources.map((source: any) => (
-                  <div
-                    key={source.id}
-                    className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-base font-semibold text-[#171717] dark:text-[#ededed] truncate">
-                              {source.name}
-                            </h4>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              source.isActive
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                            }`}>
-                              {source.isActive ? 'Активен' : 'Отключен'}
-                            </span>
-                          </div>
-
-                          <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                            Проект: {source.project?.name || 'Не указан'} • Комиссия: {source.commission}% • Депозитов: {source._count?.deposits || 0}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => openEditModal('deposit-source', source)}
-                          className="p-2 text-[#2563eb] dark:text-[#60a5fa] hover:bg-[#2563eb]/10 dark:hover:bg-[#60a5fa]/10 rounded-md transition-colors"
-                          title="Редактировать"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(source)}
-                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                          title="Удалить"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Статистика депозитов */}
-          {depositStats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-900/30 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">Всего депозитов</p>
-                    <p className="text-xl font-bold text-[#171717] dark:text-[#ededed]">{depositStats.totalDeposits}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">Общая комиссия</p>
-                    <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(depositStats.totalCommissionUsd, 'USD')}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">Чистая сумма</p>
-                    <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(depositStats.totalNetAmountUsd, 'USD')}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">Грязная сумма</p>
-                    <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(depositStats.totalAmountUsd, 'USD')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Список депозитов */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                Последние депозиты
-              </h3>
-              <button
-                onClick={() => fetchData()} // Перезагрузить данные
-                className="text-[#2563eb] dark:text-[#60a5fa] hover:underline text-sm"
-              >
-                Обновить
-              </button>
-            </div>
-
-            {deposits.length === 0 ? (
-              <div className="text-center py-8 bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10">
-                <div className="w-12 h-12 mx-auto mb-4 bg-[#171717]/5 dark:bg-[#ededed]/5 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-[#171717]/40 dark:text-[#ededed]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <h4 className="text-base font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                  Депозиты не найдены
-                </h4>
-                <p className="text-[#171717]/60 dark:text-[#ededed]/60">
-                  Здесь будут отображаться поступившие депозиты
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {deposits.map((deposit: any) => (
-                  <div
-                    key={deposit.id}
-                    className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-900/30 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h4 className="text-base font-semibold text-[#171717] dark:text-[#ededed] truncate">
-                              {deposit.mammothLogin}
-                            </h4>
-                            <span className="text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60">
-                              {deposit.mammothCountry}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              deposit.processed
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}>
-                              {deposit.processed ? 'Обработан' : 'Новый'}
-                            </span>
-                          </div>
-
-                          <div className="space-y-2">
-                            {/* Грязная сумма */}
-                            <div className="flex items-center gap-4 text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                              <span className="text-red-500 dark:text-red-400">
-                                💰 {formatCurrency(deposit.amount, deposit.token)} ({deposit.token.toUpperCase()})
-                              </span>
-                              <span className="text-red-500 dark:text-red-400">
-                                {formatCurrency(deposit.amountUsd, 'USD')}
-                              </span>
-                              <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 px-2 py-1 rounded text-xs">
-                                -{deposit.commissionPercent}% комиссия
-                              </span>
-                            </div>
-
-                            {/* Чистая сумма */}
-                            <div className="flex items-center gap-4 text-sm text-[#171717] dark:text-[#ededed] font-medium">
-                              <span className="text-green-600 dark:text-green-400">
-                                ✅ {formatCurrency(deposit.netAmount, deposit.token)} ({deposit.token.toUpperCase()})
-                              </span>
-                              <span className="text-green-600 dark:text-green-400">
-                                {formatCurrency(deposit.netAmountUsd, 'USD')}
-                              </span>
-                              <span>
-                                Проект: {deposit.depositSource?.project?.name || 'Не указан'}
-                              </span>
-                              <span>
-                                {new Date(deposit.createdAt).toLocaleString('ru-RU')}
-                              </span>
-                            </div>
-
-                            {/* Детали комиссии */}
-                            <div className="text-xs text-[#171717]/50 dark:text-[#ededed]/50">
-                              Комиссия: {formatCurrency(deposit.commissionAmount, deposit.token)} ({formatCurrency(deposit.commissionAmountUsd, 'USD')})
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => {
-                            // Здесь можно добавить обработку депозита
-                            console.log('Обработать депозит:', deposit.id);
-                          }}
-                          className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
-                          title="Обработать"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Модальные окна */}
       <FinanceEntityModal
@@ -930,13 +567,7 @@ function FinanceSettingsContent() {
         actionType="delete"
       />
 
-      <DepositSourceModal
-        isOpen={depositSourceModalOpen}
-        onClose={() => setDepositSourceModalOpen(false)}
-        onSave={handleSaveDepositSource}
-        mode={currentDepositSource ? 'edit' : 'create'}
-        initialData={currentDepositSource}
-      />
+
 
 
     </div>

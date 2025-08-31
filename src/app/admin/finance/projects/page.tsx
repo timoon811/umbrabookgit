@@ -54,9 +54,6 @@ interface Transaction {
 }
 
 export default function FinanceProjectsPage() {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('FinanceProjectsPage: Компонент инициализирован');
-  }
 
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,9 +86,7 @@ export default function FinanceProjectsPage() {
         setProjectTransactions(data.transactions || []);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Ошибка загрузки операций:', error);
-      }
+      console.error('Ошибка загрузки операций:', error);
     } finally {
       setTransactionsLoading(false);
     }
@@ -99,9 +94,7 @@ export default function FinanceProjectsPage() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: fetchProjects вызвана');
-      }
+
       setLoading(true);
       setError(null);
 
@@ -120,63 +113,34 @@ export default function FinanceProjectsPage() {
       }
 
       const url = `/api/admin/finance/projects/stats?${params.toString()}`;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: Запрос к URL:', url);
-      }
 
       const response = await fetch(url);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: Ответ API:', response.status, response.statusText);
-      }
 
       if (response.ok) {
         const data = await response.json();
-        if (process.env.NODE_ENV === 'development') {
-          console.log('FinanceProjectsPage: Получены данные:', data);
-        }
         setProjects(data.projects || []);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('FinanceProjectsPage: Проекты установлены:', data.projects?.length || 0);
-        }
       } else {
         let errorMessage = `HTTP ${response.status}`;
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('FinanceProjectsPage: Не удалось распарсить ошибку API:', parseError);
-          }
-        }
-        if (process.env.NODE_ENV === 'development') {
-          console.error('FinanceProjectsPage: Ошибка API:', errorMessage);
+          // Игнорируем ошибки парсинга JSON
         }
         setError(errorMessage);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('FinanceProjectsPage: Ошибка сети:', error);
-      }
+      console.error('Ошибка сети:', error);
       setError('Ошибка сети при загрузке проектов');
     } finally {
       setLoading(false);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: Загрузка завершена');
-      }
     }
   }, [filter, archiveFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     // Загружаем проекты только на клиенте
     if (typeof window !== 'undefined') {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: Начинаем загрузку данных...');
-      }
       fetchProjects();
-    } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('FinanceProjectsPage: SSR режим, пропускаем загрузку данных');
-      }
     }
   }, [fetchProjects]);
 
@@ -233,9 +197,6 @@ export default function FinanceProjectsPage() {
   };
 
   if (loading) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('FinanceProjectsPage: Отображаем состояние загрузки');
-    }
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-500"></div>
@@ -245,9 +206,6 @@ export default function FinanceProjectsPage() {
   }
 
   if (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('FinanceProjectsPage: Отображаем ошибку:', error);
-    }
     return (
       <div className="prose prose-zinc dark:prose-invert max-w-none">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
@@ -273,24 +231,10 @@ export default function FinanceProjectsPage() {
     );
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('FinanceProjectsPage: Рендерим основной контент, проектов:', projects.length);
-  }
+
 
   return (
     <>
-      {/* Отладочная информация */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-          <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Отладка</h4>
-          <div className="text-xs text-yellow-700 dark:text-yellow-300">
-            <div>Проектов: {projects.length}</div>
-            <div>Фильтр: {filter}</div>
-            <div>Архив: {archiveFilter}</div>
-            <div>Сортировка: {sortField} ({sortDirection})</div>
-          </div>
-        </div>
-      )}
 
       {/* Модальное окно операций проекта */}
       {operationsModalOpen && (
