@@ -50,3 +50,4 @@ cookies.txt
 new_cookies.txt
 test_cookies.txt
 test_*.js
+prisma/schema.production.prisma

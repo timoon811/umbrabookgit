@@ -10,7 +10,9 @@ export default async function DocsIndexPage() {
     const firstPage = await prisma.documentation.findFirst({
       where: {
         isPublished: true,
-        slug: { not: null }
+        slug: {
+          not: null
+        }
       },
       select: {
         slug: true,
