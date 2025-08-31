@@ -23,23 +23,29 @@ const ALLOWED_FILE_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-async function checkAuth() {
-  // Упрощенная проверка аутентификации для admin API
-  // В production следует использовать реальную проверку JWT токена
+async function checkAdminAuth(request: NextRequest) {
   try {
-    // Проверяем наличие заголовков авторизации
-    const authHeader = process.env.NODE_ENV === 'development' 
-      ? 'Bearer fake-admin-token'
-      : undefined;
-
-    if (!authHeader) {
-      return false;
+    // Получаем токен из cookies
+    const token = request.cookies.get("auth-token")?.value;
+    
+    if (!token) {
+      throw new Error("Не авторизован");
     }
 
-    return true;
+    // Проверяем формат токена
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3 || !tokenParts.every(part => part.length > 0)) {
+      throw new Error("Недействительный токен");
+    }
+
+    // Используем существующую функцию проверки админских прав
+    const { requireAdmin } = await import('@/lib/auth');
+    const user = await requireAdmin(token);
+    
+    return user;
   } catch (error) {
-    console.error('Ошибка проверки авторизации:', error);
-    return false;
+    console.error("Ошибка проверки админских прав:", error);
+    throw new Error("Недостаточно прав");
   }
 }
 
@@ -57,13 +63,8 @@ function sanitizeFilename(filename: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await checkAuth();
-    if (!authResult) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Проверяем права администратора
+    await checkAdminAuth(request);
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -138,8 +139,24 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Ошибка загрузки файла:', error);
+    
+    // Обрабатываем ошибки аутентификации
+    if (error.message === "Не авторизован") {
+      return NextResponse.json(
+        { error: 'Не авторизован' },
+        { status: 401 }
+      );
+    }
+    
+    if (error.message === "Недостаточно прав") {
+      return NextResponse.json(
+        { error: 'Недостаточно прав' },
+        { status: 403 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Ошибка сервера при загрузке файла' },
+      { error: error.message || 'Ошибка сервера при загрузке файла' },
       { status: 500 }
     );
   }

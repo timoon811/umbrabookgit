@@ -2,6 +2,8 @@
 
 import React from 'react';
 import FileUploadTest from '@/components/admin/FileUploadTest';
+import AuthDebugger from '@/components/admin/AuthDebugger';
+import FileDisplayTest from '@/components/admin/FileDisplayTest';
 
 export default function UploadsTestPage() {
   return (
@@ -32,7 +34,11 @@ export default function UploadsTestPage() {
         </div>
       </div>
 
+      <AuthDebugger />
+
       <FileUploadTest />
+
+      <FileDisplayTest />
 
       <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
         <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed] mb-4">

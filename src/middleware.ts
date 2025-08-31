@@ -64,6 +64,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/uploads") ||
+    pathname.startsWith("/api/uploads") ||
     pathname.includes(".") // файлы со статическими расширениями
   ) {
     return NextResponse.next();

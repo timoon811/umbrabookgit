@@ -56,6 +56,16 @@ export default function FileUploader({
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Специальная обработка ошибок аутентификации
+        if (response.status === 401) {
+          throw new Error('Не авторизован. Пожалуйста, войдите в систему.');
+        }
+        
+        if (response.status === 403) {
+          throw new Error('Недостаточно прав. Требуются права администратора.');
+        }
+        
         throw new Error(errorData.error || 'Ошибка загрузки файла');
       }
 

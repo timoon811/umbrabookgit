@@ -14,9 +14,17 @@ export async function GET(
     
     // Определяем полный путь к файлу
     const isProduction = process.env.NODE_ENV === 'production';
-    const fullPath = isProduction 
-      ? join('/uploads', directory, filename)
-      : join(process.cwd(), 'public/uploads', directory, filename);
+    let fullPath: string;
+    
+    if (isProduction) {
+      // В production на Render используем абсолютный путь
+      fullPath = join('/uploads', directory, filename);
+    } else {
+      // В development используем public папку
+      fullPath = join(process.cwd(), 'public/uploads', directory, filename);
+    }
+    
+    console.log('Attempting to serve file:', fullPath);
 
     // Проверяем существование файла
     if (!existsSync(fullPath)) {

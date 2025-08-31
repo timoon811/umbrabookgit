@@ -428,6 +428,24 @@ export default function ModernArticleEditor({
                         ...prev,
                         blocks: [...prev.blocks, { id: Date.now().toString(), type: file.type.startsWith('image/') ? 'image' : 'paragraph', content: file.type.startsWith('image/') ? '' : url, metadata: file.type.startsWith('image/') ? { url, alt: file.name } : {} }]
                       }));
+                    } else {
+                      const errorData = await response.json();
+                      console.error('Ошибка загрузки файла:', errorData.error);
+                      
+                      // Fallback к временному URL только при ошибках аутентификации
+                      if (response.status === 401 || response.status === 403) {
+                        alert('Ошибка доступа: ' + errorData.error);
+                        return;
+                      }
+                      
+                      // Для других ошибок используем временный URL
+                      const url = URL.createObjectURL(file);
+                      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                      setUploadedFiles(prev => ([...prev, { id, name: file.name, url, type: file.type }]));
+                      setArticle(prev => ({
+                        ...prev,
+                        blocks: [...prev.blocks, { id: Date.now().toString(), type: file.type.startsWith('image/') ? 'image' : 'paragraph', content: file.type.startsWith('image/') ? '' : url, metadata: file.type.startsWith('image/') ? { url, alt: file.name } : {} }]
+                      }));
                     }
                   } catch (error) {
                     console.error('Ошибка загрузки файла:', error);
@@ -1070,6 +1088,22 @@ function FilesSidebar({ files, onUpload, onRemove }: { files: Array<{ id: string
               ...file, 
               url: data.file.url,
               name: data.file.name 
+            } as File & { url: string }]);
+          } else {
+            const errorData = await response.json();
+            console.error('Ошибка загрузки файла:', errorData.error);
+            
+            if (response.status === 401 || response.status === 403) {
+              alert('Ошибка доступа: ' + errorData.error);
+              return;
+            }
+            
+            // Fallback для других ошибок
+            const url = URL.createObjectURL(file);
+            onUpload([{ 
+              ...file, 
+              url,
+              name: file.name 
             } as File & { url: string }]);
           }
         } catch (error) {
