@@ -15,12 +15,16 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
       const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
       const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
 
-
-
       // Ctrl/Cmd + комбинации - работают только в редакторе блоков документации
       if (e.ctrlKey || e.metaKey) {
         // Разрешаем только в textarea/input редактора документации
         if (!isInInputField || !isInDocumentationEditor) return;
+        
+        // НЕ перехватываем базовые команды (Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+X)
+        const basicCommands = ['c', 'v', 'a', 'x'];
+        if (basicCommands.includes(e.key.toLowerCase())) {
+          return; // Позволяем стандартное поведение
+        }
         
         switch (e.key) {
           case 'b':
@@ -68,11 +72,14 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
             e.preventDefault();
             onShortcut('code');
             break;
+          default:
+            // Для всех остальных Ctrl/Cmd комбинаций - НЕ блокируем
+            return;
         }
-        return; // Выходим, чтобы не обрабатывать другие клавиши
+        return; // Выходим только после обработки наших специальных команд
       }
 
-      // Обычные клавиши (Tab, Enter) - только для textarea/input В РЕДАКТОРЕ документации
+      // Специальные клавиши (Tab, Enter) - только для textarea/input В РЕДАКТОРЕ документации
       if (!isInInputField || !isInDocumentationEditor) return;
       
       switch (e.key) {

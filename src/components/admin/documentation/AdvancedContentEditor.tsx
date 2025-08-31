@@ -618,82 +618,20 @@ export default function AdvancedContentEditor({
     }, 0);
   };
 
-  // Обработчик клавиш для команд и навигации
+  // Обработчик клавиш для команд и навигации - только специальные команды
   const handleKeyDown = (e: React.KeyboardEvent, blockId: string) => {
     const target = e.target as HTMLTextAreaElement | HTMLInputElement;
     const cursorPos = target.selectionStart || 0;
     
-    // Обработка Enter для создания новых элементов списка
-    if (e.key === 'Enter') {
-      const block = blocks.find(b => b.id === blockId);
-      if (!block) return;
-
-      // Для нумерованных списков
-      if (block.type === 'numbered-list') {
-        e.preventDefault();
-        const currentIndex = blocks.findIndex(b => b.id === blockId);
-        
-        // Создаем новый элемент списка
-        const newBlock = {
-          ...createEmptyBlock(),
-          type: 'numbered-list'
-        };
-        
-        // Вставляем после текущего элемента
-        const newBlocks = [...blocks];
-        newBlocks.splice(currentIndex + 1, 0, newBlock);
-        setBlocks(newBlocks);
-        
-        // Фокусируемся на новом блоке
-        setTimeout(() => {
-          setActiveBlockId(newBlock.id);
-          // Дополнительно фокусируем текстовое поле
-          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
-          if (newBlockElement) {
-            (newBlockElement as HTMLElement).focus();
-          }
-        }, 100);
-        return;
-      }
-      
-      // Для обычных списков
-      if (block.type === 'list') {
-        e.preventDefault();
-        const currentIndex = blocks.findIndex(b => b.id === blockId);
-        
-        // Создаем новый элемент списка
-        const newBlock = {
-          ...createEmptyBlock(),
-          type: 'list'
-        };
-        
-        // Вставляем после текущего элемента
-        const newBlocks = [...blocks];
-        newBlocks.splice(currentIndex + 1, 0, newBlock);
-        setBlocks(newBlocks);
-        
-        // Фокусируемся на новом блоке
-        setTimeout(() => {
-          setActiveBlockId(newBlock.id);
-          // Дополнительно фокусируем текстовое поле
-          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
-          if (newBlockElement) {
-            (newBlockElement as HTMLElement).focus();
-          }
-        }, 100);
-        return;
-      }
-      
-      // Для обычных блоков - разрешаем стандартное поведение Enter (перевод строки)
-      // Не создаем новый блок, позволяем тексту расширяться в том же блоке
-      return;
-    }
+    // НЕ обрабатываем обычные символьные клавиши - позволяем нормальный ввод
+    // Обрабатываем только специальные команды
     
-    // Обработка команды "/"" для вызова меню блоков
+    // Обработка команды "/" для вызова меню блоков - только в начале строки или после пробела
     if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const textBeforeCursor = target.value.substring(0, cursorPos);
       const lastChar = textBeforeCursor[textBeforeCursor.length - 1];
       
+      // Открываем меню только если / в начале строки или после пробела/переноса
       if (textBeforeCursor.length === 0 || lastChar === '\n' || /\s/.test(lastChar)) {
         e.preventDefault();
         
@@ -704,7 +642,60 @@ export default function AdvancedContentEditor({
         setPendingBlockId(blockId);
         setShowBlockMenu(true);
       }
+      // Иначе позволяем нормальный ввод символа "/"
+      return;
     }
+
+    // Обработка Enter только для списков - создание новых элементов
+    if (e.key === 'Enter') {
+      const block = blocks.find(b => b.id === blockId);
+      if (!block) return;
+
+      // Только для списков создаем новые элементы, для остальных блоков разрешаем обычные переносы строк
+      if (block.type === 'numbered-list' || block.type === 'list') {
+        // Проверяем, если текущая строка пуста, выходим из списка
+        const lines = target.value.split('\n');
+        const currentLineIndex = target.value.substring(0, cursorPos).split('\n').length - 1;
+        const currentLine = lines[currentLineIndex] || '';
+        
+        if (currentLine.trim() === '') {
+          // Пустая строка - выходим из списка
+          e.preventDefault();
+          updateBlock(blockId, { type: 'paragraph' });
+          return;
+        }
+
+        // Создаем новый элемент списка
+        e.preventDefault();
+        const currentIndex = blocks.findIndex(b => b.id === blockId);
+        
+        const newBlock = {
+          ...createEmptyBlock(),
+          type: block.type
+        };
+        
+        // Вставляем после текущего элемента
+        const newBlocks = [...blocks];
+        newBlocks.splice(currentIndex + 1, 0, newBlock);
+        setBlocks(newBlocks);
+        
+        // Фокусируемся на новом блоке
+        setTimeout(() => {
+          setActiveBlockId(newBlock.id);
+          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
+          if (newBlockElement) {
+            (newBlockElement as HTMLElement).focus();
+          }
+        }, 100);
+        return;
+      }
+      
+      // Для всех остальных блоков (paragraph, heading, etc.) разрешаем обычные переносы строк
+      // НЕ перехватываем Enter, позволяем стандартное поведение
+      return;
+    }
+    
+    // Для всех остальных клавиш - НЕ перехватываем, позволяем нормальный ввод
   };
 
   // Обработчик выбора типа блока из меню
