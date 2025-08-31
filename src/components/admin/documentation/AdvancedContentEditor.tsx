@@ -410,30 +410,43 @@ export default function AdvancedContentEditor({
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       
-      // Вычисляем позицию с учётом прокрутки страницы
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-      
       // Определяем размеры панели инструментов
       const toolbarWidth = 300;
       const toolbarHeight = 120; // Примерная высота панели
       const offset = 10; // Отступ от выделенного текста
       
-      // Вычисляем оптимальную позицию
-      let top = rect.top + scrollTop - toolbarHeight - offset;
-      let left = rect.left + scrollLeft + (rect.width / 2) - (toolbarWidth / 2);
+      // Для fixed позиционирования используем координаты относительно viewport
+      // rect уже содержит координаты относительно viewport
+      // Вычисляем центр выделения для лучшего позиционирования
+      const selectionCenterX = rect.left + (rect.width / 2);
+      const selectionCenterY = rect.top + (rect.height / 2);
+      
+      let top = rect.top - toolbarHeight - offset;
+      let left = selectionCenterX - (toolbarWidth / 2);
       
       // Если панель не помещается сверху, размещаем снизу
-      if (rect.top < toolbarHeight + offset) {
-        top = rect.bottom + scrollTop + offset;
+      if (top < 10) {
+        top = rect.bottom + offset;
       }
       
       // Корректируем горизонтальную позицию, чтобы панель не выходила за границы
       const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
       if (left < 10) {
         left = 10;
       } else if (left + toolbarWidth > viewportWidth - 10) {
         left = viewportWidth - toolbarWidth - 10;
+      }
+      
+      // Проверяем, чтобы панель не выходила за нижнюю границу viewport
+      if (top + toolbarHeight > viewportHeight - 10) {
+        // Если не помещается снизу, показываем сверху
+        top = rect.top - toolbarHeight - offset;
+        if (top < 10) {
+          // Если и сверху не помещается, центрируем по вертикали
+          top = Math.max(10, (viewportHeight - toolbarHeight) / 2);
+        }
       }
       
       setToolbarPosition({
@@ -909,11 +922,12 @@ export default function AdvancedContentEditor({
 
     return (
       <div 
-        className="absolute z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
+        className="fixed z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
         style={{ 
           top: adjustedTop, 
           left: adjustedLeft,
-          minWidth: '300px'
+          minWidth: '300px',
+          transform: 'translateZ(0)' // Включаем аппаратное ускорение
         }}
       >
         {/* Основная панель инструментов */}
