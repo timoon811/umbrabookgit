@@ -826,13 +826,23 @@ export default function AdvancedContentEditor({
     };
 
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Закрываем блочное меню при клике вне его
+      if (showBlockMenu) {
+        if (!target.closest('.fixed[style*="z-index: 50"], .fixed[class*="z-50"]')) {
+          setShowBlockMenu(false);
+          setPendingBlockId(null);
+        }
+      }
+      
       // Закрываем контекстное меню при клике вне его
       if (showContextMenu) {
-        const target = e.target as HTMLElement;
         if (!target.closest('.fixed')) {
           setShowContextMenu(false);
         }
       }
+      
       // Закрываем панель инструментов при клике вне выделения
       if (showToolbar) {
         const selection = window.getSelection();
@@ -1395,21 +1405,17 @@ export default function AdvancedContentEditor({
         }}
       />
 
-      {/* Новое улучшенное меню блоков */}
-      {showBlockMenu && (
-        <div className="relative">
-          <BlockMenu
-            isOpen={showBlockMenu}
-            onClose={() => {
-              setShowBlockMenu(false);
-              setPendingBlockId(null);
-            }}
-            onSelectType={handleBlockTypeSelect}
-            position={blockMenuPosition}
-            currentBlockType={pendingBlockId ? blocks.find(b => b.id === pendingBlockId)?.type : undefined}
-          />
-        </div>
-      )}
+      {/* Улучшенное меню блоков - позиционируется абсолютно */}
+      <BlockMenu
+        isOpen={showBlockMenu}
+        onClose={() => {
+          setShowBlockMenu(false);
+          setPendingBlockId(null);
+        }}
+        onSelectType={handleBlockTypeSelect}
+        position={blockMenuPosition}
+        currentBlockType={pendingBlockId ? blocks.find(b => b.id === pendingBlockId)?.type : undefined}
+      />
 
       {/* Компоненты горячих клавиш */}
       <KeyboardShortcuts onShortcut={handleShortcut} />

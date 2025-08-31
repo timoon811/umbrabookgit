@@ -140,7 +140,7 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
   return (
     <div
       ref={menuRef}
-      className="absolute z-50 bg-white dark:bg-gray-800 shadow-2xl rounded-lg border border-gray-200 dark:border-gray-700 w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="fixed z-50 bg-white dark:bg-gray-800 shadow-2xl rounded-lg border border-gray-200 dark:border-gray-700 w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
       style={{
         top: position.top,
         left: position.left
@@ -235,44 +235,42 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
   );
 }
 
-// Хук для определения позиции меню
+// Хук для определения позиции меню (для fixed позиционирования)
 export function useBlockMenuPosition() {
   const getMenuPosition = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     const menuWidth = window.innerWidth > 640 ? 384 : 320; // адаптивная ширина
     const menuHeight = 400; // примерная высота меню
     const padding = 16;
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
     
-    // Получаем абсолютные координаты с учетом прокрутки
-    let left = rect.left + scrollLeft;
-    let top = rect.bottom + scrollTop + 8;
+    // Используем координаты относительно viewport (для fixed позиционирования)
+    let left = rect.left;
+    let top = rect.bottom + 8;
     
     // Проверяем, помещается ли меню справа
-    if (left + menuWidth > window.innerWidth + scrollLeft - padding) {
-      left = Math.max(padding + scrollLeft, window.innerWidth + scrollLeft - menuWidth - padding);
+    if (left + menuWidth > window.innerWidth - padding) {
+      left = Math.max(padding, window.innerWidth - menuWidth - padding);
     }
     
     // Для мобильных устройств центрируем по горизонтали
     if (window.innerWidth < 640) {
-      left = Math.max(padding + scrollLeft, (window.innerWidth - menuWidth) / 2 + scrollLeft);
+      left = Math.max(padding, (window.innerWidth - menuWidth) / 2);
     }
     
     // Проверяем, помещается ли меню снизу
-    if (top + menuHeight > window.innerHeight + scrollTop - padding) {
+    if (top + menuHeight > window.innerHeight - padding) {
       // Показываем меню сверху от элемента
-      top = Math.max(padding + scrollTop, rect.top + scrollTop - menuHeight - 8);
+      top = Math.max(padding, rect.top - menuHeight - 8);
     }
     
     // Убеждаемся, что меню не выходит за верхний край
-    if (top < padding + scrollTop) {
-      top = padding + scrollTop;
+    if (top < padding) {
+      top = padding;
     }
     
     // Убеждаемся, что меню не выходит за левый край
-    if (left < padding + scrollLeft) {
-      left = padding + scrollLeft;
+    if (left < padding) {
+      left = padding;
     }
     
     return { top, left };
