@@ -5,8 +5,10 @@ import { Edit, Trash2, Plus } from "lucide-react";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 import DepositSourceModal from "@/components/modals/DepositSourceModal";
 import NoSSR from "@/components/NoSSR";
+import { useToast } from "@/components/Toast";
 
 export default function AdminDepositsPage() {
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<'management' | 'all-deposits'>('management');
   const [depositSources, setDepositSources] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
@@ -156,7 +158,7 @@ export default function AdminDepositsPage() {
         ? '/api/admin/finance/deposit-sources'
         : `/api/admin/finance/deposit-sources/${currentDepositSource.id}`;
       
-      const method = modalMode === 'create' ? 'POST' : 'PUT';
+      const method = modalMode === 'create' ? 'POST' : 'PATCH';
       
       const response = await fetch(url, {
         method,
@@ -169,13 +171,14 @@ export default function AdminDepositsPage() {
       if (response.ok) {
         setDepositSourceModalOpen(false);
         fetchData();
+        showSuccess('Источник депозитов сохранен', 'Изменения успешно применены');
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Ошибка сохранения');
+        showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить источник депозитов');
       }
     } catch (error) {
       console.error('Ошибка сохранения:', error);
-      alert('Ошибка сохранения');
+      showError('Ошибка сохранения', 'Произошла ошибка при сохранении данных');
     }
   };
 
@@ -191,13 +194,14 @@ export default function AdminDepositsPage() {
         setConfirmModalOpen(false);
         setEntityToDelete(null);
         fetchData();
+        showSuccess('Источник удален', 'Источник депозитов успешно удален');
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Ошибка удаления');
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить источник депозитов');
       }
     } catch (error) {
       console.error('Ошибка удаления:', error);
-      alert('Ошибка удаления');
+      showError('Ошибка удаления', 'Произошла ошибка при удалении данных');
     }
   };
 

@@ -2,6 +2,8 @@ import React from 'react';
 import type { Metadata } from "next";
 import ConditionalNavigation from "@/components/ConditionalNavigation";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import ToastContainer from "@/components/Toast";
+import ConfirmDialogContainer from "@/components/ConfirmDialog";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -34,6 +36,8 @@ export default function RootLayout({
         <ThemeProvider>
           <ConditionalNavigation />
           {children}
+          <ToastContainer />
+          <ConfirmDialogContainer />
         </ThemeProvider>
       </body>
     </html>

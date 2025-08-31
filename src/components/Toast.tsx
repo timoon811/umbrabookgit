@@ -29,46 +29,62 @@ function Toast({ toast, onRemove }: ToastProps) {
   const getToastStyles = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
+        return 'bg-white dark:bg-[#0a0a0a] border-l-4 border-l-green-500 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] shadow-lg';
       case 'error':
-        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200';
+        return 'bg-white dark:bg-[#0a0a0a] border-l-4 border-l-red-500 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] shadow-lg';
       case 'warning':
-        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200';
+        return 'bg-white dark:bg-[#0a0a0a] border-l-4 border-l-yellow-500 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] shadow-lg';
       case 'info':
       default:
-        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
+        return 'bg-white dark:bg-[#0a0a0a] border-l-4 border-l-blue-500 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] shadow-lg';
     }
   };
 
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return '✅';
+        return (
+          <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
       case 'error':
-        return '❌';
+        return (
+          <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
       case 'warning':
-        return '⚠️';
+        return (
+          <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
       case 'info':
       default:
-        return 'ℹ️';
+        return (
+          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
     }
   };
 
   return (
-    <div className={`border rounded-lg p-4 mb-3 shadow-lg animate-in slide-in-from-right-5 ${getToastStyles()}`}>
+    <div className={`rounded-xl p-5 mb-3 shadow-xl backdrop-blur-sm transform transition-all duration-300 ease-out animate-in slide-in-from-right-5 ${getToastStyles()}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
-          <span className="text-lg">{getIcon()}</span>
-          <div className="flex-1">
-            <h4 className="font-medium">{toast.title}</h4>
+          <div className="flex-shrink-0 mt-0.5">{getIcon()}</div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-sm">{toast.title}</h4>
             {toast.message && (
-              <p className="text-sm mt-1 opacity-90">{toast.message}</p>
+              <p className="text-sm mt-1 text-[#171717]/70 dark:text-[#ededed]/70 leading-relaxed">{toast.message}</p>
             )}
           </div>
         </div>
         <button
           onClick={() => onRemove(toast.id)}
-          className="ml-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="flex-shrink-0 ml-4 text-[#171717]/40 dark:text-[#ededed]/40 hover:text-[#171717]/70 dark:hover:text-[#ededed]/70 transition-colors duration-200 p-1 rounded-md hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -125,14 +141,16 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-md">
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          toast={toast}
-          onRemove={removeToast}
-        />
-      ))}
+    <div className="fixed top-6 right-6 z-[9999] max-w-sm w-full">
+      <div className="space-y-3">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            toast={toast}
+            onRemove={removeToast}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
 
 // Типы данных
 interface ProcessorStats {
@@ -56,6 +57,7 @@ interface SalaryRequest {
 
 export default function ProcessingPage() {
   const router = useRouter();
+  const { showSuccess, showError, showWarning } = useToast();
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("");
   const [stats, setStats] = useState<ProcessorStats | null>(null);
@@ -138,12 +140,12 @@ export default function ProcessingPage() {
     e.preventDefault();
     
     if (!depositForm.amount || !depositForm.currency || !depositForm.playerEmail) {
-      alert("Заполните все обязательные поля");
+      showWarning("Заполните все поля", "Все обязательные поля должны быть заполнены");
       return;
     }
 
     if (parseFloat(depositForm.amount) <= 0) {
-      alert("Сумма должна быть больше 0");
+      showError("Неверная сумма", "Сумма должна быть больше 0");
       return;
     }
 
@@ -165,7 +167,7 @@ export default function ProcessingPage() {
       });
 
       if (response.ok) {
-        alert("Депозит успешно добавлен!");
+        showSuccess("Депозит добавлен", "Депозит успешно отправлен на обработку");
         setDepositForm({
           amount: "",
           currency: "USD",
@@ -176,11 +178,11 @@ export default function ProcessingPage() {
         loadProcessorData(); // Перезагружаем данные
       } else {
         const errorData = await response.json();
-        alert(`Ошибка: ${errorData.error}`);
+        showError("Ошибка отправки", errorData.error || "Не удалось отправить депозит");
       }
     } catch (error) {
       console.error("Ошибка отправки депозита:", error);
-      alert("Произошла ошибка при отправке депозита");
+      showError("Ошибка отправки", "Произошла ошибка при отправке депозита");
     } finally {
       setSubmittingDeposit(false);
     }

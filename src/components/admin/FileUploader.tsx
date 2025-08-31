@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
+import { useToast } from '@/components/Toast';
 
 interface FileUploaderProps {
   onUpload: (fileUrl: string, fileName: string, fileType: string) => void;
@@ -27,6 +28,7 @@ export default function FileUploader({
   className = '',
   children
 }: FileUploaderProps) {
+  const { showError, showSuccess } = useToast();
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ export default function FileUploader({
 
   const uploadFile = async (file: File) => {
     if (file.size > maxSize) {
-      alert(`Файл слишком большой. Максимальный размер: ${formatFileSize(maxSize)}`);
+      showError('Файл слишком большой', `Максимальный размер: ${formatFileSize(maxSize)}`);
       return;
     }
 
@@ -74,7 +76,7 @@ export default function FileUploader({
 
     } catch (error: any) {
       console.error('Ошибка загрузки:', error);
-      alert(error.message || 'Произошла ошибка при загрузке файла');
+      showError('Ошибка загрузки', error.message || 'Произошла ошибка при загрузке файла');
     } finally {
       setUploading(false);
     }

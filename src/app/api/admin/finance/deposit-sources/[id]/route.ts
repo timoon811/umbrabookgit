@@ -75,7 +75,15 @@ export async function PATCH(
     await checkAdminAuth();
 
     const body = await request.json();
-    const { name, token, projectId, isActive } = body;
+    const { name, token, projectId, commission, isActive } = body;
+
+    // Валидация комиссии
+    if (commission !== undefined && (commission < 0 || commission > 100)) {
+      return NextResponse.json(
+        { error: "Комиссия должна быть от 0 до 100%" },
+        { status: 400 }
+      );
+    }
 
     // Проверяем, существует ли источник
     const existingSource = await prisma.deposit_sources.findUnique({
@@ -124,6 +132,7 @@ export async function PATCH(
         ...(name !== undefined && { name }),
         ...(token !== undefined && { token }),
         ...(projectId !== undefined && { projectId }),
+        ...(commission !== undefined && { commission: parseFloat(commission.toString()) }),
         ...(isActive !== undefined && { isActive }),
       },
       include: {

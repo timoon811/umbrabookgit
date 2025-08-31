@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import Link from "next/link";
 
 interface CourseData {
@@ -25,6 +27,8 @@ interface CourseFormData {
 
 export default function EditCoursePage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
+  const { confirmDanger } = useConfirmDialog();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [formData, setFormData] = useState<CourseFormData>({
     title: "",
@@ -100,7 +104,7 @@ export default function EditCoursePage({ params }: { params: { id: string } }) {
         setCourse(updatedCourse);
         setError(null);
         // Показываем уведомление об успехе
-        alert("Курс успешно обновлен!");
+        showSuccess("Курс обновлен", "Изменения успешно сохранены");
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Ошибка при обновлении курса");
@@ -113,7 +117,13 @@ export default function EditCoursePage({ params }: { params: { id: string } }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Вы уверены, что хотите удалить этот курс? Это действие необратимо.")) {
+    const confirmed = await confirmDanger(
+      "Удалить курс?", 
+      "Вы уверены, что хотите удалить этот курс? Это действие необратимо.",
+      "Удалить"
+    );
+    
+    if (!confirmed) {
       return;
     }
 

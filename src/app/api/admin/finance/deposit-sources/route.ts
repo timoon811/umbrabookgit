@@ -80,11 +80,19 @@ export async function POST(request: NextRequest) {
     await checkAdminAuth();
 
     const body = await request.json();
-    const { name, token, projectId } = body;
+    const { name, token, projectId, commission = 20.0, isActive = true } = body;
 
     if (!name || !token || !projectId) {
       return NextResponse.json(
         { error: "Название, токен и проект обязательны" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация комиссии
+    if (commission < 0 || commission > 100) {
+      return NextResponse.json(
+        { error: "Комиссия должна быть от 0 до 100%" },
         { status: 400 }
       );
     }
@@ -120,7 +128,9 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         token,
-        projectId
+        projectId,
+        commission: parseFloat(commission.toString()),
+        isActive
       },
       include: {
         project: {
