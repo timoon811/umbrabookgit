@@ -1562,12 +1562,12 @@ function BlockRenderer({
   // Обработчик контекстного меню
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setContextMenuPosition({ top: e.clientY, left: e.clientX });
-    setShowContextMenu(true);
+    // Для сейчас просто предотвращаем стандартное меню
+    // TODO: Добавить кастомное контекстное меню позже
   };
 
   const baseInputProps = {
-    value: block.content,
+    value: block.content || '',
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.target.tagName === 'TEXTAREA') {
         handleTextareaChange(e.target as HTMLTextAreaElement);
@@ -1576,7 +1576,13 @@ function BlockRenderer({
       }
     },
     onMouseUp: onTextSelection,
-    onKeyDown: (e: React.KeyboardEvent) => onSlashCommand?.(e, block.id),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      // Обрабатываем только команду slash, всё остальное пропускаем
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        onSlashCommand?.(e, block.id);
+      }
+      // Для всех остальных клавиш НЕ вызываем preventDefault - позволяем нормальный ввод
+    },
     onContextMenu: handleContextMenu,
     className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0",
     onInput: (e: React.FormEvent<HTMLTextAreaElement>) => {
@@ -1945,6 +1951,7 @@ function BlockRenderer({
             className={`${baseInputProps.className} text-gray-900 dark:text-white min-h-[24px] leading-relaxed py-1`}
             style={{ minHeight: '24px', overflow: 'hidden' }}
           />
+
           {!block.content && isActive && (
             <div className="absolute top-full left-0 mt-1 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
               Нажмите <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">/</kbd> для выбора типа блока
