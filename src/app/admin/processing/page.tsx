@@ -12,14 +12,85 @@ interface ProcessorStats {
   pendingSalaryRequests: number;
 }
 
+interface DepositData {
+  id: string;
+  amount: number;
+  currency: string;
+  currencyType: string;
+  playerEmail: string;
+  status: string;
+  createdAt: string;
+  processor: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  notes?: string;
+}
+
+interface DepositsAnalytics {
+  total: {
+    amount: number;
+    bonusAmount: number;
+    count: number;
+  };
+  currencies: Array<{
+    currency: string;
+    currencyType: string;
+    amount: number;
+    count: number;
+  }>;
+  processors: Array<{
+    processorId: string;
+    processor: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    amount: number;
+    bonusAmount: number;
+    count: number;
+  }>;
+  statuses: Array<{
+    status: string;
+    amount: number;
+    count: number;
+  }>;
+}
+
 export default function AdminProcessingPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState<ProcessorStats | null>(null);
+  const [deposits, setDeposits] = useState<DepositData[]>([]);
+  const [analytics, setAnalytics] = useState<DepositsAnalytics | null>(null);
+  const [filters, setFilters] = useState({
+    status: "all",
+    currency: "all",
+    currencyType: "all",
+    processorId: "all",
+    dateFrom: "",
+    dateTo: "",
+    search: "",
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pages: 0,
+  });
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "deposits") {
+      loadDeposits();
+    }
+  }, [activeTab, filters, pagination.page, sortBy, sortOrder]);
 
   const loadData = async () => {
     try {
@@ -40,6 +111,43 @@ export default function AdminProcessingPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadDeposits = async () => {
+    try {
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        sortBy,
+        sortOrder,
+        ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value && value !== "all")),
+      });
+
+      const response = await fetch(`/api/admin/deposits?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDeposits(data.deposits);
+        setAnalytics(data.analytics);
+        setPagination(data.pagination);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки депозитов:", error);
+    }
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPagination(prev => ({ ...prev, page: 1 })); // Сброс на первую страницу
+  };
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
+    }
+    setPagination(prev => ({ ...prev, page: 1 })); // Сброс на первую страницу
   };
 
   if (loading) {
@@ -121,6 +229,16 @@ export default function AdminProcessingPage() {
                 Обзор
               </button>
               <button
+                onClick={() => setActiveTab("deposits")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "deposits"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Все депозиты
+              </button>
+              <button
                 onClick={() => setActiveTab("settings")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "settings"
@@ -154,6 +272,256 @@ export default function AdminProcessingPage() {
                     Система обработки депозитов готова к использованию. 
                     Здесь будет отображаться статистика и последние активности.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "deposits" && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                    Все депозиты обработчиков
+                  </h3>
+                </div>
+
+                {/* Аналитика */}
+                {analytics && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Общая сумма</h4>
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        ${analytics.total.amount.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">
+                        {analytics.total.count} депозитов
+                      </div>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">Бонусы</h4>
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        ${analytics.total.bonusAmount.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-green-600 dark:text-green-400">Начислено</div>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">Криптовалюты</h4>
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {analytics.currencies.filter(c => c.currencyType === 'CRYPTO').length}
+                      </div>
+                      <div className="text-sm text-purple-600 dark:text-purple-400">Видов</div>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-2">Обработчиков</h4>
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {analytics.processors.length}
+                      </div>
+                      <div className="text-sm text-orange-600 dark:text-orange-400">Активных</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Фильтры */}
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Статус
+                      </label>
+                      <select
+                        value={filters.status}
+                        onChange={(e) => handleFilterChange("status", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      >
+                        <option value="all">Все</option>
+                        <option value="PENDING">Ожидание</option>
+                        <option value="APPROVED">Подтверждено</option>
+                        <option value="REJECTED">Отклонено</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Тип валюты
+                      </label>
+                      <select
+                        value={filters.currencyType}
+                        onChange={(e) => handleFilterChange("currencyType", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      >
+                        <option value="all">Все</option>
+                        <option value="FIAT">Фиат</option>
+                        <option value="CRYPTO">Криптовалюты</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Валюта
+                      </label>
+                      <select
+                        value={filters.currency}
+                        onChange={(e) => handleFilterChange("currency", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      >
+                        <option value="all">Все</option>
+                        {analytics?.currencies.map(c => (
+                          <option key={c.currency} value={c.currency}>
+                            {c.currency} ({c.count})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        От даты
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        До даты
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Поиск
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Email, имя..."
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange("search", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Таблица депозитов */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => handleSort("createdAt")}
+                        >
+                          Дата {sortBy === "createdAt" && (sortOrder === "asc" ? "↑" : "↓")}
+                        </th>
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => handleSort("amount")}
+                        >
+                          Сумма {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Валюта
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Email депозитера
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Обработчик
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Статус
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Заметки
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      {deposits.map((deposit) => (
+                        <tr key={deposit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {new Date(deposit.createdAt).toLocaleDateString('ru-RU', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {deposit.amount.toLocaleString()} {deposit.currency}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              deposit.currencyType === 'CRYPTO' 
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>
+                              {deposit.currency}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {deposit.playerEmail}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <div>
+                              <div className="font-medium">{deposit.processor.name}</div>
+                              <div className="text-gray-500 dark:text-gray-400">{deposit.processor.email}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              deposit.status === 'APPROVED' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : deposit.status === 'REJECTED'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}>
+                              {deposit.status === 'APPROVED' ? 'Одобрен' : deposit.status === 'REJECTED' ? 'Отклонён' : 'Ожидание'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                            {deposit.notes || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Пагинация */}
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    Показано {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} из {pagination.total}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                      disabled={pagination.page === 1}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 dark:border-gray-600 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Предыдущая
+                    </button>
+                    <span className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+                      Страница {pagination.page} из {pagination.pages}
+                    </span>
+                    <button
+                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
+                      disabled={pagination.page === pagination.pages}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 dark:border-gray-600 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Следующая
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

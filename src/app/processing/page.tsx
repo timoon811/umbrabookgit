@@ -30,10 +30,12 @@ interface ProcessorDeposit {
   id: string;
   playerId: string;
   playerNick?: string;
+  playerEmail?: string;
   offerName?: string;
   geo?: string;
   amount: number;
   currency: string;
+  currencyType?: string;
   status: string;
   createdAt: string;
   bonusAmount: number;
@@ -62,6 +64,13 @@ export default function ProcessingPage() {
   const [activeTab, setActiveTab] = useState("deposits");
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [depositForm, setDepositForm] = useState({
+    amount: "",
+    currency: "USD",
+    playerEmail: "",
+    notes: "",
+  });
+  const [submittingDeposit, setSubmittingDeposit] = useState(false);
 
   // Проверка авторизации и роли
   useEffect(() => {
@@ -120,6 +129,59 @@ export default function ProcessingPage() {
       console.error("Ошибка загрузки данных:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Отправка депозита
+  const handleSubmitDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!depositForm.amount || !depositForm.currency || !depositForm.playerEmail) {
+      alert("Заполните все обязательные поля");
+      return;
+    }
+
+    if (parseFloat(depositForm.amount) <= 0) {
+      alert("Сумма должна быть больше 0");
+      return;
+    }
+
+    try {
+      setSubmittingDeposit(true);
+      
+      const response = await fetch("/api/processor/deposits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: parseFloat(depositForm.amount),
+          currency: depositForm.currency,
+          playerEmail: depositForm.playerEmail,
+          notes: depositForm.notes,
+          playerId: `deposit_${Date.now()}`, // Генерируем ID
+        }),
+      });
+
+      if (response.ok) {
+        alert("Депозит успешно добавлен!");
+        setDepositForm({
+          amount: "",
+          currency: "USD",
+          playerEmail: "",
+          notes: "",
+        });
+        setShowDepositModal(false);
+        loadProcessorData(); // Перезагружаем данные
+      } else {
+        const errorData = await response.json();
+        alert(`Ошибка: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error("Ошибка отправки депозита:", error);
+      alert("Произошла ошибка при отправке депозита");
+    } finally {
+      setSubmittingDeposit(false);
     }
   };
 
@@ -406,18 +468,109 @@ export default function ProcessingPage() {
         </div>
       </div>
 
-      {/* Модалки для будущего использования */}
+      {/* Модалка добавления депозита */}
       {showDepositModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Внести депозит</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Форма добавления депозита будет реализована в следующей итерации</p>
-            <button
-              onClick={() => setShowDepositModal(false)}
-              className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-            >
-              Закрыть
-            </button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6">Добавить депозит</h3>
+            
+            <form onSubmit={handleSubmitDeposit} className="space-y-4">
+              {/* Сумма */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Сумма *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={depositForm.amount}
+                  onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              {/* Криптовалюта */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Валюта *
+                </label>
+                <select
+                  value={depositForm.currency}
+                  onChange={(e) => setDepositForm({...depositForm, currency: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  required
+                >
+                  <optgroup label="Фиатные валюты">
+                    <option value="USD">USD - Доллар США</option>
+                    <option value="EUR">EUR - Евро</option>
+                    <option value="RUB">RUB - Российский рубль</option>
+                  </optgroup>
+                  <optgroup label="Криптовалюты">
+                    <option value="BTC">BTC - Bitcoin</option>
+                    <option value="ETH">ETH - Ethereum</option>
+                    <option value="USDT">USDT - Tether</option>
+                    <option value="USDC">USDC - USD Coin</option>
+                    <option value="BNB">BNB - Binance Coin</option>
+                    <option value="XRP">XRP - Ripple</option>
+                    <option value="ADA">ADA - Cardano</option>
+                    <option value="SOL">SOL - Solana</option>
+                    <option value="DOGE">DOGE - Dogecoin</option>
+                    <option value="MATIC">MATIC - Polygon</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Email депозитера */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email депозитера *
+                </label>
+                <input
+                  type="email"
+                  value={depositForm.playerEmail}
+                  onChange={(e) => setDepositForm({...depositForm, playerEmail: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
+
+              {/* Заметки */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Заметки (необязательно)
+                </label>
+                <textarea
+                  value={depositForm.notes}
+                  onChange={(e) => setDepositForm({...depositForm, notes: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  rows={3}
+                  placeholder="Дополнительная информация о депозите"
+                />
+              </div>
+
+              {/* Кнопки */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDepositModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
+                  disabled={submittingDeposit}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  disabled={submittingDeposit}
+                >
+                  {submittingDeposit ? "Отправка..." : "Добавить депозит"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

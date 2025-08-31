@@ -295,11 +295,13 @@ model processor_deposits {
   processorId      String
   playerId         String
   playerNick       String?
+  playerEmail      String?       // Email депозитера
   offerId          String?
   offerName        String?
   geo              String?
   amount           Float
-  currency         String        @default("USD")
+  currency         String        @default("USD")    // Для криптовалют: BTC, ETH, USDT, etc.
+  currencyType     String        @default("FIAT")   // FIAT или CRYPTO
   paymentMethod    String?
   leadSource       String?
   proofs           String?
@@ -319,6 +321,9 @@ model processor_deposits {
   @@index([playerId])
   @@index([status])
   @@index([createdAt])
+  @@index([currency])
+  @@index([currencyType])
+  @@index([playerEmail])
   @@map("processor_deposits")
 }
 

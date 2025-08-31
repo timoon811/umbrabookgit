@@ -96,9 +96,18 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
 
     // Валидация данных
-    if (!data.playerId || !data.amount) {
+    if (!data.amount || !data.currency || !data.playerEmail) {
       return NextResponse.json(
-        { error: "Обязательные поля: playerId, amount" },
+        { error: "Обязательные поля: amount, currency, playerEmail" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.playerEmail)) {
+      return NextResponse.json(
+        { error: "Некорректный формат email" },
         { status: 400 }
       );
     }
@@ -110,13 +119,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверяем дубликаты (игрок + время в течение часа)
+    // Проверяем дубликаты (email + сумма + время в течение часа)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const existingDeposit = await prisma.processor_deposits.findFirst({
       where: {
         processorId,
-        playerId: data.playerId,
+        playerEmail: data.playerEmail,
         amount: data.amount,
+        currency: data.currency,
         createdAt: {
           gte: oneHourAgo,
         },
@@ -165,17 +175,23 @@ export async function POST(request: NextRequest) {
 
     const bonusAmount = (data.amount * bonusRate) / 100;
 
+    // Определяем тип валюты
+    const cryptoCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'XRP', 'ADA', 'SOL', 'DOGE', 'MATIC'];
+    const currencyType = cryptoCurrencies.includes(data.currency.toUpperCase()) ? 'CRYPTO' : 'FIAT';
+
     // Создаем депозит
     const deposit = await prisma.processor_deposits.create({
       data: {
         processorId,
-        playerId: data.playerId,
+        playerId: data.playerId || `deposit_${Date.now()}`, // Fallback если нет playerId
         playerNick: data.playerNick,
+        playerEmail: data.playerEmail,
         offerId: data.offerId,
         offerName: data.offerName,
         geo: data.geo,
         amount: data.amount,
-        currency: data.currency || "USD",
+        currency: data.currency.toUpperCase(),
+        currencyType: currencyType,
         paymentMethod: data.paymentMethod,
         leadSource: data.leadSource,
         proofs: data.proofs ? JSON.stringify(data.proofs) : null,
