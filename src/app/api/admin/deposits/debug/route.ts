@@ -2,40 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from 'jsonwebtoken';
 
-async function checkAdminAuth() {
-  // Получаем токен из cookies или заголовка
-  const authHeader = process.env.NODE_ENV === 'development' 
-    ? 'Bearer fake-admin-token'
-    : undefined;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error("Не авторизован");
-  }
-
-  const token = authHeader.split(' ')[1];
-  
-  if (process.env.NODE_ENV === 'development' && token === 'fake-admin-token') {
-    return 'admin-user-id';
-  }
-
-  // В продакшене проверяем настоящий JWT токен
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET не настроен");
-  }
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-  
-  if (!decoded.isAdmin) {
+async function checkAdminAuth(request: NextRequest) {
+  try {
+    // Используем существующую функцию проверки админских прав
+    const { requireAdmin } = await import('@/lib/auth');
+    const user = await requireAdmin(request);
+    return user;
+  } catch (error) {
+    console.error("Ошибка проверки админских прав:", error);
     throw new Error("Недостаточно прав");
   }
-
-  return decoded.userId;
 }
 
 // GET /api/admin/deposits/debug - Диагностика депозитов
 export async function GET(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuth(request);
 
     // Получаем статистику по источникам депозитов
     const depositSources = await prisma.deposit_sources.findMany({
@@ -163,7 +145,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/deposits/debug - Действия по диагностике
 export async function POST(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuth(request);
 
     const body = await request.json();
     const { action } = body;

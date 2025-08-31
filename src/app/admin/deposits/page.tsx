@@ -7,10 +7,11 @@ import DepositSourceModal from "@/components/modals/DepositSourceModal";
 import NoSSR from "@/components/NoSSR";
 import { useToast } from "@/components/Toast";
 import DepositsDiagnostics from "@/components/admin/DepositsDiagnostics";
+import DepositsTestPanel from "@/components/admin/DepositsTestPanel";
 
 export default function AdminDepositsPage() {
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics'>('management');
+  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics' | 'testing'>('management');
   const [depositSources, setDepositSources] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
   const [allDeposits, setAllDeposits] = useState<any[]>([]);
@@ -266,6 +267,16 @@ export default function AdminDepositsPage() {
           }`}
         >
           🔍 Диагностика
+        </button>
+        <button
+          onClick={() => setActiveTab('testing')}
+          className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'testing'
+              ? 'bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] shadow-sm'
+              : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed]'
+          }`}
+        >
+          🧪 Тестирование
         </button>
       </div>
 
@@ -680,6 +691,9 @@ export default function AdminDepositsPage() {
                       <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" title="Hash транзакции">
                         TX Hash
                       </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" title="Дата и время создания">
+                        Дата создания
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -739,6 +753,16 @@ export default function AdminDepositsPage() {
                         <td className="px-3 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400" title={deposit.txHash}>
                           {deposit.txHash ? (deposit.txHash.length > 10 ? deposit.txHash.slice(0, 10) + '...' : deposit.txHash) : '-'}
                         </td>
+                        {/* Дата создания */}
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {deposit.createdAt ? new Date(deposit.createdAt).toLocaleString('ru-RU', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '-'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -777,6 +801,10 @@ export default function AdminDepositsPage() {
       {/* Вкладка "Диагностика" */}
       {activeTab === 'diagnostics' && (
         <DepositsDiagnostics />
+      )}
+
+      {activeTab === 'testing' && (
+        <DepositsTestPanel />
       )}
 
       {/* Модальные окна */}
