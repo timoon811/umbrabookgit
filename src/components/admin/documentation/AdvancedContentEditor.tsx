@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
+
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
 import KeyboardShortcuts, { ShortcutsHelp } from './KeyboardShortcuts';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
@@ -77,6 +77,14 @@ export default function AdvancedContentEditor({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isManualSaving, setIsManualSaving] = useState(false);
+  
+  // Состояния для дополнительной панели форматирования
+  const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(false);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
+  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large' | 'xlarge'>('normal');
+  const [textColor, setTextColor] = useState('#000000');
+  const [highlightColor, setHighlightColor] = useState('#ffff00');
   
   const { getMenuPosition } = useBlockMenuPosition();
 
@@ -626,7 +634,10 @@ export default function AdvancedContentEditor({
         const currentIndex = blocks.findIndex(b => b.id === blockId);
         
         // Создаем новый элемент списка
-        const newBlock = createEmptyBlock('numbered-list');
+        const newBlock = {
+          ...createEmptyBlock(),
+          type: 'numbered-list'
+        };
         
         // Вставляем после текущего элемента
         const newBlocks = [...blocks];
@@ -651,7 +662,10 @@ export default function AdvancedContentEditor({
         const currentIndex = blocks.findIndex(b => b.id === blockId);
         
         // Создаем новый элемент списка
-        const newBlock = createEmptyBlock('list');
+        const newBlock = {
+          ...createEmptyBlock(),
+          type: 'list'
+        };
         
         // Вставляем после текущего элемента
         const newBlocks = [...blocks];
@@ -844,14 +858,6 @@ export default function AdvancedContentEditor({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showBlockMenu, showShortcutsHelp, showDeleteConfirm, showContextMenu, showToolbar]);
-
-  // Состояния для дополнительной панели форматирования
-  const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(false);
-  const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ top: 0, left: 0 });
-  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large' | 'xlarge'>('normal');
-  const [textColor, setTextColor] = useState('#000000');
-  const [highlightColor, setHighlightColor] = useState('#ffff00');
 
   const renderToolbar = () => {
     if (!showToolbar) return null;

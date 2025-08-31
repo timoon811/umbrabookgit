@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 // GET /api/courses/[slug] - Получение курса по slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
     const course = await prisma.courses.findUnique({
       where: { 
-        slug: params.slug,
+        slug: slug,
         isPublished: true // Только опубликованные курсы
       },
       select: {

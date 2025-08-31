@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
-  Plus, X, Type, Image, List, Quote, Code, 
-  Hash, AlignLeft, Bold, Italic, Link2, 
   Eye, Save, Settings, MessageSquare, 
-  Clock, ChevronDown, MoreHorizontal,
-  FileText, Heading1, Heading2, Heading3,
-  Smile, ImageIcon, Layout, Play
+  Clock, X
 } from 'lucide-react';
 import BlockEditor, { Block } from './BlockEditor';
 import ConfirmModal from '@/components/modals/ConfirmModal';
 
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 interface ArticleData {
   id?: string;
