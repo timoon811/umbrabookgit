@@ -28,8 +28,6 @@ interface DocumentationPage {
 
 async function getDocumentationPage(slug: string): Promise<DocumentationPage | null> {
   try {
-    console.log(`🔍 getDocumentationPage: Поиск страницы с slug "${slug}"`);
-
     // Принудительно обновляем кэш для получения актуальных данных
     await prisma.$queryRaw`SELECT 1`;
 
@@ -50,8 +48,6 @@ async function getDocumentationPage(slug: string): Promise<DocumentationPage | n
       }
     });
 
-    console.log(`📄 getDocumentationPage: Найдена страница:`, page ? { id: page.id, title: page.title, slug: page.slug } : null);
-
     return page;
   } catch (error) {
     console.error("❌ Error loading documentation page:", error);
@@ -67,16 +63,11 @@ interface DocumentationArticlePageProps {
 
 export default async function DocumentationArticlePage({ params }: DocumentationArticlePageProps) {
   const paramsResolved = await params;
-  console.log(`📖 DocumentationArticlePage: Загрузка страницы с slug "${paramsResolved.slug}"`);
-
   const page = await getDocumentationPage(paramsResolved.slug);
 
   if (!page) {
-    console.log(`❌ DocumentationArticlePage: Страница с slug "${paramsResolved.slug}" не найдена, вызываем notFound()`);
     notFound();
   }
-
-  console.log(`✅ DocumentationArticlePage: Страница "${page.title}" успешно загружена`);
 
   // Получаем информацию о разделе
   const sectionInfo = {

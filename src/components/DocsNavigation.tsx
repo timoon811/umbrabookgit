@@ -26,7 +26,6 @@ export default function DocsNavigation({ nav }: DocsNavigationProps) {
 
   useEffect(() => {
     setIsClient(true);
-    console.log('📄 DocsNavigation: Получена навигация:', nav);
   }, [nav]);
 
   // Определяем текущую страницу и раздел
