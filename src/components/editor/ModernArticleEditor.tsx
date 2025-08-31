@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Eye, Save, Settings, MessageSquare, 
   Clock, X

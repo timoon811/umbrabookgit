@@ -87,6 +87,7 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
           // Проверяем, находимся ли мы в списке
           const value = (target as HTMLTextAreaElement | HTMLInputElement).value;
           const cursorPos = (target as HTMLTextAreaElement | HTMLInputElement).selectionStart;
+          if (cursorPos === null) return;
           const lineStart = value.lastIndexOf('\n', cursorPos - 1) + 1;
           const currentLine = value.substring(lineStart, cursorPos);
           
@@ -102,6 +103,7 @@ export default function KeyboardShortcuts({ onShortcut }: KeyboardShortcutsProps
         case 'Enter':
           const valueEnter = (target as HTMLTextAreaElement | HTMLInputElement).value;
           const cursorPosEnter = (target as HTMLTextAreaElement | HTMLInputElement).selectionStart;
+          if (cursorPosEnter === null) return;
           const lineStartEnter = valueEnter.lastIndexOf('\n', cursorPosEnter - 1) + 1;
           const currentLineEnter = valueEnter.substring(lineStartEnter, cursorPosEnter);
           

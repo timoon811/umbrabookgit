@@ -34,6 +34,9 @@ export interface Block {
     videoUrl?: string;
     isCallout?: boolean;
     calloutType?: 'info' | 'warning' | 'error' | 'success';
+    name?: string;     // Для файлов
+    size?: number;     // Размер файла в байтах
+    type?: string;     // MIME тип файла
   };
 }
 
@@ -1596,12 +1599,12 @@ function BlockRenderer({
     value: block.content || '',
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.target.tagName === 'TEXTAREA') {
-        handleTextareaChange(e.target as HTMLTextAreaElement);
+        handleTextareaChange(e as React.ChangeEvent<HTMLTextAreaElement>);
       } else {
         updateContent(e.target.value);
       }
     },
-    onMouseUp: handleTextSelection,
+    onMouseUp: onTextSelection,
     onKeyDown: (e: React.KeyboardEvent) => {
       // Обрабатываем только команду slash, всё остальное пропускаем
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -1610,7 +1613,11 @@ function BlockRenderer({
       // Для всех остальных клавиш НЕ вызываем preventDefault - позволяем нормальный ввод
     },
     onContextMenu: handleContextMenu,
-    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0",
+    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0"
+  };
+
+  const baseTextareaProps = {
+    ...baseInputProps,
     onInput: (e: React.FormEvent<HTMLTextAreaElement>) => {
       if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA' && autoResize.current) {
         autoResize.current(e.target as HTMLTextAreaElement);
@@ -1650,7 +1657,7 @@ function BlockRenderer({
       return (
         <div className="border-l-4 border-gray-400 dark:border-gray-500 pl-4 bg-gray-50 dark:bg-gray-800/50 rounded-r-lg">
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Цитата..."
             className={`${baseInputProps.className} text-gray-700 dark:text-gray-300 italic py-3 min-h-[80px]`}
@@ -1664,7 +1671,7 @@ function BlockRenderer({
         <div className="flex items-start gap-3">
           <span className="text-gray-400 mt-1">•</span>
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
@@ -1678,7 +1685,7 @@ function BlockRenderer({
         <div className="flex items-start gap-3">
           <span className="text-gray-400 mt-1">1.</span>
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
@@ -1709,7 +1716,7 @@ function BlockRenderer({
             </select>
           </div>
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Код..."
             className={`${baseInputProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4 min-h-[120px]`}
@@ -1951,7 +1958,7 @@ function BlockRenderer({
             </select>
           </div>
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Содержимое выноски..."
             className={`${baseInputProps.className} min-h-[60px]`}
@@ -1971,7 +1978,7 @@ function BlockRenderer({
       return (
         <div className="relative">
           <textarea 
-            {...baseInputProps}
+            {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Начните писать или введите / для команд..."
             className={`${baseInputProps.className} text-gray-900 dark:text-white min-h-[24px] leading-relaxed py-1`}

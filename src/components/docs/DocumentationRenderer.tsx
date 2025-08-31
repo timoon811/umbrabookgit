@@ -29,6 +29,9 @@ interface Block {
     videoUrl?: string;
     isCallout?: boolean;
     calloutType?: 'info' | 'warning' | 'error' | 'success';
+    name?: string;     // Для файлов
+    size?: number;     // Размер файла в байтах
+    type?: string;     // MIME тип файла
   };
 }
 
