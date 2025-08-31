@@ -36,7 +36,10 @@ class DepositWebSocketClient {
   constructor() {
     // Предотвращаем создание WebSocket соединений на клиенте
     if (typeof window === 'undefined') {
-      this.initializeConnections();
+      // Инициализируем соединения с небольшой задержкой, чтобы дать время завершиться загрузке
+      setTimeout(() => {
+        this.initializeConnections();
+      }, 1000);
       this.setupPeriodicReconnect();
     }
   }
@@ -58,13 +61,21 @@ class DepositWebSocketClient {
   }
 
   private connectToSource(source: DepositSource) {
+    // Проверяем токен перед подключением
+    if (!source.token || source.token.length < 10) {
+      console.error(`❌ Источник ${source.name}: некорректный токен (длина: ${source.token?.length || 0})`);
+      return;
+    }
+
     const encodedToken = encodeURIComponent(`Worker ${source.token}`);
     const wsUrl = `wss://gambler-panel.com/api/ws?token=${encodedToken}&connectionType=bot`;
 
-    console.log(`🔌 Подключение к источнику ${source.name} (${source.id}) с токеном: ${source.token.substring(0, 20)}...`);
+    console.log(`🔌 Подключение к источнику ${source.name} (${source.id})`);
     console.log(`🔗 WebSocket URL: ${wsUrl}`);
+    console.log(`🎫 Токен: ${source.token.substring(0, 8)}...${source.token.substring(source.token.length - 4)}`);
 
-    const ws = new WebSocket(wsUrl);
+    try {
+      const ws = new WebSocket(wsUrl);
 
     // Очищаем предыдущие таймеры
     this.clearTimeouts(source.id);
@@ -124,6 +135,10 @@ class DepositWebSocketClient {
     });
 
     this.connections.set(source.id, ws);
+    
+    } catch (error) {
+      console.error(`❌ Ошибка создания WebSocket соединения с ${source.name}:`, error);
+    }
   }
 
   private async handleNewDeposit(source: DepositSource, depositData: DepositData) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/components/Toast";
 import { RefreshCw, Plus, Trash, TestTube } from "lucide-react";
 
@@ -24,6 +24,10 @@ export default function DepositsTestPanel() {
   const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<TestStats | null>(null);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   const loadStats = async () => {
     try {
@@ -95,6 +99,33 @@ export default function DepositsTestPanel() {
     }
   };
 
+  const deleteTestDeposit = async (depositId: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить тестовый депозит ${depositId.slice(-8)}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/admin/deposits/test?id=${depositId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        showSuccess('Депозит удален', result.message);
+        await loadStats(); // Обновляем статистику
+      } else {
+        const error = await response.json();
+        showError('Ошибка удаления', error.error || 'Не удалось удалить депозит');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления депозита:', error);
+      showError('Ошибка удаления', 'Произошла ошибка при удалении депозита');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -128,16 +159,15 @@ export default function DepositsTestPanel() {
             <Plus className="w-4 h-4" />
             Создать тестовый
           </button>
-          {stats && stats.testDepositsCount > 0 && (
-            <button
-              onClick={clearTestDeposits}
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              <Trash className="w-4 h-4" />
-              Очистить ({stats.testDepositsCount})
-            </button>
-          )}
+          <button
+            onClick={clearTestDeposits}
+            disabled={loading || !stats || stats.testDepositsCount === 0}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+            title={!stats || stats.testDepositsCount === 0 ? "Нет тестовых депозитов для удаления" : `Удалить все ${stats.testDepositsCount} тестовых депозитов`}
+          >
+            <Trash className="w-4 h-4" />
+            Очистить все {stats ? `(${stats.testDepositsCount})` : ''}
+          </button>
         </div>
       </div>
 
@@ -194,6 +224,7 @@ export default function DepositsTestPanel() {
                       <th className="text-left py-2 px-3 font-medium text-[#171717]/70 dark:text-[#ededed]/70 text-sm">USD</th>
                       <th className="text-left py-2 px-3 font-medium text-[#171717]/70 dark:text-[#ededed]/70 text-sm">Источник</th>
                       <th className="text-left py-2 px-3 font-medium text-[#171717]/70 dark:text-[#ededed]/70 text-sm">Дата</th>
+                      <th className="text-left py-2 px-3 font-medium text-[#171717]/70 dark:text-[#ededed]/70 text-sm">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -216,6 +247,17 @@ export default function DepositsTestPanel() {
                         </td>
                         <td className="py-2 px-3 text-sm text-[#171717]/60 dark:text-[#ededed]/60">
                           {new Date(deposit.createdAt).toLocaleString('ru-RU')}
+                        </td>
+                        <td className="py-2 px-3">
+                          <button
+                            onClick={() => deleteTestDeposit(deposit.id)}
+                            disabled={loading}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                            title="Удалить тестовый депозит"
+                          >
+                            <Trash className="w-3 h-3" />
+                            Удалить
+                          </button>
                         </td>
                       </tr>
                     ))}

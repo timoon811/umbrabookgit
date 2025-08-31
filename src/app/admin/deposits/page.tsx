@@ -8,10 +8,11 @@ import NoSSR from "@/components/NoSSR";
 import { useToast } from "@/components/Toast";
 import DepositsDiagnostics from "@/components/admin/DepositsDiagnostics";
 import DepositsTestPanel from "@/components/admin/DepositsTestPanel";
+import WebSocketDiagnostics from "@/components/admin/WebSocketDiagnostics";
 
 export default function AdminDepositsPage() {
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics' | 'testing'>('management');
+  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics' | 'testing' | 'websocket-diagnostics'>('management');
   const [depositSources, setDepositSources] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
   const [allDeposits, setAllDeposits] = useState<any[]>([]);
@@ -207,6 +208,33 @@ export default function AdminDepositsPage() {
     }
   };
 
+  const handleDeleteTestDeposit = async (depositId: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить тестовый депозит ${depositId.slice(-8)}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/admin/deposits/test?id=${depositId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        showSuccess('Депозит удален', result.message);
+        fetchData(); // Обновляем все данные
+      } else {
+        const error = await response.json();
+        showError('Ошибка удаления', error.error || 'Не удалось удалить тестовый депозит');
+      }
+    } catch (error) {
+      console.error('Ошибка удаления тестового депозита:', error);
+      showError('Ошибка удаления', 'Произошла ошибка при удалении депозита');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -277,6 +305,16 @@ export default function AdminDepositsPage() {
           }`}
         >
           🧪 Тестирование
+        </button>
+        <button
+          onClick={() => setActiveTab('websocket-diagnostics')}
+          className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'websocket-diagnostics'
+              ? 'bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] shadow-sm'
+              : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed]'
+          }`}
+        >
+          🔧 WebSocket
         </button>
       </div>
 
@@ -694,6 +732,9 @@ export default function AdminDepositsPage() {
                       <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" title="Дата и время создания">
                         Дата создания
                       </th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Действия
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -763,6 +804,24 @@ export default function AdminDepositsPage() {
                             minute: '2-digit'
                           }) : '-'}
                         </td>
+                        {/* Действия */}
+                        <td className="px-3 py-4 whitespace-nowrap text-sm">
+                          {deposit.id.startsWith('test_') && (
+                            <button
+                              onClick={() => handleDeleteTestDeposit(deposit.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium py-1 px-2 rounded transition-colors flex items-center gap-1"
+                              title="Удалить тестовый депозит"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Удалить
+                            </button>
+                          )}
+                          {deposit.id.startsWith('test_') && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 ml-2">
+                              ТЕСТ
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -805,6 +864,10 @@ export default function AdminDepositsPage() {
 
       {activeTab === 'testing' && (
         <DepositsTestPanel />
+      )}
+
+      {activeTab === 'websocket-diagnostics' && (
+        <WebSocketDiagnostics />
       )}
 
       {/* Модальные окна */}

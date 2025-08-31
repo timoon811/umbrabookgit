@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from 'jsonwebtoken';
+import { getWebSocketClient } from "@/lib/websocket-client";
 
 async function checkAdminAuth(request: NextRequest) {
   try {
@@ -41,8 +42,10 @@ export async function GET(request: NextRequest) {
     const totalSources = depositSources.length;
     const activeSources = depositSources.filter(s => s.isActive).length;
     
-    // Мокаем статус WebSocket подключений (в реальном проекте здесь был бы реальный статус)
-    const connectedSources = Math.floor(activeSources * 0.8); // 80% активных источников подключены
+    // Получаем реальный статус WebSocket подключений
+    const wsClient = getWebSocketClient();
+    const connectionStats = wsClient.getConnectionStats();
+    const connectedSources = Object.values(connectionStats).filter(stat => stat.stateText === 'OPEN').length;
     
     // Ищем Gambler источник
     const gamblerSource = depositSources.find(s => 
@@ -73,19 +76,18 @@ export async function GET(request: NextRequest) {
 
     // Формируем список отключенных источников (активные, но без WebSocket)
     const disconnectedSources = depositSources
-      .filter(s => s.isActive)
-      .slice(Math.floor(activeSources * 0.8)) // Последние 20% считаем отключенными
+      .filter(s => s.isActive && (!connectionStats[s.id] || connectionStats[s.id].stateText !== 'OPEN'))
       .map(s => ({
         id: s.id,
         name: s.name,
         project: s.project?.name || 'Неизвестен'
       }));
 
-    // Мокаем статус WebSocket для каждого источника
-    const getWebSocketStatus = (source: any, index: number) => {
+    // Получаем реальный статус WebSocket для каждого источника
+    const getWebSocketStatus = (source: any) => {
       if (!source.isActive) return 'NOT_CONNECTED';
-      const statuses = ['OPEN', 'CONNECTING', 'CLOSED'];
-      return statuses[index % 3];
+      const connectionInfo = connectionStats[source.id];
+      return connectionInfo ? connectionInfo.stateText : 'NOT_CONNECTED';
     };
 
     const summary = {
@@ -96,13 +98,13 @@ export async function GET(request: NextRequest) {
       gamblerSourceFound: !!gamblerSource
     };
 
-    const formatgedDepositSources = depositSources.map((source, index) => ({
+    const formatgedDepositSources = depositSources.map((source) => ({
       id: source.id,
       name: source.name,
       isActive: source.isActive,
       project: source.project?.name || 'Неизвестен',
       depositsCount: source._count.deposits,
-      webSocketStatus: getWebSocketStatus(source, index),
+      webSocketStatus: getWebSocketStatus(source),
       tokenPreview: source.token ? `${source.token.slice(0, 8)}...` : 'Не задан'
     }));
 
@@ -122,7 +124,7 @@ export async function GET(request: NextRequest) {
       isActive: gamblerSource.isActive,
       project: gamblerSource.project?.name || 'Неизвестен',
       depositsCount: gamblerSource._count.deposits,
-      webSocketStatus: gamblerSource.isActive ? 'OPEN' : 'NOT_CONNECTED'
+      webSocketStatus: getWebSocketStatus(gamblerSource)
     } : null;
 
     return NextResponse.json({
@@ -151,15 +153,33 @@ export async function POST(request: NextRequest) {
     const { action } = body;
 
     let message = '';
+    const wsClient = getWebSocketClient();
 
     switch (action) {
       case 'sync':
-        // Мокаем синхронизацию
-        message = 'Синхронизация депозитов завершена';
+        // Выполняем принудительную синхронизацию активных источников
+        try {
+          const activeSources = await prisma.deposit_sources.findMany({
+            where: { isActive: true }
+          });
+          
+          for (const source of activeSources) {
+            wsClient.addSource(source);
+          }
+          
+          message = `Синхронизация завершена: проверено ${activeSources.length} активных источников`;
+        } catch (error) {
+          message = 'Ошибка синхронизации';
+        }
         break;
       case 'reconnect':
-        // Мокаем переподключение WebSocket
-        message = 'WebSocket подключения восстановлены';
+        // Выполняем переподключение всех WebSocket соединений
+        try {
+          wsClient.reconnectAll();
+          message = 'WebSocket подключения перезапущены';
+        } catch (error) {
+          message = 'Ошибка переподключения';
+        }
         break;
       default:
         return NextResponse.json(

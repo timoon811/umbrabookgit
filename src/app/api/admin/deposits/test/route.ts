@@ -169,24 +169,56 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE /api/admin/deposits/test - Удаление всех тестовых депозитов
+// DELETE /api/admin/deposits/test - Удаление тестовых депозитов
 export async function DELETE(request: NextRequest) {
   try {
     await checkAdminAuth(request);
 
-    const result = await prisma.deposits.deleteMany({
-      where: {
-        id: {
-          startsWith: 'test_'
-        }
-      }
-    });
+    const { searchParams } = new URL(request.url);
+    const depositId = searchParams.get('id');
 
-    return NextResponse.json({
-      success: true,
-      message: `Удалено ${result.count} тестовых депозитов`,
-      deletedCount: result.count
-    });
+    if (depositId) {
+      // Удаление конкретного тестового депозита
+      const deposit = await prisma.deposits.findUnique({
+        where: { id: depositId }
+      });
+
+      if (!deposit) {
+        return NextResponse.json({
+          error: 'Депозит не найден'
+        }, { status: 404 });
+      }
+
+      if (!deposit.id.startsWith('test_')) {
+        return NextResponse.json({
+          error: 'Можно удалять только тестовые депозиты'
+        }, { status: 400 });
+      }
+
+      await prisma.deposits.delete({
+        where: { id: depositId }
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Тестовый депозит ${depositId} удален`
+      });
+    } else {
+      // Удаление всех тестовых депозитов
+      const result = await prisma.deposits.deleteMany({
+        where: {
+          id: {
+            startsWith: 'test_'
+          }
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Удалено ${result.count} тестовых депозитов`,
+        deletedCount: result.count
+      });
+    }
 
   } catch (error: any) {
     console.error('Ошибка удаления тестовых депозитов:', error);
