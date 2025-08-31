@@ -6,6 +6,7 @@ import { DocumentationPage, DocumentationSection } from '@/types/documentation';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
 import ConfirmModal from '@/components/modals/ConfirmModal';
 import FileUploader from '@/components/admin/FileUploader';
+import { normalizeFileUrl, isImageFile } from '@/lib/file-utils';
 
 export interface Block {
   id: string;

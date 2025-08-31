@@ -15,7 +15,7 @@ const nextConfig = {
     unoptimized: true,
   },
 
-  // Настройки для API
+  // Настройки для API и статических файлов
   async headers() {
     return [
       {
@@ -25,6 +25,22 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
         ],
+      },
+      {
+        source: '/uploads/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ];
+  },
+
+  // Настройки для перезаписи путей (для Render)
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/uploads/:path*',
       },
     ];
   },

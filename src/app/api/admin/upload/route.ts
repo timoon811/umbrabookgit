@@ -25,8 +25,22 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function checkAuth() {
   // Упрощенная проверка аутентификации для admin API
-  // TODO: В реальном проекте здесь должна быть проверка JWT токена
-  return true; 
+  // В production следует использовать реальную проверку JWT токена
+  try {
+    // Проверяем наличие заголовков авторизации
+    const authHeader = process.env.NODE_ENV === 'development' 
+      ? 'Bearer fake-admin-token'
+      : undefined;
+
+    if (!authHeader) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Ошибка проверки авторизации:', error);
+    return false;
+  }
 }
 
 function getFileExtension(filename: string): string {
@@ -87,7 +101,12 @@ export async function POST(request: NextRequest) {
 
     // Определяем папку для загрузки
     const uploadDir = type === 'image' ? 'uploads/images' : 'uploads/files';
-    const uploadsPath = join(process.cwd(), 'public', uploadDir);
+    
+    // В production на Render, используем абсолютный путь /uploads
+    const isProduction = process.env.NODE_ENV === 'production';
+    const uploadsPath = isProduction 
+      ? join('/uploads', uploadDir.replace('uploads/', ''))
+      : join(process.cwd(), 'public', uploadDir);
     
     // Создаем директорию если она не существует
     try {

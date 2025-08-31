@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { normalizeFileUrl, isImageFile } from '@/lib/file-utils';
 
 interface Block {
   id: string;
@@ -357,13 +358,22 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         );
 
       case 'image':
-        const imageSrc = block.metadata?.url || block.content;
+        const imageSrc = normalizeFileUrl(block.metadata?.url || block.content);
         return (
           <figure key={block.id} className={`mb-6 ${getAlignmentClass()}`}>
             <img 
               src={imageSrc} 
               alt={block.metadata?.alt || ''}
               className="max-w-full h-auto rounded-lg shadow-sm"
+              onError={(e) => {
+                // Fallback при ошибке загрузки
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.className = 'bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center text-gray-500 dark:text-gray-400';
+                fallback.innerHTML = `<div>🖼️</div><div class="mt-2 text-sm">Изображение не загружено</div>`;
+                target.parentNode?.appendChild(fallback);
+              }}
             />
             {block.metadata?.caption && (
               <figcaption className="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">

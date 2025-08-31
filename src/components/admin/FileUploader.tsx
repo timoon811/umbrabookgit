@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useToast } from '@/components/Toast';
+import { formatFileSize, getUploadApiUrl } from '@/lib/file-utils';
 
 interface FileUploaderProps {
   onUpload: (fileUrl: string, fileName: string, fileType: string) => void;
@@ -33,13 +34,7 @@ export default function FileUploader({
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+
 
   const uploadFile = async (file: File) => {
     if (file.size > maxSize) {
@@ -54,7 +49,7 @@ export default function FileUploader({
       formData.append('file', file);
       formData.append('type', type);
 
-      const response = await fetch('/api/admin/upload', {
+      const response = await fetch(getUploadApiUrl(), {
         method: 'POST',
         body: formData,
       });

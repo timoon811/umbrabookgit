@@ -390,7 +390,7 @@ export default function ModernArticleEditor({
               onDragOver={(e) => {
                 if (e.dataTransfer?.types?.length) e.preventDefault();
               }}
-              onDrop={(e) => {
+              onDrop={async (e) => {
                 if (!e.dataTransfer) return;
                 e.preventDefault();
                 const files = e.dataTransfer.files;
@@ -406,13 +406,40 @@ export default function ModernArticleEditor({
                 }
                 if (files && files.length > 0) {
                   const file = files[0];
-                  const url = URL.createObjectURL(file);
-                  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                  setUploadedFiles(prev => ([...prev, { id, name: file.name, url, type: file.type }]));
-                  setArticle(prev => ({
-                    ...prev,
-                    blocks: [...prev.blocks, { id: Date.now().toString(), type: file.type.startsWith('image/') ? 'image' : 'paragraph', content: file.type.startsWith('image/') ? '' : url, metadata: file.type.startsWith('image/') ? { url, alt: file.name } : {} }]
-                  }));
+                  
+                  // Загружаем файл через API
+                  try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('type', file.type.startsWith('image/') ? 'image' : 'file');
+
+                    const response = await fetch('/api/admin/upload', {
+                      method: 'POST',
+                      body: formData,
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      const url = data.file.url;
+                      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                      
+                      setUploadedFiles(prev => ([...prev, { id, name: file.name, url, type: file.type }]));
+                      setArticle(prev => ({
+                        ...prev,
+                        blocks: [...prev.blocks, { id: Date.now().toString(), type: file.type.startsWith('image/') ? 'image' : 'paragraph', content: file.type.startsWith('image/') ? '' : url, metadata: file.type.startsWith('image/') ? { url, alt: file.name } : {} }]
+                      }));
+                    }
+                  } catch (error) {
+                    console.error('Ошибка загрузки файла:', error);
+                    // Fallback к временному URL
+                    const url = URL.createObjectURL(file);
+                    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                    setUploadedFiles(prev => ([...prev, { id, name: file.name, url, type: file.type }]));
+                    setArticle(prev => ({
+                      ...prev,
+                      blocks: [...prev.blocks, { id: Date.now().toString(), type: file.type.startsWith('image/') ? 'image' : 'paragraph', content: file.type.startsWith('image/') ? '' : url, metadata: file.type.startsWith('image/') ? { url, alt: file.name } : {} }]
+                    }));
+                  }
                 }
               }}
             >
@@ -1021,9 +1048,35 @@ function ReusableSidebar() {
 }
 
 function FilesSidebar({ files, onUpload, onRemove }: { files: Array<{ id: string; name: string; url: string; type: string }>; onUpload: (files: File[]) => void; onRemove: (id: string) => void; }) {
-  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = Array.from(e.target.files || []);
-    if (f.length) onUpload(f);
+    if (f.length) {
+      // Загружаем файлы через API
+      for (const file of f) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('type', file.type.startsWith('image/') ? 'image' : 'file');
+
+          const response = await fetch('/api/admin/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Используем реальный URL файла вместо blob URL
+            onUpload([{ 
+              ...file, 
+              url: data.file.url,
+              name: data.file.name 
+            } as File & { url: string }]);
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки файла:', error);
+        }
+      }
+    }
   };
   return (
     <div className="p-3 border rounded-lg bg-white dark:bg-gray-900 border-black/5 dark:border-white/10">
