@@ -29,6 +29,7 @@ export default function CoursesAdminPage() {
   
   const { sections, setSections, loading, loadCourses } = useCoursesData();
   const {
+    saving,
     forceSave,
     handleUpdateContent,
     handleUpdateTitle,
@@ -114,14 +115,102 @@ export default function CoursesAdminPage() {
     }
   };
 
-  // Drag and drop обработка
+  // Drag and drop обработка (аналогично документации)
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over || active.id === over.id) return;
 
-    // TODO: Реализовать drag and drop для курсов аналогично документации
-    console.log('Drag and drop для курсов будет реализован позже');
+    // Сохраняем текущее состояние для возможного отката
+    const originalSections = [...sections];
+
+    try {
+      // Перемещение разделов
+      if (active.id.toString().startsWith('section-') && over.id.toString().startsWith('section-')) {
+        const activeIndex = sections.findIndex(s => `section-${s.id}` === active.id);
+        const overIndex = sections.findIndex(s => `section-${s.id}` === over.id);
+        
+        if (activeIndex !== -1 && overIndex !== -1) {
+          const newSections = [...sections];
+          const [removed] = newSections.splice(activeIndex, 1);
+          newSections.splice(overIndex, 0, removed);
+          
+          setSections(newSections);
+          
+          await fetch('/api/admin/courses', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              type: 'sections',
+              sections: newSections.map((section, index) => ({
+                id: section.id,
+                order: index,
+                pages: section.pages.map((page, pageIndex) => ({
+                  id: page.id,
+                  order: pageIndex,
+                  sectionId: section.id
+                }))
+              }))
+            })
+          });
+        }
+      }
+      // Перемещение страниц
+      else if (active.id.toString().startsWith('page-')) {
+        const activePage = sections.flatMap(s => s.pages).find(p => `page-${p.id}` === active.id);
+        if (!activePage) return;
+
+        // Перемещение внутри того же раздела
+        if (over.id.toString().startsWith('page-')) {
+          const overPage = sections.flatMap(s => s.pages).find(p => `page-${p.id}` === over.id);
+          if (!overPage) return;
+
+          // Если в том же разделе
+          if (activePage.sectionId === overPage.sectionId) {
+            const section = sections.find(s => s.id === activePage.sectionId);
+            if (!section) return;
+
+            const activeIndex = section.pages.findIndex(p => p.id === activePage.id);
+            const overIndex = section.pages.findIndex(p => p.id === overPage.id);
+
+            if (activeIndex !== -1 && overIndex !== -1) {
+              const newPages = [...section.pages];
+              const [removed] = newPages.splice(activeIndex, 1);
+              newPages.splice(overIndex, 0, removed);
+
+              const newSections = sections.map(s => 
+                s.id === section.id 
+                  ? { ...s, pages: newPages.map((page, index) => ({ ...page, order: index })) }
+                  : s
+              );
+
+              setSections(newSections);
+
+              await fetch('/api/admin/courses', {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  type: 'pages',
+                  sectionId: section.id,
+                  pages: newPages.map((page, index) => ({
+                    id: page.id,
+                    order: index,
+                    sectionId: section.id
+                  }))
+                })
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при перемещении:', error);
+      setSections(originalSections);
+    }
   };
 
   if (loading) {
@@ -222,7 +311,7 @@ export default function CoursesAdminPage() {
             onDeletePage={handleDeletePageAndClear}
             onTogglePublication={handleTogglePagePublication}
             onForceSave={forceSave}
-            saving={false}
+            saving={saving}
             sections={sections}
           />
         </div>

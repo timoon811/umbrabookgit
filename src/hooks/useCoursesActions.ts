@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { CourseSection, CoursePage } from './useCoursesData';
+import { useToast } from '@/components/Toast';
 
 interface UseCoursesActionsProps {
   sections: CourseSection[];
@@ -8,7 +9,10 @@ interface UseCoursesActionsProps {
 }
 
 export function useCoursesActions({ sections, setSections, loadCourses }: UseCoursesActionsProps) {
-  
+  const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { showSuccess, showError, showWarning } = useToast();
+
   // Обновление страницы в состоянии
   const updatePageInState = useCallback((updatedPage: CoursePage) => {
     setSections(currentSections =>
@@ -21,13 +25,108 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
     );
   }, [setSections]);
 
+  // Генерация системных названий (аналогично документации)
+  const generateSystemPageName = (sectionId: string) => {
+    const allPages = sections.flatMap(s => s.pages);
+    
+    let pageNumber = 1;
+    while (allPages.some(page => page.title === `Урок ${pageNumber}`)) {
+      pageNumber++;
+    }
+    return `Урок ${pageNumber}`;
+  };
+
+  const generateSystemSlug = (sectionId: string) => {
+    const allPages = sections.flatMap(s => s.pages);
+    
+    let pageNumber = 1;
+    while (allPages.some(page => page.slug === `lesson-${pageNumber}`)) {
+      pageNumber++;
+    }
+    
+    if (pageNumber > 1000) {
+      return `lesson-${Date.now()}`;
+    }
+    
+    return `lesson-${pageNumber}`;
+  };
+
+  const generateSystemSectionName = () => {
+    let sectionNumber = 1;
+    while (sections.some(section => section.name === `Раздел ${sectionNumber}`)) {
+      sectionNumber++;
+    }
+    return `Раздел ${sectionNumber}`;
+  };
+
+  const generateSystemSectionKey = () => {
+    let sectionNumber = 1;
+    while (sections.some(section => section.key === `section-${sectionNumber}`)) {
+      sectionNumber++;
+    }
+    return `section-${sectionNumber}`;
+  };
+
+  // Автосохранение (аналогично документации)
+  const autoSave = useCallback(async (page: CoursePage, fieldsToSave?: Partial<CoursePage>) => {
+    if (!page.id) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSaving(true);
+        
+        const dataToSave = fieldsToSave || {
+          title: page.title,
+          description: page.description,
+          content: page.content,
+          isPublished: page.isPublished
+        };
+        
+        const response = await fetch(`/api/admin/courses/pages/${page.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(dataToSave)
+        });
+
+        if (response.ok) {
+          const updatedPage = await response.json();
+          updatePageInState(updatedPage);
+          
+          if (fieldsToSave && Object.keys(fieldsToSave).some(key => key !== 'content')) {
+            showSuccess('Изменения сохранены', 'Данные курса успешно обновлены');
+          }
+          
+          return true;
+        } else {
+          const errorData = await response.json();
+          console.error('Ошибка при сохранении курса:', errorData.error);
+          showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить изменения');
+          return false;
+        }
+      } catch (error) {
+        console.error('Ошибка автосохранения:', error);
+        showWarning('Проблемы с сетью', 'Изменения могут быть потеряны. Проверьте подключение к интернету.');
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+  }, [updatePageInState, showSuccess, showError, showWarning]);
+
   // Обновление содержимого страницы
   const handleUpdateContent = useCallback(async (content: string, page?: CoursePage | null) => {
     if (!page) return;
     
     const updatedPage = { ...page, content };
     updatePageInState(updatedPage);
-  }, [updatePageInState]);
+    autoSave(updatedPage, { content });
+  }, [updatePageInState, autoSave]);
 
   // Обновление заголовка страницы
   const handleUpdateTitle = useCallback(async (title: string, page?: CoursePage | null) => {
@@ -35,7 +134,8 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
     
     const updatedPage = { ...page, title };
     updatePageInState(updatedPage);
-  }, [updatePageInState]);
+    autoSave(updatedPage, { title });
+  }, [updatePageInState, autoSave]);
 
   // Обновление описания страницы
   const handleUpdateDescription = useCallback(async (description: string, page?: CoursePage | null) => {
@@ -43,7 +143,8 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
     
     const updatedPage = { ...page, description };
     updatePageInState(updatedPage);
-  }, [updatePageInState]);
+    autoSave(updatedPage, { description });
+  }, [updatePageInState, autoSave]);
 
   // Принудительное сохранение
   const forceSave = async (page: CoursePage): Promise<boolean> => {
@@ -70,10 +171,10 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
 
   // Создание новой страницы курса
   const handleCreatePage = async (sectionId: string): Promise<CoursePage | null> => {
+    const systemName = generateSystemPageName(sectionId);
+    const systemSlug = generateSystemSlug(sectionId);
     const section = sections.find(s => s.id === sectionId);
     const pageCount = section?.pages.length || 0;
-    const systemName = `Урок ${pageCount + 1}`;
-    const systemSlug = `lesson-${sectionId}-${pageCount + 1}`;
     
     try {
       const response = await fetch('/api/admin/courses', {
@@ -273,6 +374,7 @@ export function useCoursesActions({ sections, setSections, loadCourses }: UseCou
   };
 
   return {
+    saving,
     forceSave,
     handleUpdateContent,
     handleUpdateTitle,
