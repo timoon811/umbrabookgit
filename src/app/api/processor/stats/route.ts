@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
       role: string;
     };
 
-    if (decoded.role !== "PROCESSOR") {
+    if (decoded.role !== "PROCESSOR" && decoded.role !== "ADMIN") {
       return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
-    const processorId = decoded.userId;
+    // Для админов показываем общую статистику, для процессоров - их личную
+    const processorId = decoded.role === "ADMIN" ? null : decoded.userId;
 
     // Получаем текущую дату
     const now = new Date();
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     // Статистика за сегодня
     const todayDeposits = await prisma.processor_deposits.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         createdAt: {
           gte: todayStart,
         },
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     // Статистика за неделю
     const weekDeposits = await prisma.processor_deposits.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         createdAt: {
           gte: weekStart,
         },
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     // Статистика за месяц
     const monthDeposits = await prisma.processor_deposits.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         createdAt: {
           gte: monthStart,
         },
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Выплаченная зарплата за месяц
     const monthSalary = await prisma.salary_requests.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         status: "PAID",
         paidAt: {
           gte: monthStart,
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
     // Бонусы за месяц
     const monthBonuses = await prisma.bonus_payments.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         status: "PAID",
         paidAt: {
           gte: monthStart,
@@ -99,14 +100,14 @@ export async function GET(request: NextRequest) {
     // Баланс
     const allApprovedDeposits = await prisma.processor_deposits.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         status: "APPROVED",
       },
     });
 
     const allPaidSalary = await prisma.salary_requests.findMany({
       where: {
-        processorId,
+        ...(processorId && { processorId }),
         status: "PAID",
       },
     });

@@ -87,8 +87,8 @@ export default function ProcessingPage() {
         const userData = await response.json();
         setUserRole(userData.role);
         
-        // Загружаем данные только для процессоров
-        if (userData.role === "PROCESSOR") {
+        // Загружаем данные для процессоров и админов
+        if (userData.role === "PROCESSOR" || userData.role === "ADMIN") {
           loadProcessorData();
         } else {
           setLoading(false);
@@ -199,8 +199,8 @@ export default function ProcessingPage() {
     );
   }
 
-  // Если пользователь не процессор, показываем информационную страницу
-  if (userRole !== "PROCESSOR") {
+  // Если пользователь не процессор и не админ, показываем информационную страницу
+  if (userRole !== "PROCESSOR" && userRole !== "ADMIN") {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-800">

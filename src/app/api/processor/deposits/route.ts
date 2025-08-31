@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
       role: string;
     };
 
-    if (decoded.role !== "PROCESSOR") {
+    if (decoded.role !== "PROCESSOR" && decoded.role !== "ADMIN") {
       return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
     }
 
-    const processorId = decoded.userId;
+    // Для админов показываем все депозиты, для процессоров - только их
+    const processorId = decoded.role === "ADMIN" ? null : decoded.userId;
 
     // Получаем параметры запроса
     const { searchParams } = new URL(request.url);
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Формируем условия поиска
     const where: any = {
-      processorId,
+      ...(processorId && { processorId }),
     };
 
     if (status && status !== "all") {

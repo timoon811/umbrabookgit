@@ -1,55 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  isBlocked: boolean;
-}
+import { useAuth } from "@/hooks/useAuth";
 
 export default function UserActions() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const { user, loading, mounted } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Загружаем данные пользователя только на клиенте после монтирования
-    if (mounted && typeof window !== 'undefined') {
-      fetchUser();
-    }
-  }, [mounted]);
-
-  const fetchUser = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Ошибка сети при получении данных пользователя:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {

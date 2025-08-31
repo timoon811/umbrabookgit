@@ -21,12 +21,23 @@ const publicRoutes = [
 // Маршруты только для администраторов
 const adminRoutes = ["/admin"];
 
+// Маршруты, запрещенные для PROCESSOR (они могут видеть только /processing, /docs, /profile)
+const processorRestrictedRoutes = [
+  "/courses",
+  "/connections", 
+  "/buyer",
+  "/finance",
+];
+
 // Внутренние маршруты, требующие авторизации
 const protectedRoutes = [
   "/", // Главная страница (требует авторизации)
   "/courses", // Курсы
   "/profile", // Профиль
   "/processing", // Кабинет обработчика
+  "/connections", // Связки
+  "/buyer", // Байер
+  "/finance", // Финансы
 ];
 
 // Функция для проверки роли администратора
@@ -53,6 +64,33 @@ async function checkAdminRole(token: string): Promise<boolean> {
     }
   } catch (error) {
     return false;
+  }
+}
+
+// Функция для получения роли пользователя
+async function getUserRole(token: string): Promise<string | null> {
+  try {
+    // Сначала попробуем верифицировать токен
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        role: string;
+        exp: number;
+      };
+
+      return decoded.role;
+    } catch (verifyError) {
+      // Fallback: декодируем без верификации
+      const decoded = jwt.decode(token) as any;
+
+      if (!decoded || !decoded.role) {
+        return null;
+      }
+
+      return decoded.role;
+    }
+  } catch (error) {
+    return null;
   }
 }
 
@@ -135,6 +173,15 @@ export async function middleware(request: NextRequest) {
         sameSite: "lax",
       });
       return response;
+    }
+
+    // Дополнительная проверка для PROCESSOR - ограничиваем доступ к определенным страницам
+    if (processorRestrictedRoutes.some(route => pathname.startsWith(route))) {
+      const userRole = await getUserRole(token);
+      if (userRole === "PROCESSOR") {
+        // Перенаправляем PROCESSOR на /processing если он пытается попасть на запрещенную страницу
+        return NextResponse.redirect(new URL("/processing", request.url));
+      }
     }
 
     return NextResponse.next();

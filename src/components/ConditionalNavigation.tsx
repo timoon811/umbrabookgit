@@ -7,9 +7,11 @@ import ThemeToggle from "@/components/ThemeToggle";
 import UmbraLogo from "@/components/UmbraLogo";
 import UserActions from "@/components/UserActions";
 import NoSSR from "@/components/NoSSR";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ConditionalNavigation() {
   const pathname = usePathname();
+  const { user, mounted } = useAuth();
   
   // Не показываем навигацию на страницах аутентификации
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
@@ -29,42 +31,63 @@ export default function ConditionalNavigation() {
           
           {/* Навигационные кнопки */}
           <div className="flex items-center gap-2">
+            {/* Документация - доступна всем */}
             <Link
               href="/docs"
               className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
             >
               Документация
             </Link>
-            <Link
-              href="/courses"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Курсы
-            </Link>
-            <Link
-              href="/processing"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Обработка
-            </Link>
-            <Link
-              href="/connections"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Связки
-            </Link>
-            <Link
-              href="/buyer"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Buyer
-            </Link>
-            <Link
-              href="/finance"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Финансы
-            </Link>
+            
+            {/* Курсы - скрыты для процессоров */}
+            {mounted && user?.role !== "PROCESSOR" && (
+              <Link
+                href="/courses"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Курсы
+              </Link>
+            )}
+            
+            {/* Обработка - доступна всем авторизованным */}
+            {mounted && user && (
+              <Link
+                href="/processing"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Обработка
+              </Link>
+            )}
+            
+            {/* Связки - скрыты для процессоров */}
+            {mounted && user?.role !== "PROCESSOR" && (
+              <Link
+                href="/connections"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Связки
+              </Link>
+            )}
+            
+            {/* Buyer - скрыты для процессоров */}
+            {mounted && user?.role !== "PROCESSOR" && (
+              <Link
+                href="/buyer"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Buyer
+              </Link>
+            )}
+            
+            {/* Финансы - скрыты для процессоров */}
+            {mounted && user?.role !== "PROCESSOR" && (
+              <Link
+                href="/finance"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Финансы
+              </Link>
+            )}
           </div>
         </div>
         
