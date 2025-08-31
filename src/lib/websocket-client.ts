@@ -61,7 +61,8 @@ class DepositWebSocketClient {
     const encodedToken = encodeURIComponent(`Worker ${source.token}`);
     const wsUrl = `wss://gambler-panel.com/api/ws?token=${encodedToken}&connectionType=bot`;
 
-    console.log(`🔌 Подключение к источнику ${source.name} (${source.id})`);
+    console.log(`🔌 Подключение к источнику ${source.name} (${source.id}) с токеном: ${source.token.substring(0, 20)}...`);
+    console.log(`🔗 WebSocket URL: ${wsUrl}`);
 
     const ws = new WebSocket(wsUrl);
 

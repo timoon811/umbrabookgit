@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { getWebSocketClient } from "@/lib/websocket-client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -151,6 +152,21 @@ export async function PATCH(
       }
     });
 
+    // Обновляем источник в WebSocket клиенте
+    try {
+      const wsClient = getWebSocketClient();
+      wsClient.updateSource({
+        id: updatedSource.id,
+        name: updatedSource.name,
+        token: updatedSource.token,
+        projectId: updatedSource.projectId,
+        isActive: updatedSource.isActive
+      });
+      console.log(`✅ Источник ${updatedSource.name} обновлен в WebSocket клиенте`);
+    } catch (wsError) {
+      console.error(`❌ Ошибка обновления источника в WebSocket клиенте:`, wsError);
+    }
+
     return NextResponse.json(updatedSource);
   } catch (error: any) {
     console.error("Ошибка при обновлении источника депозитов:", error);
@@ -176,6 +192,15 @@ export async function DELETE(
 
     if (!existingSource) {
       return NextResponse.json({ error: "Источник депозитов не найден" }, { status: 404 });
+    }
+
+    // Удаляем источник из WebSocket клиента перед удалением из БД
+    try {
+      const wsClient = getWebSocketClient();
+      wsClient.removeSource(params.id);
+      console.log(`✅ Источник ${params.id} удален из WebSocket клиента`);
+    } catch (wsError) {
+      console.error(`❌ Ошибка удаления источника из WebSocket клиента:`, wsError);
     }
 
     // Удаляем источник (каскадно удалятся все депозиты)

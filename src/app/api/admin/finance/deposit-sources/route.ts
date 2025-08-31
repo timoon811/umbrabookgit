@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { getWebSocketClient } from "@/lib/websocket-client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -147,6 +148,23 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // Добавляем источник в WebSocket клиент если он активен
+    if (depositSource.isActive) {
+      try {
+        const wsClient = getWebSocketClient();
+        wsClient.addSource({
+          id: depositSource.id,
+          name: depositSource.name,
+          token: depositSource.token,
+          projectId: depositSource.projectId,
+          isActive: depositSource.isActive
+        });
+        console.log(`✅ Источник ${depositSource.name} добавлен в WebSocket клиент`);
+      } catch (wsError) {
+        console.error(`❌ Ошибка добавления источника в WebSocket клиент:`, wsError);
+      }
+    }
 
     return NextResponse.json(depositSource, { status: 201 });
   } catch (error: any) {
