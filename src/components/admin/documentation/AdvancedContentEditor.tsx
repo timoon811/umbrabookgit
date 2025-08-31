@@ -406,9 +406,14 @@ export default function AdvancedContentEditor({
       setSelectedText(selection.toString());
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
+      
+      // Вычисляем позицию с учётом прокрутки страницы
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      
       setToolbarPosition({
-        top: rect.top - 60,
-        left: rect.left + (rect.width / 2)
+        top: rect.top + scrollTop - 60, // Позиция сверху от выделения
+        left: rect.left + scrollLeft + (rect.width / 2) - 150 // Центрируем относительно выделения
       });
       setShowToolbar(true);
     } else {
@@ -864,12 +869,33 @@ export default function AdvancedContentEditor({
     if (!showToolbar) return null;
 
     // Определяем позицию с учетом границ экрана
-    const adjustedLeft = Math.max(10, Math.min(toolbarPosition.left - 150, window.innerWidth - 320));
-    const adjustedTop = Math.max(10, toolbarPosition.top - 60);
+    const viewportWidth = window.innerWidth;
+    const toolbarWidth = 300;
+    const padding = 10;
+    
+    // Корректируем позицию, чтобы панель не выходила за границы экрана
+    let adjustedLeft = toolbarPosition.left;
+    let adjustedTop = toolbarPosition.top;
+    
+    // Проверяем правую границу
+    if (adjustedLeft + toolbarWidth > viewportWidth - padding) {
+      adjustedLeft = viewportWidth - toolbarWidth - padding;
+    }
+    
+    // Проверяем левую границу
+    if (adjustedLeft < padding) {
+      adjustedLeft = padding;
+    }
+    
+    // Проверяем верхнюю границу (с учётом прокрутки)
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    if (adjustedTop < scrollTop + padding) {
+      adjustedTop = scrollTop + padding;
+    }
 
     return (
       <div 
-        className="fixed z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
+        className="absolute z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2"
         style={{ 
           top: adjustedTop, 
           left: adjustedLeft,
@@ -1294,7 +1320,7 @@ export default function AdvancedContentEditor({
 
       {/* Основной редактор */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto px-6 py-6 relative">
           <div onMouseUp={handleTextSelection}>
             {blocks.map((block) => renderBlock(block))}
           </div>
@@ -1575,7 +1601,7 @@ function BlockRenderer({
         updateContent(e.target.value);
       }
     },
-    onMouseUp: onTextSelection,
+    onMouseUp: handleTextSelection,
     onKeyDown: (e: React.KeyboardEvent) => {
       // Обрабатываем только команду slash, всё остальное пропускаем
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
