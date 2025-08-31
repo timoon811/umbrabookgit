@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
-import KeyboardShortcuts, { ShortcutsHelp } from './KeyboardShortcuts';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
 import ConfirmModal from '@/components/modals/ConfirmModal';
 import FileUploader from '@/components/admin/FileUploader';
@@ -69,8 +68,13 @@ export default function AdvancedContentEditor({
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showInternalLinkModal, setShowInternalLinkModal] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [selectionInfo, setSelectionInfo] = useState<{
+    element: HTMLTextAreaElement | HTMLInputElement | null;
+    start: number;
+    end: number;
+  } | null>(null);
+
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [blockMenuPosition, setBlockMenuPosition] = useState({ top: 0, left: 0 });
   const [pendingBlockId, setPendingBlockId] = useState<string | null>(null);
@@ -402,60 +406,70 @@ export default function AdvancedContentEditor({
     }
   };
 
-  // Обработка выделения текста
+  // Обработка выделения текста - новый подход с позиционированием над блоком
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      setSelectedText(selection.toString());
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+    const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
+    
+    // Проверяем выделение в textarea/input
+    if (activeElement && 
+        (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') &&
+        activeElement.selectionStart !== activeElement.selectionEnd &&
+        activeBlockId) {
       
-      // Определяем размеры панели инструментов
-      const toolbarWidth = 300;
-      const toolbarHeight = 120; // Примерная высота панели
-      const offset = 10; // Отступ от выделенного текста
+      const start = activeElement.selectionStart || 0;
+      const end = activeElement.selectionEnd || 0;
+      const selectedText = activeElement.value.substring(start, end);
       
-      // Для fixed позиционирования используем координаты относительно viewport
-      // rect уже содержит координаты относительно viewport
-      // Вычисляем центр выделения для лучшего позиционирования
-      const selectionCenterX = rect.left + (rect.width / 2);
-      const selectionCenterY = rect.top + (rect.height / 2);
-      
-      let top = rect.top - toolbarHeight - offset;
-      let left = selectionCenterX - (toolbarWidth / 2);
-      
-      // Если панель не помещается сверху, размещаем снизу
-      if (top < 10) {
-        top = rect.bottom + offset;
-      }
-      
-      // Корректируем горизонтальную позицию, чтобы панель не выходила за границы
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      if (left < 10) {
-        left = 10;
-      } else if (left + toolbarWidth > viewportWidth - 10) {
-        left = viewportWidth - toolbarWidth - 10;
-      }
-      
-      // Проверяем, чтобы панель не выходила за нижнюю границу viewport
-      if (top + toolbarHeight > viewportHeight - 10) {
-        // Если не помещается снизу, показываем сверху
-        top = rect.top - toolbarHeight - offset;
-        if (top < 10) {
-          // Если и сверху не помещается, центрируем по вертикали
-          top = Math.max(10, (viewportHeight - toolbarHeight) / 2);
+      if (selectedText.trim()) {
+        setSelectedText(selectedText);
+        setSelectionInfo({
+          element: activeElement,
+          start,
+          end
+        });
+        
+        // Находим активный блок в DOM для позиционирования панели
+        const activeBlockElement = document.querySelector(`[data-block-id="${activeBlockId}"]`);
+        if (activeBlockElement) {
+          const rect = activeBlockElement.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+          
+          // Позиционируем панель сверху блока во всю его ширину
+          setToolbarPosition({
+            top: rect.top + scrollTop - 60, // 60px высота панели + отступ
+            left: rect.left + scrollLeft,
+            width: rect.width
+          });
+          setShowToolbar(true);
         }
+      } else {
+        setShowToolbar(false);
+        setSelectionInfo(null);
       }
+    } else if (selection && selection.toString().trim() && activeBlockId) {
+      // Обратная совместимость для обычного выделения
+      setSelectedText(selection.toString());
       
-      setToolbarPosition({
-        top,
-        left
-      });
-      setShowToolbar(true);
+      // Находим активный блок в DOM
+      const activeBlockElement = document.querySelector(`[data-block-id="${activeBlockId}"]`);
+      if (activeBlockElement) {
+        const rect = activeBlockElement.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        
+        // Позиционируем панель сверху блока во всю его ширину
+        setToolbarPosition({
+          top: rect.top + scrollTop - 60, // 60px высота панели + отступ
+          left: rect.left + scrollLeft,
+          width: rect.width
+        });
+        setShowToolbar(true);
+      }
     } else {
       setShowToolbar(false);
+      setSelectionInfo(null);
     }
   };
 
@@ -474,70 +488,7 @@ export default function AdvancedContentEditor({
     return pages;
   };
 
-  // Обработчик горячих клавиш
-  const handleShortcut = (action: string, data?: { level?: number; prefix?: string }) => {
-    const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
-    
-    switch (action) {
-      case 'bold':
-        applyTextFormatting(activeElement, '**', '**');
-        break;
-      case 'italic':
-        applyTextFormatting(activeElement, '*', '*');
-        break;
-      case 'underline':
-        applyTextFormatting(activeElement, '__', '__');
-        break;
-      case 'strikethrough':
-        applyTextFormatting(activeElement, '~~', '~~');
-        break;
-      case 'code':
-        applyTextFormatting(activeElement, '`', '`');
-        break;
-      case 'link':
-        if (activeElement && activeElement.selectionStart !== activeElement.selectionEnd) {
-          setSelectedText(activeElement.value.substring(activeElement.selectionStart || 0, activeElement.selectionEnd || 0));
-        }
-        setShowLinkModal(true);
-        break;
-      case 'save':
-        // Автосохранение уже работает
-        break;
-      case 'heading':
-        if (activeBlockId && data?.level) {
-          updateBlock(activeBlockId, { type: `heading${data.level}` });
-        }
-        break;
-      case 'undo':
-        performUndo();
-        break;
-      case 'redo':
-        performRedo();
-        break;
-      case 'continueList':
-        if (activeBlockId && data?.prefix) {
-          continueList(activeBlockId, data.prefix);
-        }
-        break;
-      case 'exitList':
-        if (activeBlockId) {
-          exitList(activeBlockId);
-        }
-        break;
-      case 'indent':
-        if (activeBlockId) {
-          indentListItem(activeBlockId);
-        }
-        break;
-      case 'outdent':
-        if (activeBlockId) {
-          outdentListItem(activeBlockId);
-        }
-        break;
-      default:
-        console.log('Unhandled shortcut:', action, data);
-    }
-  };
+
 
   // Функции для работы со списками
   const continueList = (blockId: string, prefix: string) => {
@@ -630,35 +581,58 @@ export default function AdvancedContentEditor({
     }
   };
 
-  // Применение форматирования текста
-  const applyTextFormatting = (element: HTMLTextAreaElement | HTMLInputElement | null, prefix: string, suffix: string) => {
-    if (!element || !activeBlockId) return;
+    // Применение форматирования текста - НОВАЯ УПРОЩЕННАЯ ВЕРСИЯ
+  const applyTextFormatting = (ignoredElement: any, prefix: string, suffix: string) => {
+    if (!activeBlockId) {
+      return;
+    }
 
-    const start = element.selectionStart || 0;
-    const end = element.selectionEnd || 0;
-    const selectedText = element.value.substring(start, end);
-    
+    // Найдем активный блок в DOM
+    const activeBlockElement = document.querySelector(`[data-block-id="${activeBlockId}"]`);
+    if (!activeBlockElement) {
+      return;
+    }
+
+    // Найдем поле ввода в активном блоке
+    const inputElement = activeBlockElement.querySelector('textarea, input') as HTMLTextAreaElement | HTMLInputElement;
+    if (!inputElement) {
+      return;
+    }
+
+    // Получаем текущее выделение
+    const start = inputElement.selectionStart || 0;
+    const end = inputElement.selectionEnd || 0;
+    const selectedText = inputElement.value.substring(start, end);
+
+    // Применяем форматирование
     let newText: string;
     let newCursorPos: number;
 
-    if (selectedText) {
+    if (selectedText.length > 0) {
       // Есть выделенный текст - оборачиваем его
-      newText = element.value.substring(0, start) + prefix + selectedText + suffix + element.value.substring(end);
+      newText = inputElement.value.substring(0, start) + prefix + selectedText + suffix + inputElement.value.substring(end);
       newCursorPos = end + prefix.length + suffix.length;
     } else {
       // Нет выделенного текста - вставляем маркеры и ставим курсор между ними
-      newText = element.value.substring(0, start) + prefix + suffix + element.value.substring(end);
+      newText = inputElement.value.substring(0, start) + prefix + suffix + inputElement.value.substring(end);
       newCursorPos = start + prefix.length;
     }
 
-    // Обновляем блок
+    // Напрямую обновляем значение в элементе
+    inputElement.value = newText;
+    
+    // Обновляем блок в состоянии
     updateBlock(activeBlockId, { content: newText });
     
-    // Устанавливаем позицию курсора через короткий таймаут
+    // Скрываем панель инструментов
+    setShowToolbar(false);
+    setSelectionInfo(null);
+    
+    // Восстанавливаем фокус и позицию курсора
     setTimeout(() => {
-      element.focus();
-      element.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
+      inputElement.focus();
+      inputElement.setSelectionRange(newCursorPos, newCursorPos);
+    }, 50);
   };
 
   // Обработчик клавиш для команд и навигации - только специальные команды
@@ -836,28 +810,14 @@ export default function AdvancedContentEditor({
     };
   }, [selectedPage, blocks, hasUnsavedChanges, onForceSave, saving]);
 
-  // Обработчик нажатия клавиши ? для показа справки
+  // Обработчик клавиши Escape для закрытия меню
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
-        const target = e.target as HTMLElement;
-        // Только если НЕ в поле ввода или НЕ в редакторе документации
-        const isInInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-        const isInDocumentationEditor = target.closest('[data-documentation-editor]') !== null;
-        
-        if (!isInInputField || !isInDocumentationEditor) {
-          e.preventDefault();
-          setShowShortcutsHelp(true);
-        }
-      }
-      
       // Закрытие меню по Escape
       if (e.key === 'Escape') {
         if (showBlockMenu) {
           setShowBlockMenu(false);
           setPendingBlockId(null);
-        } else if (showShortcutsHelp) {
-          setShowShortcutsHelp(false);
         } else if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
         } else if (showContextMenu) {
@@ -895,10 +855,16 @@ export default function AdvancedContentEditor({
       }
     };
 
-    // Обработчик прокрутки для скрытия панели инструментов
+    // Обработчик прокрутки для обновления позиции панели инструментов
     const handleScroll = () => {
-      if (showToolbar) {
-        setShowToolbar(false);
+      if (showToolbar && activeBlockId) {
+        // При скролле обновляем позицию панели, если есть выделенный текст
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          handleTextSelection();
+        } else {
+          setShowToolbar(false);
+        }
       }
     };
 
@@ -910,218 +876,168 @@ export default function AdvancedContentEditor({
       document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [showBlockMenu, showShortcutsHelp, showDeleteConfirm, showContextMenu, showToolbar]);
+  }, [showBlockMenu, showDeleteConfirm, showContextMenu, showToolbar]);
 
   const renderToolbar = () => {
-    if (!showToolbar) return null;
-
-    // Используем позицию, уже вычисленную в handleTextSelection
-    // Дополнительная корректировка не требуется, так как логика уже улучшена
-    const adjustedLeft = toolbarPosition.left;
-    const adjustedTop = toolbarPosition.top;
+    if (!showToolbar || !activeBlockId) return null;
 
     return (
       <div 
-        className="fixed z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+        className="absolute z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
         style={{ 
-          top: adjustedTop, 
-          left: adjustedLeft,
-          minWidth: '300px',
+          top: toolbarPosition.top, 
+          left: toolbarPosition.left,
+          width: toolbarPosition.width,
           transform: 'translateZ(0)' // Включаем аппаратное ускорение
         }}
       >
-        {/* Основная панель инструментов */}
-        <div className="flex items-center gap-1 mb-2">
-          {/* Форматирование текста */}
-          <button
-            onClick={() => handleShortcut('bold')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Жирный (Ctrl+B)"
-          >
-            <strong className="text-sm">B</strong>
-          </button>
-          <button
-            onClick={() => handleShortcut('italic')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded italic transition-colors"
-            title="Курсив (Ctrl+I)"
-          >
-            <span className="text-sm">I</span>
-          </button>
-          <button
-            onClick={() => handleShortcut('underline')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded underline transition-colors"
-            title="Подчеркивание (Ctrl+U)"
-          >
-            <span className="text-sm">U</span>
-          </button>
-          <button
-            onClick={() => handleShortcut('strikethrough')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded line-through transition-colors"
-            title="Зачеркивание"
-          >
-            <span className="text-sm">S</span>
-          </button>
-          
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-          
-          {/* Размер шрифта */}
-          <select
-            value={fontSize}
-            onChange={(e) => {
-              setFontSize(e.target.value as any);
-              // Применяем размер шрифта к выделенному тексту
-              const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
-              if (activeElement && activeBlockId) {
-                applyTextFormatting(activeElement, `<span style="font-size: ${e.target.value === 'small' ? '0.875rem' : e.target.value === 'large' ? '1.125rem' : e.target.value === 'xlarge' ? '1.25rem' : '1rem'}">`, '</span>');
-              }
-            }}
-            className="px-2 py-1 text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500"
-            title="Размер шрифта"
-          >
-            <option value="small">Малый</option>
-            <option value="normal">Обычный</option>
-            <option value="large">Большой</option>
-            <option value="xlarge">Очень большой</option>
-          </select>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-          {/* Цвет текста */}
+        {/* Компактная однострочная панель инструментов */}
+        <div className="flex items-center justify-between gap-1">
+          {/* Левая группа - форматирование текста */}
           <div className="flex items-center gap-1">
-            <input
-              type="color"
-              value={textColor}
-              onChange={(e) => {
-                setTextColor(e.target.value);
-                const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
-                if (activeElement && activeBlockId) {
-                  applyTextFormatting(activeElement, `<span style="color: ${e.target.value}">`, '</span>');
-                }
-              }}
-              className="w-6 h-6 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
-              title="Цвет текста"
-            />
             <button
-              onClick={() => {
-                const activeElement = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
-                if (activeElement && activeBlockId) {
-                  applyTextFormatting(activeElement, `<mark style="background-color: ${highlightColor}">`, '</mark>');
-                }
-              }}
+              onClick={() => applyTextFormatting(null, '**', '**')}
               className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Выделить цветом"
+              title="Жирный"
             >
-              <div className="w-4 h-4 bg-yellow-300 rounded"></div>
+              <strong className="text-sm">B</strong>
             </button>
-            <input
-              type="color"
-              value={highlightColor}
-              onChange={(e) => setHighlightColor(e.target.value)}
-              className="w-6 h-6 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
-              title="Цвет выделения"
-            />
+            <button
+              onClick={() => applyTextFormatting(null, '*', '*')}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded italic transition-colors"
+              title="Курсив"
+            >
+              <span className="text-sm">I</span>
+            </button>
+            <button
+              onClick={() => applyTextFormatting(null, '__', '__')}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded underline transition-colors"
+              title="Подчеркивание"
+            >
+              <span className="text-sm">U</span>
+            </button>
+            <button
+              onClick={() => applyTextFormatting(null, '~~', '~~')}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded line-through transition-colors"
+              title="Зачеркивание"
+            >
+              <span className="text-sm">S</span>
+            </button>
+            
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            
+            <button
+              onClick={() => applyTextFormatting(null, '`', '`')}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded font-mono text-xs transition-colors"
+              title="Код"
+            >
+              &lt;/&gt;
+            </button>
+            <button
+              onClick={() => applyTextFormatting(null, '==', '==')}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Выделить текст"
+            >
+              <div className="w-3 h-3 bg-yellow-300 rounded"></div>
+            </button>
           </div>
 
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          {/* Центральная группа - заголовки и ссылки */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (activeBlockId) {
+                  updateBlock(activeBlockId, { type: 'heading1' });
+                  setShowToolbar(false);
+                }
+              }}
+              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold transition-colors"
+              title="Заголовок 1"
+            >
+              H1
+            </button>
+            <button
+              onClick={() => {
+                if (activeBlockId) {
+                  updateBlock(activeBlockId, { type: 'heading2' });
+                  setShowToolbar(false);
+                }
+              }}
+              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-semibold transition-colors"
+              title="Заголовок 2"
+            >
+              H2
+            </button>
+            <button
+              onClick={() => {
+                if (activeBlockId) {
+                  updateBlock(activeBlockId, { type: 'heading3' });
+                  setShowToolbar(false);
+                }
+              }}
+              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-medium transition-colors"
+              title="Заголовок 3"
+            >
+              H3
+            </button>
+            
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            
+            <button
+              onClick={() => setShowLinkModal(true)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Добавить ссылку"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowInternalLinkModal(true)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Внутренняя ссылка"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </button>
+          </div>
 
-          {/* Код */}
-          <button
-            onClick={() => handleShortcut('code')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded font-mono text-xs transition-colors"
-            title="Код (Ctrl+`)"
-          >
-            &lt;/&gt;
-          </button>
-        </div>
-
-        {/* Вторая строка */}
-        <div className="flex items-center gap-1">
-          {/* Отмена/Повтор */}
-          <button
-            onClick={() => performUndo()}
-            disabled={undoStack.length === 0}
-            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Отменить (Ctrl+Z)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 10l6-6m-6 6l6 6" />
-            </svg>
-          </button>
-          <button
-            onClick={() => performRedo()}
-            disabled={redoStack.length === 0}
-            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Повторить (Ctrl+Shift+Z)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H3m18 0l-6-6m6 6l-6 6" />
-            </svg>
-          </button>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-          {/* Ссылки */}
-          <button
-            onClick={() => setShowLinkModal(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Добавить ссылку (Ctrl+K)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowInternalLinkModal(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Внутренняя ссылка"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </button>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-          {/* Заголовки */}
-          <button
-            onClick={() => handleShortcut('heading', { level: 1 })}
-            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold transition-colors"
-            title="Заголовок 1 (Ctrl+1)"
-          >
-            H1
-          </button>
-          <button
-            onClick={() => handleShortcut('heading', { level: 2 })}
-            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-semibold transition-colors"
-            title="Заголовок 2 (Ctrl+2)"
-          >
-            H2
-          </button>
-          <button
-            onClick={() => handleShortcut('heading', { level: 3 })}
-            className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-medium transition-colors"
-            title="Заголовок 3 (Ctrl+3)"
-          >
-            H3
-          </button>
-
-          {/* Кнопка закрытия */}
-          <button
-            onClick={() => setShowToolbar(false)}
-            className="ml-auto p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Закрыть панель"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Подсказка */}
-        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Выделите текст для форматирования
-          </p>
+          {/* Правая группа - действия */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => performUndo()}
+              disabled={undoStack.length === 0}
+              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="Отменить"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 10l6-6m-6 6l6 6" />
+              </svg>
+            </button>
+            <button
+              onClick={() => performRedo()}
+              disabled={redoStack.length === 0}
+              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="Повторить"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H3m18 0l-6-6m6 6l-6 6" />
+              </svg>
+            </button>
+            
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            
+            <button
+              onClick={() => setShowToolbar(false)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Закрыть панель"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1319,16 +1235,7 @@ export default function AdvancedContentEditor({
               </button>
             )}
 
-            {/* Кнопка справки */}
-            <button
-              onClick={() => setShowShortcutsHelp(true)}
-              className="flex items-center justify-center w-6 h-6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-              title="Горячие клавиши"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+
 
             {/* Кнопка удаления */}
             {onDeletePage && (
@@ -1378,36 +1285,33 @@ export default function AdvancedContentEditor({
         >
           <button
             onClick={() => {
-              handleShortcut('bold');
+              applyTextFormatting(null, '**', '**');
               setShowContextMenu(false);
             }}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
           >
             <strong className="text-sm">B</strong>
             <span className="text-sm">Сделать жирным</span>
-            <span className="ml-auto text-xs text-gray-400">Ctrl+B</span>
           </button>
           <button
             onClick={() => {
-              handleShortcut('italic');
+              applyTextFormatting(null, '*', '*');
               setShowContextMenu(false);
             }}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
           >
             <span className="text-sm italic">I</span>
             <span className="text-sm">Курсив</span>
-            <span className="ml-auto text-xs text-gray-400">Ctrl+I</span>
           </button>
           <button
             onClick={() => {
-              handleShortcut('underline');
+              applyTextFormatting(null, '__', '__');
               setShowContextMenu(false);
             }}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
           >
             <span className="text-sm underline">U</span>
             <span className="text-sm">Подчеркнутый</span>
-            <span className="ml-auto text-xs text-gray-400">Ctrl+U</span>
           </button>
           <hr className="my-1 border-gray-200 dark:border-gray-600" />
           <button
@@ -1421,18 +1325,16 @@ export default function AdvancedContentEditor({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
             <span className="text-sm">Добавить ссылку</span>
-            <span className="ml-auto text-xs text-gray-400">Ctrl+K</span>
           </button>
           <button
             onClick={() => {
-              handleShortcut('code');
+              applyTextFormatting(null, '`', '`');
               setShowContextMenu(false);
             }}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
           >
             <span className="text-xs font-mono">&lt;/&gt;</span>
             <span className="text-sm">Код</span>
-            <span className="ml-auto text-xs text-gray-400">Ctrl+`</span>
           </button>
         </div>
       )}
@@ -1471,12 +1373,7 @@ export default function AdvancedContentEditor({
         currentBlockType={pendingBlockId ? blocks.find(b => b.id === pendingBlockId)?.type : undefined}
       />
 
-      {/* Компоненты горячих клавиш */}
-      <KeyboardShortcuts onShortcut={handleShortcut} />
-      <ShortcutsHelp 
-        isOpen={showShortcutsHelp} 
-        onClose={() => setShowShortcutsHelp(false)} 
-      />
+
 
       {/* Модальное окно подтверждения удаления */}
       <ConfirmModal
@@ -1630,6 +1527,8 @@ function BlockRenderer({
       }
     },
     onMouseUp: onTextSelection,
+    onKeyUp: onTextSelection, // Добавляем обработчик для клавиатуры
+    onSelect: onTextSelection, // Добавляем специальный обработчик для выделения
     onKeyDown: (e: React.KeyboardEvent) => {
       // Обрабатываем только команду slash, всё остальное пропускаем
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
