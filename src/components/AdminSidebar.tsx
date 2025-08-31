@@ -14,7 +14,6 @@ const navigationSections = [
       { name: "Курсы", href: "/admin/courses" },
       { name: "Обработка", href: "/admin/processing" },
       { name: "Депозиты", href: "/admin/deposits" },
-      { name: "🔍 Диагностика депозитов", href: "/admin/deposits/debug" },
     ],
   },
   {

@@ -6,10 +6,11 @@ import ConfirmModal from "@/components/modals/ConfirmModal";
 import DepositSourceModal from "@/components/modals/DepositSourceModal";
 import NoSSR from "@/components/NoSSR";
 import { useToast } from "@/components/Toast";
+import DepositsDiagnostics from "@/components/admin/DepositsDiagnostics";
 
 export default function AdminDepositsPage() {
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits'>('management');
+  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics'>('management');
   const [depositSources, setDepositSources] = useState<any[]>([]);
   const [deposits, setDeposits] = useState<any[]>([]);
   const [allDeposits, setAllDeposits] = useState<any[]>([]);
@@ -255,6 +256,16 @@ export default function AdminDepositsPage() {
           }`}
         >
           Все депозиты
+        </button>
+        <button
+          onClick={() => setActiveTab('diagnostics')}
+          className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'diagnostics'
+              ? 'bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] shadow-sm'
+              : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed]'
+          }`}
+        >
+          🔍 Диагностика
         </button>
       </div>
 
@@ -761,6 +772,11 @@ export default function AdminDepositsPage() {
             </>
           )}
         </div>
+      )}
+
+      {/* Вкладка "Диагностика" */}
+      {activeTab === 'diagnostics' && (
+        <DepositsDiagnostics />
       )}
 
       {/* Модальные окна */}

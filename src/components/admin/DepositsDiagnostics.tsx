@@ -45,7 +45,7 @@ interface DiagnosticData {
   }>;
 }
 
-export default function DepositsDebugPage() {
+export default function DepositsDiagnostics() {
   const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DiagnosticData | null>(null);
@@ -151,14 +151,14 @@ export default function DepositsDebugPage() {
 
   return (
     <div className="space-y-6">
-      {/* Заголовок */}
+      {/* Кнопки действий */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-[#171717] dark:text-[#ededed]">
-            Диагностика депозитов
-          </h1>
-          <p className="text-[#171717]/60 dark:text-[#ededed]/60 mt-2">
-            Мониторинг и диагностика системы приема депозитов
+          <h2 className="text-xl font-semibold text-[#171717] dark:text-[#ededed]">
+            Диагностика и мониторинг
+          </h2>
+          <p className="text-[#171717]/60 dark:text-[#ededed]/60 mt-1">
+            Система приема депозитов и WebSocket подключения
           </p>
         </div>
         <div className="flex gap-3">
