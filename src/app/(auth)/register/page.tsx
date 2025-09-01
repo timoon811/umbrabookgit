@@ -23,12 +23,14 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Обработка поля Telegram - автоматическая подстановка @
+    // Обработка поля Telegram - автоматическая подстановка @ и очистка от пробелов
     if (name === "telegram") {
-      let telegramValue = value;
+      let telegramValue = value.trim();
       if (telegramValue && !telegramValue.startsWith("@")) {
         telegramValue = "@" + telegramValue;
       }
+      // Удаляем множественные символы @
+      telegramValue = telegramValue.replace(/^@+/, "@");
       setFormData(prev => ({ ...prev, [name]: telegramValue }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -82,7 +84,12 @@ export default function RegisterPage() {
           router.push("/login");
         }, 3000);
       } else {
-        setErrors({ general: result.message || "Ошибка регистрации" });
+        // Проверяем, есть ли ошибки валидации полей
+        if (result.isValidationError && result.errors) {
+          setErrors(result.errors);
+        } else {
+          setErrors({ general: result.message || "Ошибка регистрации" });
+        }
       }
     } catch {
       setErrors({ general: "Ошибка сети. Попробуйте еще раз." });

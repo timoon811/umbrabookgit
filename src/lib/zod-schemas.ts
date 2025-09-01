@@ -19,7 +19,7 @@ export const nameSchema = z
 
 export const telegramSchema = z
   .string()
-  .regex(/^@[a-zA-Z0-9_]{3,32}$/, "Telegram должен быть в формате @username");
+  .regex(/^@[a-zA-Z0-9_]{3,32}$/, "Telegram должен начинаться с @ и содержать от 3 до 32 символов (буквы, цифры, подчеркивания)");
 
 // Схемы для аутентификации
 export const loginSchema = z.object({

@@ -11,26 +11,16 @@ export async function POST(request: NextRequest) {
     const validationResult = validateSchema(registerSchema, body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { message: "Ошибка валидации данных", errors: validationResult.errors },
+        { 
+          message: "Ошибка валидации данных", 
+          errors: validationResult.errors,
+          isValidationError: true 
+        },
         { status: 400 }
       );
     }
 
     const { name, email, telegram, password } = validationResult.data;
-
-    if (telegram.length < 4) {
-      return NextResponse.json(
-        { message: "Telegram должен содержать минимум 3 символа после @" },
-        { status: 400 }
-      );
-    }
-
-    if (!/^@[a-zA-Z0-9_]{3,32}$/.test(telegram)) {
-      return NextResponse.json(
-        { message: "Telegram может содержать только буквы, цифры и подчеркивания" },
-        { status: 400 }
-      );
-    }
 
     // Проверка уникальности email
     const existingUser = await prisma.users.findUnique({
@@ -39,7 +29,11 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { message: "Пользователь с таким email уже существует" },
+        { 
+          message: "Пользователь с таким email уже существует", 
+          errors: { email: "Пользователь с таким email уже существует" },
+          isValidationError: true 
+        },
         { status: 409 }
       );
     }
@@ -51,7 +45,11 @@ export async function POST(request: NextRequest) {
 
     if (existingTelegram) {
       return NextResponse.json(
-        { message: "Пользователь с таким Telegram уже существует" },
+        { 
+          message: "Пользователь с таким Telegram уже существует", 
+          errors: { telegram: "Пользователь с таким Telegram уже существует" },
+          isValidationError: true 
+        },
         { status: 409 }
       );
     }
