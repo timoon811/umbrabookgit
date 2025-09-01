@@ -155,7 +155,6 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {
       status,
       adminComment,
-      updatedAt: new Date(),
     };
 
     // Если заявка одобрена, создаем транзакцию списания
@@ -205,7 +204,7 @@ export async function PUT(request: NextRequest) {
         },
       });
 
-      updateData.transactionId = transaction.id;
+      // Связь с транзакцией можно отслеживать через описание в транзакции
     } else if (status === "REJECTED") {
       updateData.processedAt = new Date();
     }
