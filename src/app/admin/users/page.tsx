@@ -267,6 +267,7 @@ export default function UsersPage() {
       MODERATOR: { label: 'Модератор', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300' },
       MEDIA_BUYER: { label: 'Медиа байер', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
       SUPPORT: { label: 'Поддержка', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+      PROCESSOR: { label: 'Обработчик', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
       USER: { label: 'Пользователь', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
     };
     
@@ -1092,6 +1093,7 @@ function EditUserModal({
                 <option value="USER">Пользователь</option>
                 <option value="MODERATOR">Модератор</option>
                 <option value="MEDIA_BUYER">Медиа байер</option>
+                <option value="PROCESSOR">Обработчик</option>
                 <option value="SUPPORT">Поддержка</option>
                 <option value="ADMIN">Администратор</option>
               </select>

@@ -247,7 +247,12 @@ export default function UserDetailsPage() {
                 <div className="mt-2 flex items-center gap-3">
                   {/* Статус пользователя убран */}
                   <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
-                    {user.role === "ADMIN" ? "Администратор" : user.role === "MODERATOR" ? "Модератор" : "Пользователь"}
+                    {user.role === "ADMIN" ? "Администратор" : 
+                     user.role === "MODERATOR" ? "Модератор" : 
+                     user.role === "MEDIA_BUYER" ? "Медиа байер" : 
+                     user.role === "PROCESSOR" ? "Обработчик" : 
+                     user.role === "SUPPORT" ? "Поддержка" : 
+                     "Пользователь"}
                   </span>
                 </div>
               </div>
@@ -313,6 +318,9 @@ export default function UserDetailsPage() {
                 >
                   <option value="USER">Пользователь</option>
                   <option value="MODERATOR">Модератор</option>
+                  <option value="MEDIA_BUYER">Медиа байер</option>
+                  <option value="PROCESSOR">Обработчик</option>
+                  <option value="SUPPORT">Поддержка</option>
                   <option value="ADMIN">Администратор</option>
                 </select>
               </div>

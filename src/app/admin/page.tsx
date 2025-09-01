@@ -78,6 +78,7 @@ export default function AdminPage() {
       'ADMIN': 'Администратор',
       'MODERATOR': 'Модератор',
       'MEDIA_BUYER': 'Медиа байер',
+      'PROCESSOR': 'Обработчик',
       'SUPPORT': 'Поддержка',
       'USER': 'Пользователь',
     };

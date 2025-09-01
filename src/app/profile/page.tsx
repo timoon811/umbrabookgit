@@ -119,8 +119,11 @@ export default function ProfilePage() {
   const getRoleName = (role: string) => {
     const roleMap: Record<string, string> = {
       ADMIN: "Администратор",
-      USER: "Пользователь",
       MODERATOR: "Модератор",
+      MEDIA_BUYER: "Медиа байер",
+      PROCESSOR: "Обработчик",
+      SUPPORT: "Поддержка",
+      USER: "Пользователь",
     };
     return roleMap[role] || role;
   };
