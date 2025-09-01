@@ -9,6 +9,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  telegram: string;
   role: string;
   status: string;
   isBlocked: boolean;
@@ -19,6 +20,7 @@ interface PendingUser {
   id: string;
   name: string;
   email: string;
+  telegram: string;
   role: string;
   status: string;
   createdAt: string;
@@ -35,6 +37,7 @@ interface UserModalData {
   id: string;
   name: string;
   email: string;
+  telegram: string;
   role: string;
   status: string;
   isBlocked: boolean;
@@ -103,6 +106,7 @@ export default function UsersPage() {
       id: user.id,
       name: user.name,
       email: user.email,
+      telegram: user.telegram,
       role: user.role,
       status: user.status,
       isBlocked: 'isBlocked' in user ? user.isBlocked : false,
@@ -116,6 +120,7 @@ export default function UsersPage() {
       id: user.id,
       name: user.name,
       email: user.email,
+      telegram: user.telegram,
       role: user.role,
       status: user.status,
       isBlocked: user.isBlocked,
@@ -299,12 +304,14 @@ export default function UsersPage() {
   // Filter functions
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.telegram.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredPendingUsers = pendingUsers.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.telegram.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -489,6 +496,9 @@ function UsersTable({
                 Email
                 </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                Telegram
+                </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Роль
                 </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
@@ -523,6 +533,9 @@ function UsersTable({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-[#171717] dark:text-[#ededed]">@{user.telegram}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                   {getRoleBadge(user.role)}
@@ -562,6 +575,9 @@ function UsersTable({
                   </div>
                   <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
                     {user.email}
+                  </div>
+                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                    @{user.telegram}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {getRoleBadge(user.role)}
@@ -729,6 +745,9 @@ function PendingUsersTable({
                 Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                Telegram
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Роль
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
@@ -767,6 +786,9 @@ function PendingUsersTable({
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.email}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-[#171717] dark:text-[#ededed]">@{user.telegram}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
                   {getRoleBadge(user.role)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
@@ -803,6 +825,9 @@ function PendingUsersTable({
                   </div>
                   <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
                     {user.email}
+                  </div>
+                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                    @{user.telegram}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {getRoleBadge(user.role)}
@@ -943,8 +968,17 @@ function ViewUserModal({
               </label>
               <div className="text-sm text-[#171717] dark:text-[#ededed]">
                 {user.email}
-        </div>
-      </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-1">
+                Telegram
+              </label>
+              <div className="text-sm text-[#171717] dark:text-[#ededed]">
+                @{user.telegram}
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-1">

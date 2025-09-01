@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       where.status = status;
+    } else {
+      // По умолчанию показываем только одобренных пользователей
+      where.status = "APPROVED";
     }
 
     if (role) {
