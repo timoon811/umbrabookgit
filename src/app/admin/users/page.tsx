@@ -536,7 +536,7 @@ function UsersTable({
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-[#171717] dark:text-[#ededed]">@{user.telegram}</div>
+                  <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.telegram}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                   {getRoleBadge(user.role)}
@@ -578,7 +578,7 @@ function UsersTable({
                     {user.email}
                   </div>
                   <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    @{user.telegram}
+                    {user.telegram}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {getRoleBadge(user.role)}
@@ -828,7 +828,7 @@ function PendingUsersTable({
                     {user.email}
                   </div>
                   <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    @{user.telegram}
+                    {user.telegram}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {getRoleBadge(user.role)}
@@ -977,7 +977,7 @@ function ViewUserModal({
                 Telegram
               </label>
               <div className="text-sm text-[#171717] dark:text-[#ededed]">
-                @{user.telegram}
+                {user.telegram}
               </div>
             </div>
 
