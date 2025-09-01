@@ -8,7 +8,7 @@ interface TableOfContentsProps {
   pageType?: 'article' | 'course';
 }
 
-export default function TableOfContents({ content, pageType = 'article' }: TableOfContentsProps) {
+export default function TableOfContents({ content }: TableOfContentsProps) {
   const { tocItems, activeId, scrollToHeading } = useTableOfContents({
     enabled: content === 'dynamic',
     container: '#article-content',
@@ -29,7 +29,7 @@ export default function TableOfContents({ content, pageType = 'article' }: Table
         </div>
         {process.env.NODE_ENV === 'development' && (
           <div className="text-xs text-red-500 space-y-1">
-            <div>Debug: content = "{content}"</div>
+            <div>Debug: content = &quot;{content}&quot;</div>
             <div>Debug: поиск в #article-content</div>
             <button 
               onClick={() => {

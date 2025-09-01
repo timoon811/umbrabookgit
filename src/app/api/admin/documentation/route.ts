@@ -16,7 +16,7 @@ interface SectionInfo {
 
 interface ApiResponse {
   sections?: SectionInfo[];
-  documentation?: any[];
+  documentation?: unknown[];
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";

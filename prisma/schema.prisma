@@ -23,6 +23,7 @@ model users {
   bonusPayments      bonus_payments[]
   processorDeposits  processor_deposits[]
   salaryRequests     salary_requests[]
+  wallets            user_wallets[]
   assignedBuyer      users?               @relation("BuyerProcessors", fields: [assignedBuyerId], references: [id])
   assignedProcessors users[]              @relation("BuyerProcessors")
 
@@ -32,6 +33,23 @@ model users {
   @@index([telegram])
   @@index([assignedBuyerId])
   @@map("users")
+}
+
+model user_wallets {
+  id        String   @id @default(uuid())
+  userId    String
+  network   String   // BTC, ETH, TRX, USDT_TRC20, USDT_ERC20, USDT_BEP20, USDT_SOL20, USDC, XRP, BASE, BNB, TRON, TON, SOLANA
+  address   String
+  label     String?  // Пользовательская метка для кошелька
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, network])
+  @@index([userId])
+  @@index([network])
+  @@map("user_wallets")
 }
 
 model courses {
@@ -388,6 +406,115 @@ model bonus_settings {
   @@map("bonus_settings")
 }
 
+model bonus_grid {
+  id              String   @id @default(uuid())
+  minAmount       Float
+  maxAmount       Float?
+  bonusPercentage Float
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("bonus_grid")
+}
+
+model bonus_motivations {
+  id          String      @id @default(uuid())
+  type        MotivationType
+  name        String
+  description String?
+  value       Float       // процент или фиксированная сумма
+  conditions  String?     // JSON с условиями
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("bonus_motivations")
+}
+
+// Новые модели для инструкций и скриптов обработки
+model processing_instructions {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  category    String   @default("general") // general, rules, faq, tips
+  priority    Int      @default(1)         // 1-5, где 5 - высший приоритет
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(true)      // показывать ли всем процессорам
+  targetRoles String?  // JSON массив ролей, для которых предназначена инструкция
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([priority])
+  @@index([isActive])
+  @@index([isPublic])
+  @@map("processing_instructions")
+}
+
+model processing_scripts {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  description String?
+  category    String   @default("general") // general, greeting, clarification, confirmation, support
+  language    String   @default("ru")      // язык скрипта
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(true)
+  targetRoles String?  // JSON массив ролей
+  usageCount  Int      @default(0)        // счетчик использования
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([language])
+  @@index([isActive])
+  @@index([isPublic])
+  @@map("processing_scripts")
+}
+
+model processing_templates {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  content     String
+  type        String   @default("email")   // email, message, notification
+  variables   String?  // JSON с переменными шаблона
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(true)
+  targetRoles String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@index([isPublic])
+  @@map("processing_templates")
+}
+
+model processing_resources {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  type        String   @default("link")    // link, file, video, document
+  url         String?
+  filePath    String?
+  category    String   @default("general")
+  isActive    Boolean  @default(true)
+  isPublic    Boolean  @default(true)
+  targetRoles String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([type])
+  @@index([isActive])
+  @@index([isPublic])
+  @@map("processing_resources")
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -435,4 +562,9 @@ enum BonusStatus {
   APPROVED
   REJECTED
   PAID
+}
+
+enum MotivationType {
+  PERCENTAGE
+  FIXED_AMOUNT
 }

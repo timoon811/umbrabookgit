@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
@@ -150,66 +151,111 @@ export default function AdvancedContentEditor({
 
   const generateId = () => `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Парсинг Markdown в блоки
+  // Улучшенный парсинг Markdown в блоки с сохранением структуры
   const parseMarkdownToBlocks = (markdown: string): Block[] => {
-    const lines = markdown.split('\n');
+    if (!markdown.trim()) {
+      return [createEmptyBlock()];
+    }
+
+    // Разделяем по двойным переносам строк (markdown параграфы)
+    const sections = markdown.split(/\n\s*\n/);
     const blocks: Block[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const section of sections) {
+      const trimmedSection = section.trim();
+      if (!trimmedSection) continue;
+
+      const lines = trimmedSection.split('\n');
+      const firstLine = lines[0];
 
       // YouTube ссылки
-      const youtubeMatch = line.match(/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (youtubeMatch) {
+      const youtubeMatch = firstLine.match(/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+      if (youtubeMatch && lines.length === 1) {
         blocks.push({
           id: generateId(),
           type: 'youtube',
-          content: line,
+          content: firstLine,
           metadata: { youtubeId: youtubeMatch[1] }
         });
         continue;
       }
 
-      // Заголовки
-      if (line.startsWith('# ')) {
-        blocks.push({
-          id: generateId(),
-          type: 'heading1',
-          content: line.substring(2),
-          metadata: {}
-        });
-        continue;
-      }
+      // Заголовки (только если одна строка)
+      if (lines.length === 1) {
+        if (firstLine.startsWith('# ')) {
+          blocks.push({
+            id: generateId(),
+            type: 'heading1',
+            content: firstLine.substring(2),
+            metadata: {}
+          });
+          continue;
+        }
 
-      if (line.startsWith('## ')) {
-        blocks.push({
-          id: generateId(),
-          type: 'heading2',
-          content: line.substring(3),
-          metadata: {}
-        });
-        continue;
-      }
+        if (firstLine.startsWith('## ')) {
+          blocks.push({
+            id: generateId(),
+            type: 'heading2',
+            content: firstLine.substring(3),
+            metadata: {}
+          });
+          continue;
+        }
 
-      if (line.startsWith('### ')) {
-        blocks.push({
-          id: generateId(),
-          type: 'heading3',
-          content: line.substring(4),
-          metadata: {}
-        });
-        continue;
+        if (firstLine.startsWith('### ')) {
+          blocks.push({
+            id: generateId(),
+            type: 'heading3',
+            content: firstLine.substring(4),
+            metadata: {}
+          });
+          continue;
+        }
+
+        // Изображения
+        const imageMatch = firstLine.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+        if (imageMatch) {
+          blocks.push({
+            id: generateId(),
+            type: 'image',
+            content: imageMatch[2],
+            metadata: { url: imageMatch[2], alt: imageMatch[1], caption: imageMatch[1] }
+          });
+          continue;
+        }
+
+        // Файлы (ссылки на файлы)
+        const fileMatch = firstLine.match(/\[📎\s*([^\]]+)\]\(([^)]+)\)/);
+        if (fileMatch) {
+          blocks.push({
+            id: generateId(),
+            type: 'file',
+            content: fileMatch[2],
+            metadata: { url: fileMatch[2], name: fileMatch[1] }
+          });
+          continue;
+        }
+
+        // Разделитель
+        if (firstLine.trim() === '---') {
+          blocks.push({
+            id: generateId(),
+            type: 'divider',
+            content: '',
+            metadata: {}
+          });
+          continue;
+        }
       }
 
       // Код блоки
-      if (line.startsWith('```')) {
-        const language = line.substring(3).trim() || 'text';
-        const codeLines = [];
-        i++; // Пропускаем строку с открывающими ```
+      if (firstLine.startsWith('```')) {
+        const language = firstLine.substring(3).trim() || 'text';
+        const codeLines = lines.slice(1); // Убираем первую строку с ```
         
-        while (i < lines.length && !lines[i].trim().startsWith('```')) {
-          codeLines.push(lines[i]);
-          i++;
+        // Убираем последнюю строку если она содержит только ```
+        if (codeLines.length > 0 && codeLines[codeLines.length - 1].trim() === '```') {
+          codeLines.pop();
         }
         
         blocks.push({
@@ -221,77 +267,70 @@ export default function AdvancedContentEditor({
         continue;
       }
 
-      // Цитаты
-      if (line.startsWith('> ')) {
+      // Цитаты (многострочные)
+      if (firstLine.startsWith('> ')) {
+        const quoteLines = lines.map(line => 
+          line.startsWith('> ') ? line.substring(2) : line
+        );
         blocks.push({
           id: generateId(),
           type: 'quote',
-          content: line.substring(2),
+          content: quoteLines.join('\n'),
           metadata: {}
         });
         continue;
       }
 
-      // Изображения
-      const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-      if (imageMatch) {
+      // Callout блоки
+      const calloutMatch = firstLine.match(/^>\s*\*\*(INFO|WARNING|ERROR|SUCCESS)\*\*:\s*(.+)$/i);
+      if (calloutMatch) {
+        const calloutType = calloutMatch[1].toLowerCase() as 'info' | 'warning' | 'error' | 'success';
+        const content = lines.length > 1 
+          ? [calloutMatch[2], ...lines.slice(1)].join('\n')
+          : calloutMatch[2];
+        
         blocks.push({
           id: generateId(),
-          type: 'image',
-          content: imageMatch[2],
-          metadata: { url: imageMatch[2], alt: imageMatch[1], caption: imageMatch[1] }
+          type: 'callout',
+          content: content,
+          metadata: { calloutType }
         });
         continue;
       }
 
-      // Файлы (ссылки на файлы)
-      const fileMatch = line.match(/\[📎\s*([^\]]+)\]\(([^)]+)\)/);
-      if (fileMatch) {
-        blocks.push({
-          id: generateId(),
-          type: 'file',
-          content: fileMatch[2],
-          metadata: { url: fileMatch[2], name: fileMatch[1] }
-        });
-        continue;
-      }
+      // Списки (многострочные)
+      if (firstLine.match(/^[-*] /) || firstLine.match(/^\d+\. /)) {
+        const isNumbered = firstLine.match(/^\d+\. /);
+        const listContent = lines.map(line => {
+          if (isNumbered) {
+            return line.replace(/^\d+\. /, '');
+          } else {
+            return line.replace(/^[-*] /, '');
+          }
+        }).join('\n');
 
-      // Списки
-      if (line.match(/^[-*] /)) {
         blocks.push({
           id: generateId(),
-          type: 'list',
-          content: line.substring(2),
+          type: isNumbered ? 'numbered-list' : 'list',
+          content: listContent,
           metadata: {}
         });
         continue;
       }
 
-      if (line.match(/^\d+\. /)) {
-        blocks.push({
-          id: generateId(),
-          type: 'numbered-list',
-          content: line.replace(/^\d+\. /, ''),
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Обычный текст
-      if (line.trim()) {
-        blocks.push({
-          id: generateId(),
-          type: 'paragraph',
-          content: line,
-          metadata: {}
-        });
-      }
+      // Обычный текст (многострочный параграф)
+      blocks.push({
+        id: generateId(),
+        type: 'paragraph',
+        content: trimmedSection,
+        metadata: {}
+      });
     }
 
     return blocks.length > 0 ? blocks : [createEmptyBlock()];
   };
 
-  // Конвертация блоков в Markdown
+  // Улучшенная конвертация блоков в Markdown с сохранением структуры
   const convertBlocksToMarkdown = (blocks: Block[]): string => {
     return blocks.map(block => {
       switch (block.type) {
@@ -302,13 +341,16 @@ export default function AdvancedContentEditor({
         case 'heading3':
           return `### ${block.content}`;
         case 'quote':
-          return `> ${block.content}`;
+          // Обрабатываем многострочные цитаты
+          return block.content.split('\n').map(line => `> ${line}`).join('\n');
         case 'code':
           return `\`\`\`${block.metadata?.language || 'text'}\n${block.content}\n\`\`\``;
         case 'list':
-          return `- ${block.content}`;
+          // Обрабатываем многострочные списки
+          return block.content.split('\n').map(line => `- ${line}`).join('\n');
         case 'numbered-list':
-          return `1. ${block.content}`;
+          // Обрабатываем многострочные нумерованные списки
+          return block.content.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
         case 'image':
           return `![${block.metadata?.alt || ''}](${block.metadata?.url || block.content})`;
         case 'file':
@@ -321,10 +363,16 @@ export default function AdvancedContentEditor({
           return `[${block.content}](${block.metadata?.linkUrl})`;
         case 'callout':
           const calloutType = block.metadata?.calloutType || 'info';
-          return `> **${calloutType.toUpperCase()}**: ${block.content}`;
+          const lines = block.content.split('\n');
+          if (lines.length === 1) {
+            return `> **${calloutType.toUpperCase()}**: ${block.content}`;
+          } else {
+            return `> **${calloutType.toUpperCase()}**: ${lines[0]}\n${lines.slice(1).map(line => `> ${line}`).join('\n')}`;
+          }
         case 'divider':
           return '---';
         default:
+          // Параграфы сохраняют свою структуру как есть
           return block.content;
       }
     }).join('\n\n');
@@ -669,6 +717,32 @@ export default function AdvancedContentEditor({
       const block = blocks.find(b => b.id === blockId);
       if (!block) return;
 
+      // Для заголовков (heading1, heading2, heading3) - создаем новый параграф
+      if (block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3') {
+        e.preventDefault();
+        const currentIndex = blocks.findIndex(b => b.id === blockId);
+        
+        const newBlock = {
+          ...createEmptyBlock(),
+          type: 'paragraph'
+        };
+        
+        // Вставляем после текущего заголовка
+        const newBlocks = [...blocks];
+        newBlocks.splice(currentIndex + 1, 0, newBlock);
+        setBlocks(newBlocks);
+        
+        // Фокусируемся на новом блоке
+        setTimeout(() => {
+          setActiveBlockId(newBlock.id);
+          const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] textarea, [data-block-id="${newBlock.id}"] input`);
+          if (newBlockElement) {
+            (newBlockElement as HTMLElement).focus();
+          }
+        }, 100);
+        return;
+      }
+
       // Только для списков создаем новые элементы, для остальных блоков разрешаем обычные переносы строк
       if (block.type === 'numbered-list' || block.type === 'list') {
         // Проверяем, если текущая строка пуста, выходим из списка
@@ -708,8 +782,8 @@ export default function AdvancedContentEditor({
         return;
       }
       
-      // Для всех остальных блоков (paragraph, heading, etc.) разрешаем обычные переносы строк
-      // НЕ перехватываем Enter, позволяем стандартное поведение
+      // Для всех остальных блоков (paragraph, quote, code, callout) разрешаем обычные переносы строк
+      // НЕ перехватываем Enter, позволяем стандартное поведение для многострочного контента
       return;
     }
     
@@ -1416,14 +1490,14 @@ function BlockRenderer({
   // Автоматическое изменение размера при загрузке и изменении контента
   useEffect(() => {
     if (textareaRef.current && autoResize.current) {
-      // Добавляем небольшую задержку для корректной работы с React рендерингом
-      const timeoutId = setTimeout(() => {
+      // Используем requestAnimationFrame для лучшей производительности
+      const frameId = requestAnimationFrame(() => {
         if (textareaRef.current && autoResize.current) {
           autoResize.current(textareaRef.current);
         }
-      }, 10);
+      });
       
-      return () => clearTimeout(timeoutId);
+      return () => cancelAnimationFrame(frameId);
     }
   }, [block.content]);
 
@@ -1431,13 +1505,27 @@ function BlockRenderer({
   useEffect(() => {
     if (!textareaRef.current) return;
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (textareaRef.current && autoResize.current) {
-        autoResize.current(textareaRef.current);
+    const element = textareaRef.current;
+    
+    // Инициализируем размер при монтировании
+    if (autoResize.current) {
+      autoResize.current(element);
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === element && autoResize.current) {
+          // Используем debouncing для избежания избыточных вызовов
+          setTimeout(() => {
+            if (autoResize.current && element.isConnected) {
+              autoResize.current(element);
+            }
+          }, 10);
+        }
       }
     });
 
-    resizeObserver.observe(textareaRef.current);
+    resizeObserver.observe(element);
 
     return () => {
       resizeObserver.disconnect();
@@ -1452,6 +1540,7 @@ function BlockRenderer({
   };
 
   // Улучшенная функция для автоматического изменения размера textarea
+  // Убираем ограничения по максимальной высоте для полной адаптивности
   const autoResize = useRef<((element: HTMLTextAreaElement) => void) | null>(null);
   
   if (!autoResize.current) {
@@ -1479,27 +1568,36 @@ function BlockRenderer({
         // Минимальная высота = одна строка + padding + border
         const minHeight = lineHeight + paddingTop + paddingBottom + borderTop + borderBottom;
         
-        // Максимальная высота = 30 строк для больших блоков текста
-        const maxHeight = lineHeight * 30 + paddingTop + paddingBottom + borderTop + borderBottom;
-        
-        // Устанавливаем высоту с учетом ограничений
-        const newHeight = Math.min(Math.max(element.scrollHeight, minHeight), maxHeight);
+        // УБИРАЕМ максимальную высоту - блок должен расширяться без ограничений
+        // Устанавливаем высоту точно под содержимое
+        const newHeight = Math.max(element.scrollHeight, minHeight);
         element.style.height = newHeight + 'px';
         
-        // Если контент больше максимальной высоты, показываем скролл
-        if (element.scrollHeight > maxHeight) {
-          element.style.overflowY = 'auto';
-        } else {
-          element.style.overflowY = 'hidden';
-        }
+        // Убираем скролл - блок должен полностью отображать весь контент
+        element.style.overflowY = 'hidden';
         
         // Восстанавливаем overflow если он был изменен
-        if (originalOverflow) {
+        if (originalOverflow && originalOverflow !== 'hidden') {
           element.style.overflow = originalOverflow;
         }
         
         // Восстанавливаем позицию курсора
         element.setSelectionRange(cursorPosition, cursorPosition);
+        
+        // Дополнительная оптимизация для больших блоков текста
+        // Если блок стал высоким, обеспечиваем видимость курсора
+        if (newHeight > window.innerHeight * 0.3) {
+          const containerRect = element.getBoundingClientRect();
+          const viewportCenter = window.innerHeight / 2;
+          
+          // Если верх элемента выше центра экрана или низ ниже центра, прокручиваем
+          if (containerRect.top < viewportCenter * 0.5 || containerRect.bottom > viewportCenter * 1.5) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+          }
+        }
       });
     };
   }
@@ -1538,7 +1636,7 @@ function BlockRenderer({
       // Для всех остальных клавиш НЕ вызываем preventDefault - позволяем нормальный ввод
     },
     onContextMenu: handleContextMenu,
-    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0"
+    className: "w-full bg-transparent border-none outline-none resize-none focus:ring-0 overflow-hidden"
   };
 
   const baseTextareaProps = {
@@ -1585,8 +1683,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Цитата..."
-            className={`${baseInputProps.className} text-gray-700 dark:text-gray-300 italic py-3 min-h-[80px]`}
-            style={{ minHeight: '80px', overflow: 'hidden' }}
+            className={`${baseInputProps.className} text-gray-700 dark:text-gray-300 italic py-3`}
+            style={{ overflow: 'hidden' }}
           />
         </div>
       );
@@ -1599,8 +1697,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
-            style={{ minHeight: '24px', overflow: 'hidden' }}
+            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1`}
+            style={{ overflow: 'hidden' }}
           />
         </div>
       );
@@ -1613,8 +1711,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1 min-h-[24px]`}
-            style={{ minHeight: '24px', overflow: 'hidden' }}
+            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1`}
+            style={{ overflow: 'hidden' }}
           />
         </div>
       );
@@ -1644,8 +1742,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Код..."
-            className={`${baseInputProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4 min-h-[120px]`}
-            style={{ minHeight: '120px', overflow: 'hidden' }}
+            className={`${baseInputProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4`}
+            style={{ overflow: 'hidden' }}
           />
         </div>
       );
@@ -1655,10 +1753,13 @@ function BlockRenderer({
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           {block.metadata?.url ? (
             <div>
-              <img 
+              <Image 
                 src={block.metadata.url} 
                 alt={block.metadata.alt || ''}
+                width={800}
+                height={600}
                 className="max-w-full h-auto rounded-lg"
+                unoptimized={true}
               />
               <input
                 type="text"
@@ -1886,8 +1987,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Содержимое выноски..."
-            className={`${baseInputProps.className} min-h-[60px]`}
-            style={{ minHeight: '60px', overflow: 'hidden' }}
+            className={`${baseInputProps.className}`}
+            style={{ overflow: 'hidden' }}
           />
         </div>
       );
@@ -1906,8 +2007,8 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Начните писать или введите / для команд..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white min-h-[24px] leading-relaxed py-1`}
-            style={{ minHeight: '24px', overflow: 'hidden' }}
+            className={`${baseInputProps.className} text-gray-900 dark:text-white leading-relaxed py-1`}
+            style={{ overflow: 'hidden' }}
           />
 
           {!block.content && isActive && (

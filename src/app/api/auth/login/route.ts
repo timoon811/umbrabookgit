@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { loginSchema, validateSchema } from "@/lib/zod-schemas";
 
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required for production");
+}
 
 // OPTIONS обработчик для CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
@@ -20,14 +25,17 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
+    
+    // Валидация с помощью Zod
+    const validationResult = validateSchema(loginSchema, body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { message: "Email и пароль обязательны" },
+        { message: "Ошибка валидации данных", errors: validationResult.errors },
         { status: 400 }
       );
     }
+
+    const { email, password } = validationResult.data;
 
     // Ищем пользователя по email
     const user = await prisma.users.findUnique({

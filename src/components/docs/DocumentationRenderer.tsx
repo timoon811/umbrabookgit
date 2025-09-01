@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { normalizeFileUrl, isImageFile } from '@/lib/file-utils';
 
 interface Block {
@@ -361,9 +362,11 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         const imageSrc = normalizeFileUrl(block.metadata?.url || block.content);
         return (
           <figure key={block.id} className={`mb-6 ${getAlignmentClass()}`}>
-            <img 
+            <Image 
               src={imageSrc} 
               alt={block.metadata?.alt || ''}
+              width={800}
+              height={600}
               className="max-w-full h-auto rounded-lg shadow-sm"
               onError={(e) => {
                 // Fallback при ошибке загрузки
@@ -374,6 +377,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
                 fallback.innerHTML = `<div>🖼️</div><div class="mt-2 text-sm">Изображение не загружено</div>`;
                 target.parentNode?.appendChild(fallback);
               }}
+              unoptimized={true}
             />
             {block.metadata?.caption && (
               <figcaption className="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
-import { useConfirmDialog } from "@/components/ConfirmDialog";
+// import { useModal } from "@/hooks/useModal"; // Не используется
 import Link from "next/link";
 
 interface CourseData {
@@ -27,8 +27,8 @@ interface CourseFormData {
 
 export default function EditCoursePage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { showSuccess, showError } = useToast();
-  const { confirmDanger } = useConfirmDialog();
+  const { showSuccess } = useToast();
+  // const { confirm } = useModal(); // Не используется
   const [course, setCourse] = useState<CourseData | null>(null);
   const [formData, setFormData] = useState<CourseFormData>({
     title: "",

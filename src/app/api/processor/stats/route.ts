@@ -1,37 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+import { requireProcessorAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  // Проверяем авторизацию
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  const { user } = authResult;
+  
   try {
-    // Проверяем авторизацию
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    if (decoded.role !== "PROCESSOR" && decoded.role !== "ADMIN") {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
     // Для админов показываем общую статистику, для процессоров - их личную
-    const processorId = decoded.role === "ADMIN" ? null : decoded.userId;
+    const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем текущую дату
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Используем UTC время для корректного расчета 24-часового периода
+    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+    
+    // Сбрасываем на начало дня по UTC (00:00:00)
+    const todayStart = new Date(utcNow);
+    todayStart.setUTCHours(0, 0, 0, 0);
+    
+    // Начало недели (7 дней назад от начала текущего дня)
+    const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Начало месяца (1-е число текущего месяца по UTC)
+    const monthStart = new Date(utcNow.getFullYear(), utcNow.getMonth(), 1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+
+    console.log(`📊 Расчет статистики процессора:`);
+    console.log(`   - Текущее время UTC: ${utcNow.toISOString()}`);
+    console.log(`   - Начало дня UTC: ${todayStart.toISOString()}`);
+    console.log(`   - Начало недели UTC: ${weekStart.toISOString()}`);
+    console.log(`   - Начало месяца UTC: ${monthStart.toISOString()}`);
 
     // Статистика за сегодня
     const todayDeposits = await prisma.processor_deposits.findMany({
@@ -46,11 +51,9 @@ export async function GET(request: NextRequest) {
     const todayStats = {
       depositsCount: todayDeposits.length,
       depositsSum: todayDeposits.reduce((sum, d) => sum + d.amount, 0),
-      approvedSum: todayDeposits
-        .filter(d => d.status === "APPROVED")
-        .reduce((sum, d) => sum + d.amount, 0),
-      pendingCount: todayDeposits.filter(d => d.status === "PENDING").length,
-      rejectedCount: todayDeposits.filter(d => d.status === "REJECTED").length,
+      approvedSum: todayDeposits.reduce((sum, d) => sum + d.amount, 0), // Все депозиты автоматически одобрены
+      pendingCount: 0, // Больше нет статусов
+      rejectedCount: 0, // Больше нет статусов
     };
 
     // Статистика за неделю
@@ -60,7 +63,6 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: weekStart,
         },
-        status: "APPROVED",
       },
     });
 
@@ -71,7 +73,6 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: monthStart,
         },
-        status: "APPROVED",
       },
     });
 
@@ -101,7 +102,6 @@ export async function GET(request: NextRequest) {
     const allApprovedDeposits = await prisma.processor_deposits.findMany({
       where: {
         ...(processorId && { processorId }),
-        status: "APPROVED",
       },
     });
 

@@ -1,53 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
-
-// Проверка авторизации
-async function checkAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) {
-    return NextResponse.json(
-      { error: "Не авторизован" },
-      { status: 401 }
-    );
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Пользователь не найден или заблокирован" },
-        { status: 403 }
-      );
-    }
-
-    return user;
-  } catch (error) {
-    console.error("Ошибка проверки токена:", error);
-    return NextResponse.json(
-      { error: "Недействительный токен" },
-      { status: 401 }
-    );
-  }
-}
 
 export async function GET(request: NextRequest) {
   // Публичный API - авторизация не требуется для просмотра опубликованной документации
@@ -100,7 +52,7 @@ export async function GET(request: NextRequest) {
         recent: recentDocs,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Ошибка получения документации:", error);
     return NextResponse.json(
       { error: "Ошибка сервера" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation"; // Не используется
 import Link from "next/link";
 import { Block } from "@/components/editor/BlockEditor";
 import ModernArticleEditor from "@/components/editor/ModernArticleEditor";
@@ -44,7 +44,7 @@ interface CourseEditorData {
 }
 
 export default function CourseEditorPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
+  // const router = useRouter(); // Убран импорт
   const [course, setCourse] = useState<Course | null>(null);
   const [sections, setSections] = useState<CourseSection[]>([]);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function CourseEditorPage({ params }: { params: { id: string } })
 
   useEffect(() => {
     fetchCourseData();
-  }, [params.id]);
+  }, [params.id, fetchCourseData]);
 
   const fetchCourseData = async () => {
     try {

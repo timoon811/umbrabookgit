@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import SalaryRequestModal from "@/components/modals/SalaryRequestModal";
 
 // Типы данных
 interface ProcessorStats {
@@ -37,7 +38,7 @@ interface ProcessorDeposit {
   amount: number;
   currency: string;
   currencyType?: string;
-  status: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "PROCESSING";
   createdAt: string;
   bonusAmount: number;
   proofs?: string;
@@ -50,7 +51,7 @@ interface SalaryRequest {
   periodEnd: string;
   requestedAmount: number;
   calculatedAmount?: number;
-  status: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "PAID";
   createdAt: string;
   adminComment?: string;
 }
@@ -58,6 +59,27 @@ interface SalaryRequest {
 export default function ProcessingPage() {
   const router = useRouter();
   const { showSuccess, showError, showWarning } = useToast();
+
+  // Функция для красивого отображения названий валют
+  const getCurrencyDisplayName = (currency: string) => {
+    const currencyNames: Record<string, string> = {
+      'BTC': 'Bitcoin',
+      'ETH': 'Ethereum',
+      'TRX': 'TRON',
+      'USDT_TRC20': 'USDT TRC20',
+      'USDT_ERC20': 'USDT ERC20',
+      'USDT_BEP20': 'USDT BEP20',
+      'USDT_SOL': 'USDT SOL',
+      'USDC': 'USD Coin',
+      'XRP': 'Ripple',
+      'BASE': 'Base Network',
+      'BNB': 'Binance Coin',
+      'TRON': 'TRON Network',
+      'TON': 'The Open Network',
+      'SOLANA': 'Solana Network'
+    };
+    return currencyNames[currency] || currency;
+  };
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("");
   const [stats, setStats] = useState<ProcessorStats | null>(null);
@@ -73,6 +95,59 @@ export default function ProcessingPage() {
     notes: "",
   });
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
+
+  // Состояния для материалов
+  const [instructions, setInstructions] = useState<Array<{
+    id: string;
+    title: string;
+    content: string;
+    category: string;
+    priority: number;
+  }>>([]);
+  const [scripts, setScripts] = useState<Array<{
+    id: string;
+    title: string;
+    content: string;
+    description?: string;
+    category: string;
+    language: string;
+  }>>([]);
+  const [resources, setResources] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string;
+    type: string;
+    url?: string;
+    filePath?: string;
+  }>>([]);
+  const [templates, setTemplates] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    content: string;
+    type: string;
+  }>>([]);
+  
+  // Состояния для бонусной системы
+  const [bonusSettings, setBonusSettings] = useState<{
+    baseCommissionRate: number;
+    baseBonusRate: number;
+  } | null>(null);
+  const [bonusGrids, setBonusGrids] = useState<Array<{
+    id: string;
+    minAmount: number;
+    maxAmount?: number;
+    bonusPercentage: number;
+    description?: string;
+  }>>([]);
+  const [bonusMotivations, setBonusMotivations] = useState<Array<{
+    id: string;
+    type: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    name: string;
+    description?: string;
+    value: number;
+    conditions?: string;
+  }>>([]);
 
   // Проверка авторизации и роли
   useEffect(() => {
@@ -90,7 +165,10 @@ export default function ProcessingPage() {
         // Загружаем данные для процессоров и админов
         if (userData.role === "PROCESSOR" || userData.role === "ADMIN") {
           loadProcessorData();
+          loadProcessingMaterials();
         } else {
+          // Для обычных пользователей загружаем только настройки бонусов
+          loadBonusSettings();
           setLoading(false);
         }
       } catch (error) {
@@ -118,20 +196,96 @@ export default function ProcessingPage() {
       const depositsResponse = await fetch("/api/processor/deposits");
       if (depositsResponse.ok) {
         const depositsData = await depositsResponse.json();
-        setDeposits(depositsData);
+        setDeposits(depositsData.deposits || []);
       }
 
       // Загружаем заявки на зарплату
       const salaryResponse = await fetch("/api/processor/salary-requests");
       if (salaryResponse.ok) {
         const salaryData = await salaryResponse.json();
-        setSalaryRequests(salaryData);
+        setSalaryRequests(salaryData.salaryRequests || []);
       }
       
     } catch (error) {
       console.error("Ошибка загрузки данных:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Отправка заявки на зарплату
+  const handleSalaryRequest = async (data: {
+    periodStart: string;
+    periodEnd: string;
+    requestedAmount: number;
+    paymentDetails: {
+      method: string;
+      account: string;
+      additionalInfo?: string;
+    };
+    comment?: string;
+  }) => {
+    try {
+      setSubmittingDeposit(true);
+      
+      const response = await fetch("/api/processor/salary-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          periodStart: data.periodStart,
+          periodEnd: data.periodEnd,
+          requestedAmount: data.requestedAmount,
+          paymentDetails: data.paymentDetails,
+          comment: data.comment,
+        }),
+      });
+
+      if (response.ok) {
+        showSuccess("Заявка отправлена", "Заявка на зарплату успешно отправлена на рассмотрение");
+        loadProcessorData(); // Перезагружаем данные
+      } else {
+        const errorData = await response.json();
+        showError("Ошибка отправки", errorData.error || "Не удалось отправить заявку");
+      }
+    } catch (error) {
+      console.error("Ошибка отправки заявки на зарплату:", error);
+      showError("Ошибка отправки", "Произошла ошибка при отправке заявки");
+    } finally {
+      setSubmittingDeposit(false);
+    }
+  };
+
+  // Загрузка материалов обработки
+  const loadProcessingMaterials = async () => {
+    try {
+      // Загружаем инструкции, скрипты, ресурсы и шаблоны
+      const materialsResponse = await fetch("/api/processor/instructions");
+      if (materialsResponse.ok) {
+        const materialsData = await materialsResponse.json();
+        setInstructions(materialsData.instructions || []);
+        setScripts(materialsData.scripts || []);
+        setResources(materialsData.resources || []);
+        setTemplates(materialsData.templates || []);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки материалов:", error);
+    }
+  };
+
+  // Загрузка настроек бонусной системы
+  const loadBonusSettings = async () => {
+    try {
+      const response = await fetch("/api/bonus-settings");
+      if (response.ok) {
+        const data = await response.json();
+        setBonusSettings(data.bonusSettings);
+        setBonusGrids(data.bonusGrids || []);
+        setBonusMotivations(data.bonusMotivations || []);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки настроек бонусов:", error);
     }
   };
 
@@ -258,7 +412,7 @@ export default function ProcessingPage() {
                   Доступ ограничен
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Эта страница предназначена для пользователей с ролью "Обработчик депозитов"
+                  Эта страница предназначена для пользователей с ролью &quot;Обработчик депозитов&quot;
                 </p>
               </div>
 
@@ -317,7 +471,7 @@ export default function ProcessingPage() {
                 Мой кабинет
               </h1>
               <p className="text-[#171717]/60 dark:text-[#ededed]/60 mt-1">
-                Панель обработчика депозитов
+                Панель обработчика депозитов (суммы в USD)
               </p>
             </div>
             
@@ -401,17 +555,17 @@ export default function ProcessingPage() {
               </div>
             </div>
 
-            {/* Статусы */}
+            {/* Информация */}
             <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Статусы</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Информация</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">В обработке:</span>
-                  <span className="text-sm font-medium text-yellow-600">{stats.today.pendingCount}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Все депозиты:</span>
+                  <span className="text-sm font-medium text-green-600">Автоматически одобрены</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Отклонено:</span>
-                  <span className="text-sm font-medium text-red-600">{stats.today.rejectedCount}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Бонусы:</span>
+                  <span className="text-sm font-medium text-blue-600">Начисляются сразу</span>
                 </div>
               </div>
             </div>
@@ -442,6 +596,26 @@ export default function ProcessingPage() {
               >
                 Зарплата ({salaryRequests.length})
               </button>
+              <button
+                onClick={() => setActiveTab("bonuses")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "bonuses"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Бонусы
+              </button>
+              <button
+                onClick={() => setActiveTab("instructions")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "instructions"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Инструкции
+              </button>
             </nav>
           </div>
 
@@ -468,8 +642,8 @@ export default function ProcessingPage() {
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Игрок</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Оффер</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сумма</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сеть</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Бонус</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Статус</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -492,20 +666,11 @@ export default function ProcessingPage() {
                             <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                               ${deposit.amount}
                             </td>
+                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                              {getCurrencyDisplayName(deposit.currency)}
+                            </td>
                             <td className="py-3 px-4 text-sm font-medium text-green-600">
                               ${deposit.bonusAmount}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                deposit.status === "APPROVED" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : deposit.status === "REJECTED"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }`}>
-                                {deposit.status === "APPROVED" ? "Подтвержден" : 
-                                 deposit.status === "REJECTED" ? "Отклонен" : "В обработке"}
-                              </span>
                             </td>
                           </tr>
                         ))}
@@ -574,6 +739,314 @@ export default function ProcessingPage() {
                 )}
               </div>
             )}
+
+            {activeTab === "bonuses" && (
+              <div className="space-y-6">
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-semibold text-[#171717] dark:text-[#ededed] mb-4">
+                    Бонусная сетка и условия работы
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Узнайте, как рассчитываются бонусы и комиссии за ваши депозиты
+                  </p>
+                </div>
+
+                {/* Базовая комиссия */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                    Базовая комиссия
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {bonusSettings?.baseCommissionRate || 30}%
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Комиссия платформы</div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {bonusSettings?.baseBonusRate || 5}%
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Базовый бонус</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Сетка бонусов */}
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-3">
+                    Прогрессивная сетка бонусов
+                  </h4>
+                  <div className="space-y-3">
+                    {bonusGrids.length > 0 ? (
+                      bonusGrids.map((grid) => (
+                        <div key={grid.id} className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                          <span className="font-medium">
+                            Дневная сумма ${grid.minAmount.toLocaleString()} - {grid.maxAmount ? `$${grid.maxAmount.toLocaleString()}` : '∞'}
+                          </span>
+                          <span className="text-green-600 font-semibold">{grid.bonusPercentage}% бонус</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                        Бонусная сетка не настроена
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Дополнительные мотивации */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
+                    Дополнительные мотивации
+                  </h4>
+                  <div className="space-y-3">
+                    {bonusMotivations.length > 0 ? (
+                      bonusMotivations.map((motivation) => (
+                        <div key={motivation.id} className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-lg">
+                          <div>
+                            <span className="font-medium">{motivation.name}</span>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {motivation.description || 'Дополнительная мотивация'}
+                            </div>
+                          </div>
+                          <span className="text-purple-600 font-semibold">
+                            {motivation.type === 'PERCENTAGE' ? `+${motivation.value}%` : `+$${motivation.value}`}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                        Дополнительные мотивации не настроены
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Примеры расчета */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
+                    Примеры расчета бонусов
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                      <div className="font-medium mb-2">
+                        Депозит $100 (первый за день)
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Бонус: $100 × {bonusSettings?.baseBonusRate || 5}% = ${((100 * (bonusSettings?.baseBonusRate || 5)) / 100).toFixed(2)}
+                      </div>
+                    </div>
+                    {bonusGrids.length > 0 && (
+                      <>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                          <div className="font-medium mb-2">
+                            Депозит $500 (сумма за день $600)
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Бонус: $500 × {bonusGrids[0]?.bonusPercentage || 5}% = ${((500 * (bonusGrids[0]?.bonusPercentage || 5)) / 100).toFixed(2)} (базовая ставка)
+                          </div>
+                        </div>
+                        {bonusGrids.length > 1 && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                            <div className="font-medium mb-2">
+                              Депозит $1000 (сумма за день $2000)
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              Бонус: $1000 × {bonusGrids[1]?.bonusPercentage || 7.5}% = ${((1000 * (bonusGrids[1]?.bonusPercentage || 7.5)) / 100).toFixed(2)} (повышенная ставка)
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "instructions" && (
+              <div className="space-y-6">
+                <div className="text-center mb-8">
+                  <h3 className="text-xl font-semibold text-[#171717] dark:text-[#ededed] mb-4">
+                    Инструкции и скрипты обработки
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Полезные материалы для эффективной работы с депозитами
+                  </p>
+                </div>
+
+                {/* Загрузка материалов */}
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-500 dark:text-gray-400">Загрузка материалов...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Инструкции */}
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6">
+                      <h4 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-4">
+                        Инструкции и правила
+                      </h4>
+                      <div className="space-y-4">
+                        {instructions && instructions.length > 0 ? (
+                          instructions.map((instruction) => (
+                            <div key={instruction.id} className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  instruction.category === 'rules' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                  instruction.category === 'faq' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                }`}>
+                                  {instruction.category === 'rules' ? 'Правила' : 
+                                   instruction.category === 'faq' ? 'FAQ' : 'Советы'}
+                                </span>
+                                {instruction.priority >= 4 && (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                                    Важно
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="font-medium mb-2">{instruction.title}</h5>
+                              <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+                                {instruction.content}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                            Инструкции не загружены
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Скрипты */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
+                      <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
+                        Скрипты для работы с клиентами
+                      </h4>
+                      <div className="space-y-4">
+                        {scripts && scripts.length > 0 ? (
+                          scripts.map((script) => (
+                            <div key={script.id} className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  script.category === 'greeting' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  script.category === 'clarification' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                  script.category === 'confirmation' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                  'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                                }`}>
+                                  {script.category === 'greeting' ? 'Приветствие' : 
+                                   script.category === 'clarification' ? 'Уточнение' :
+                                   script.category === 'confirmation' ? 'Подтверждение' : 'Поддержка'}
+                                </span>
+                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                                  {script.language.toUpperCase()}
+                                </span>
+                              </div>
+                              <h5 className="font-medium mb-2">{script.title}</h5>
+                              {script.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                  {script.description}
+                                </p>
+                              )}
+                              <div className="bg-gray-100 dark:bg-gray-700 rounded p-3 text-sm font-mono">
+                                {script.content}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                            Скрипты не загружены
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ресурсы */}
+                    {resources && resources.length > 0 && (
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+                        <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-4">
+                          Полезные ресурсы
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {resources.map((resource) => (
+                            <div key={resource.id} className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  resource.type === 'link' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  resource.type === 'video' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                  resource.type === 'document' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                                }`}>
+                                  {resource.type === 'link' ? 'Ссылка' : 
+                                   resource.type === 'video' ? 'Видео' :
+                                   resource.type === 'document' ? 'Документ' : 'Файл'}
+                                </span>
+                              </div>
+                              <h5 className="font-medium mb-2">{resource.title}</h5>
+                              {resource.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                  {resource.description}
+                                </p>
+                              )}
+                              {(resource.url || resource.filePath) && (
+                                <a
+                                  href={resource.url || resource.filePath}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                  Открыть ресурс
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Шаблоны */}
+                    {templates && templates.length > 0 && (
+                      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-6">
+                        <h4 className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-4">
+                          Готовые шаблоны
+                        </h4>
+                        <div className="space-y-4">
+                          {templates.map((template) => (
+                            <div key={template.id} className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  template.type === 'email' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                  template.type === 'message' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                  'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                                }`}>
+                                  {template.type === 'email' ? 'Email' : 
+                                   template.type === 'message' ? 'Сообщение' : 'Уведомление'}
+                                </span>
+                              </div>
+                              <h5 className="font-medium mb-2">{template.name}</h5>
+                              {template.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                  {template.description}
+                                </p>
+                              )}
+                              <div className="bg-gray-100 dark:bg-gray-700 rounded p-3 text-sm font-mono">
+                                {template.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -585,10 +1058,10 @@ export default function ProcessingPage() {
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6">Добавить депозит</h3>
             
             <form onSubmit={handleSubmitDeposit} className="space-y-4">
-              {/* Сумма */}
+              {/* Сумма в долларах */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Сумма *
+                  Сумма в USD *
                 </label>
                 <input
                   type="number"
@@ -597,39 +1070,39 @@ export default function ProcessingPage() {
                   value={depositForm.amount}
                   onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="0.00"
+                  placeholder="0.00 USD"
                   required
                 />
               </div>
 
-              {/* Криптовалюта */}
+              {/* Криптовалюта/Сеть */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Валюта *
+                  Криптовалюта/Сеть *
                 </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Выберите криптовалюту или сеть для пометки, куда поступил депозит
+                </p>
                 <select
                   value={depositForm.currency}
                   onChange={(e) => setDepositForm({...depositForm, currency: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   required
                 >
-                  <optgroup label="Фиатные валюты">
-                    <option value="USD">USD - Доллар США</option>
-                    <option value="EUR">EUR - Евро</option>
-                    <option value="RUB">RUB - Российский рубль</option>
-                  </optgroup>
-                  <optgroup label="Криптовалюты">
-                    <option value="BTC">BTC - Bitcoin</option>
-                    <option value="ETH">ETH - Ethereum</option>
-                    <option value="USDT">USDT - Tether</option>
-                    <option value="USDC">USDC - USD Coin</option>
-                    <option value="BNB">BNB - Binance Coin</option>
-                    <option value="XRP">XRP - Ripple</option>
-                    <option value="ADA">ADA - Cardano</option>
-                    <option value="SOL">SOL - Solana</option>
-                    <option value="DOGE">DOGE - Dogecoin</option>
-                    <option value="MATIC">MATIC - Polygon</option>
-                  </optgroup>
+                  <option value="BTC">BTC - Bitcoin</option>
+                  <option value="ETH">ETH - Ethereum</option>
+                  <option value="TRX">TRX - TRON</option>
+                  <option value="USDT_TRC20">USDT TRC20 - Tether на TRON</option>
+                  <option value="USDT_ERC20">USDT ERC20 - Tether на Ethereum</option>
+                  <option value="USDT_BEP20">USDT BEP20 - Tether на BSC</option>
+                  <option value="USDT_SOL">USDT SOL - Tether на Solana</option>
+                  <option value="USDC">USDC - USD Coin</option>
+                  <option value="XRP">XRP - Ripple</option>
+                  <option value="BASE">BASE - Base Network</option>
+                  <option value="BNB">BNB - Binance Coin</option>
+                  <option value="TRON">TRON - TRON Network</option>
+                  <option value="TON">TON - The Open Network</option>
+                  <option value="SOLANA">SOLANA - Solana Network</option>
                 </select>
               </div>
 
@@ -685,20 +1158,13 @@ export default function ProcessingPage() {
         </div>
       )}
 
-      {showSalaryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Заявка на зарплату</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Форма подачи заявки на зарплату будет реализована в следующей итерации</p>
-            <button
-              onClick={() => setShowSalaryModal(false)}
-              className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
-      )}
+      <SalaryRequestModal
+        isOpen={showSalaryModal}
+        onClose={() => setShowSalaryModal(false)}
+        onSubmit={handleSalaryRequest}
+        availableAmount={stats?.balance.available || 0}
+        isLoading={submittingDeposit}
+      />
     </div>
   );
 }

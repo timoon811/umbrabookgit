@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { normalizeFileUrl } from '@/lib/file-utils';
 
 export default function FileDisplayTest() {
@@ -106,12 +107,15 @@ export default function FileDisplayTest() {
                       Тест изображения:
                     </div>
                     <div className="flex items-center gap-4">
-                      <img
+                      <Image
                         src={normalizedUrl}
                         alt="Test"
+                        width={64}
+                        height={64}
                         className="w-16 h-16 object-cover rounded border border-[#171717]/10 dark:border-[#ededed]/10"
                         onLoad={() => handleImageLoad(url)}
                         onError={() => handleImageError(url)}
+                        unoptimized={true}
                       />
                       <div className={`text-xs px-2 py-1 rounded ${
                         status === 'success' 

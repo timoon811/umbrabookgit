@@ -1,53 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { registerSchema, validateSchema } from "@/lib/zod-schemas";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, telegram, password } = await request.json();
+    const body = await request.json();
 
-    // Валидация входных данных
-    if (!name || !email || !telegram || !password) {
+    // Валидация с помощью Zod
+    const validationResult = validateSchema(registerSchema, body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { message: "Имя, email, telegram и пароль обязательны" },
+        { message: "Ошибка валидации данных", errors: validationResult.errors },
         { status: 400 }
       );
     }
 
-    if (name.trim().length < 2) {
-      return NextResponse.json(
-        { message: "Имя должно содержать минимум 2 символа" },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        { message: "Пароль должен содержать минимум 6 символов" },
-        { status: 400 }
-      );
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { message: "Некорректный email адрес" },
-        { status: 400 }
-      );
-    }
-
-    if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
-      return NextResponse.json(
-        { message: "Пароль должен содержать буквы и цифры" },
-        { status: 400 }
-      );
-    }
-
-    if (!telegram.startsWith("@")) {
-      return NextResponse.json(
-        { message: "Telegram должен начинаться с @" },
-        { status: 400 }
-      );
-    }
+    const { name, email, telegram, password } = validationResult.data;
 
     if (telegram.length < 4) {
       return NextResponse.json(

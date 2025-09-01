@@ -7,16 +7,41 @@ import DepositSourceModal from "@/components/modals/DepositSourceModal";
 import NoSSR from "@/components/NoSSR";
 import { useToast } from "@/components/Toast";
 import DepositsDiagnostics from "@/components/admin/DepositsDiagnostics";
-import DepositsTestPanel from "@/components/admin/DepositsTestPanel";
 import WebSocketDiagnostics from "@/components/admin/WebSocketDiagnostics";
+import WebSocketLogs from "@/components/admin/WebSocketLogs";
+
+interface DepositSource {
+  id: string;
+  name: string;
+  token: string;
+  commission: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface Deposit {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  playerNick?: string;
+  mammothLogin?: string;
+  mammothCountry?: string;
+  domain?: string;
+  commissionPercent?: number;
+  commissionAmount?: number;
+  netAmount?: number;
+  processed?: boolean;
+}
 
 export default function AdminDepositsPage() {
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics' | 'testing' | 'websocket-diagnostics'>('management');
-  const [depositSources, setDepositSources] = useState<any[]>([]);
-  const [deposits, setDeposits] = useState<any[]>([]);
-  const [allDeposits, setAllDeposits] = useState<any[]>([]);
-  const [depositStats, setDepositStats] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'management' | 'all-deposits' | 'diagnostics' | 'websocket-diagnostics' | 'logs'>('management');
+  const [depositSources, setDepositSources] = useState<DepositSource[]>([]);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [allDeposits, setAllDeposits] = useState<Deposit[]>([]);
+  const [depositStats, setDepositStats] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [allDepositsLoading, setAllDepositsLoading] = useState(false);
   const [pagination, setPagination] = useState({
@@ -30,7 +55,7 @@ export default function AdminDepositsPage() {
   const [depositSourceModalOpen, setDepositSourceModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [currentDepositSource, setCurrentDepositSource] = useState<any>(null);
+  const [currentDepositSource, setCurrentDepositSource] = useState<DepositSource | null>(null);
   const [entityToDelete, setEntityToDelete] = useState<{id: string, name: string, type: string} | null>(null);
 
   useEffect(() => {
@@ -140,13 +165,13 @@ export default function AdminDepositsPage() {
     setDepositSourceModalOpen(true);
   };
 
-  const openEditModal = (source: any) => {
+  const openEditModal = (source: DepositSource) => {
     setCurrentDepositSource(source);
     setModalMode('edit');
     setDepositSourceModalOpen(true);
   };
 
-  const openDeleteModal = (source: any) => {
+  const openDeleteModal = (source: DepositSource) => {
     setEntityToDelete({
       id: source.id,
       name: source.name,
@@ -155,7 +180,7 @@ export default function AdminDepositsPage() {
     setConfirmModalOpen(true);
   };
 
-  const handleSaveDepositSource = async (data: any) => {
+  const handleSaveDepositSource = async (data: Record<string, unknown>) => {
     try {
       const url = modalMode === 'create' 
         ? '/api/admin/finance/deposit-sources'
@@ -296,16 +321,7 @@ export default function AdminDepositsPage() {
         >
           🔍 Диагностика
         </button>
-        <button
-          onClick={() => setActiveTab('testing')}
-          className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
-            activeTab === 'testing'
-              ? 'bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] shadow-sm'
-              : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed]'
-          }`}
-        >
-          🧪 Тестирование
-        </button>
+
         <button
           onClick={() => setActiveTab('websocket-diagnostics')}
           className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
@@ -315,6 +331,16 @@ export default function AdminDepositsPage() {
           }`}
         >
           🔧 WebSocket
+        </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`flex-1 text-center py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'logs'
+              ? 'bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] shadow-sm'
+              : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed]'
+          }`}
+        >
+          📋 Логи
         </button>
       </div>
 
@@ -413,7 +439,7 @@ export default function AdminDepositsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {depositSources.map((source: any) => (
+            {depositSources.map((source: DepositSource) => (
               <div
                 key={source.id}
                 className="rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4 hover:shadow-md transition-shadow"
@@ -537,7 +563,7 @@ export default function AdminDepositsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {deposits.map((deposit: any) => (
+                {deposits.map((deposit: Deposit) => (
                   <tr key={deposit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
@@ -738,7 +764,7 @@ export default function AdminDepositsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {allDeposits.map((deposit: any) => (
+                    {allDeposits.map((deposit: Deposit) => (
                       <tr key={deposit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                         {/* ID депозита */}
                         <td className="px-3 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400" title={deposit.id}>
@@ -862,12 +888,15 @@ export default function AdminDepositsPage() {
         <DepositsDiagnostics />
       )}
 
-      {activeTab === 'testing' && (
-        <DepositsTestPanel />
-      )}
+
 
       {activeTab === 'websocket-diagnostics' && (
         <WebSocketDiagnostics />
+      )}
+
+      {/* Вкладка "Логи WebSocket" */}
+      {activeTab === 'logs' && (
+        <WebSocketLogs />
       )}
 
       {/* Модальные окна */}

@@ -32,10 +32,13 @@ class DepositWebSocketClient {
   private connections: Map<string, WebSocket> = new Map();
   private reconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private diedTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private logs: Array<{timestamp: Date, level: 'info' | 'warn' | 'error', message: string, sourceId?: string}> = [];
+  private maxLogs = 1000; // Максимальное количество логов
 
   constructor() {
     // Предотвращаем создание WebSocket соединений на клиенте
     if (typeof window === 'undefined') {
+      this.log('info', 'WebSocket клиент инициализирован');
       // Инициализируем соединения с небольшой задержкой, чтобы дать время завершиться загрузке
       setTimeout(() => {
         this.initializeConnections();
@@ -63,16 +66,16 @@ class DepositWebSocketClient {
   private connectToSource(source: DepositSource) {
     // Проверяем токен перед подключением
     if (!source.token || source.token.length < 10) {
-      console.error(`❌ Источник ${source.name}: некорректный токен (длина: ${source.token?.length || 0})`);
+      this.log('error', `Источник ${source.name}: некорректный токен (длина: ${source.token?.length || 0})`, source.id);
       return;
     }
 
     const encodedToken = encodeURIComponent(`Worker ${source.token}`);
     const wsUrl = `wss://gambler-panel.com/api/ws?token=${encodedToken}&connectionType=bot`;
 
-    console.log(`🔌 Подключение к источнику ${source.name} (${source.id})`);
-    console.log(`🔗 WebSocket URL: ${wsUrl}`);
-    console.log(`🎫 Токен: ${source.token.substring(0, 8)}...${source.token.substring(source.token.length - 4)}`);
+    this.log('info', `Подключение к источнику ${source.name} (${source.id})`, source.id);
+    this.log('info', `WebSocket URL: ${wsUrl}`, source.id);
+    this.log('info', `Токен: ${source.token.substring(0, 8)}...${source.token.substring(source.token.length - 4)}`, source.id);
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -80,56 +83,56 @@ class DepositWebSocketClient {
     // Очищаем предыдущие таймеры
     this.clearTimeouts(source.id);
 
-    // Устанавливаем таймер смерти соединения (10 секунд)
-    const diedTimeout = setTimeout(() => {
-      console.log(`💀 Соединение ${source.name} мертво, переподключение...`);
-      ws.close();
-      this.reconnectToSource(source);
-    }, 10000);
+    // Устанавливаем начальный таймер (20 секунд на подключение согласно документации)
+    const setDiedTimeout = (time = 10000) => {
+      this.clearTimeouts(source.id);
+      const diedTimeout = setTimeout(() => {
+        this.log('warn', `Соединение ${source.name} мертво (timeout ${time}ms), переподключение...`, source.id);
+        ws.close();
+        this.reconnectToSource(source);
+      }, time);
+      this.diedTimeouts.set(source.id, diedTimeout);
+    };
 
-    this.diedTimeouts.set(source.id, diedTimeout);
+    // Устанавливаем начальный timeout на 20 секунд (как в примере)
+    setDiedTimeout(20000);
 
     ws.on('open', () => {
-      console.log(`✅ Подключено к источнику ${source.name}`);
-      this.clearTimeouts(source.id);
+      this.log('info', `✅ Подключено к источнику ${source.name}`, source.id);
+      // НЕ очищаем timeout здесь - ждем первый ping
     });
 
     ws.on('message', (data: WebSocket.RawData) => {
       try {
         const message: WebSocketMessage = JSON.parse(data.toString('utf8'));
+        
+        this.log('info', `📨 Сообщение от ${source.name}: ${message.name}`, source.id);
 
         if (message.name === 'ping') {
-          // Отвечаем на ping
+          // Отвечаем на ping согласно документации
+          setDiedTimeout(); // Сбрасываем таймер при получении ping
           ws.send(JSON.stringify({ name: 'pong' }));
-
-          // Сбрасываем таймер смерти
-          this.clearTimeouts(source.id);
-          const newDiedTimeout = setTimeout(() => {
-            console.log(`💀 Соединение ${source.name} мертво, переподключение...`);
-            ws.close();
-            this.reconnectToSource(source);
-          }, 10000);
-          this.diedTimeouts.set(source.id, newDiedTimeout);
+          this.log('info', `🏓 Ответ pong отправлен ${source.name}`, source.id);
 
         } else if (message.name === 'newDeposit') {
           // Обрабатываем новый депозит
           this.handleNewDeposit(source, message.data);
         } else {
-          console.log(`📨 Новое сообщение от ${source.name}: ${message.name}`, message.data);
+          this.log('info', `📨 Неизвестное сообщение от ${source.name}: ${message.name}`, source.id);
         }
       } catch (error) {
-        console.error(`❌ Ошибка обработки сообщения от ${source.name}:`, error);
+        this.log('error', `Ошибка обработки сообщения от ${source.name}: ${error}`, source.id);
       }
     });
 
     ws.on('close', () => {
-      console.log(`🔌 Соединение с ${source.name} закрыто, планируем переподключение...`);
+      this.log('warn', `🔌 Соединение с ${source.name} закрыто, планируем переподключение...`, source.id);
       this.clearTimeouts(source.id);
       this.reconnectToSource(source);
     });
 
     ws.on('error', (error) => {
-      console.error(`❌ Ошибка WebSocket соединения с ${source.name}:`, error);
+      this.log('error', `Ошибка WebSocket соединения с ${source.name}: ${error}`, source.id);
       this.clearTimeouts(source.id);
       this.reconnectToSource(source);
     });
@@ -137,19 +140,13 @@ class DepositWebSocketClient {
     this.connections.set(source.id, ws);
     
     } catch (error) {
-      console.error(`❌ Ошибка создания WebSocket соединения с ${source.name}:`, error);
+      this.log('error', `Ошибка создания WebSocket соединения с ${source.name}: ${error}`, source.id);
     }
   }
 
   private async handleNewDeposit(source: DepositSource, depositData: DepositData) {
     try {
-      console.log(`💰 Новый депозит от ${source.name}:`, {
-        id: depositData.id,
-        mammothLogin: depositData.mammothLogin,
-        amount: depositData.amount,
-        token: depositData.token,
-        amountUsd: depositData.amountUsd
-      });
+      this.log('info', `💰 Новый депозит от ${source.name}: ID=${depositData.id}, Логин=${depositData.mammothLogin}, Сумма=${depositData.amount} ${depositData.token} ($${depositData.amountUsd})`, source.id);
 
       // Проверяем, существует ли уже такой депозит
       const existingDeposit = await prisma.deposits.findUnique({
@@ -157,7 +154,7 @@ class DepositWebSocketClient {
       });
 
       if (existingDeposit) {
-        console.log(`⚠️ Депозит ${depositData.id} уже существует, пропускаем`);
+        this.log('warn', `Депозит ${depositData.id} уже существует, пропускаем`, source.id);
         return;
       }
 
@@ -167,7 +164,7 @@ class DepositWebSocketClient {
       });
 
       if (!depositSource) {
-        console.error(`❌ Источник депозитов ${source.id} не найден`);
+        this.log('error', `Источник депозитов ${source.id} не найден`, source.id);
         return;
       }
 
@@ -202,13 +199,13 @@ class DepositWebSocketClient {
         }
       });
 
-      console.log(`✅ Депозит ${depositData.id} успешно сохранен`);
+      this.log('info', `✅ Депозит ${depositData.id} успешно сохранен`, source.id);
 
       // Здесь можно добавить дополнительную логику обработки депозита
       // Например, отправку уведомлений, обновление статистики и т.д.
 
     } catch (error) {
-      console.error(`❌ Ошибка обработки депозита ${depositData.id}:`, error);
+      this.log('error', `Ошибка обработки депозита ${depositData.id}: ${error}`, source.id);
     }
   }
 
@@ -219,9 +216,9 @@ class DepositWebSocketClient {
       clearTimeout(existingTimeout);
     }
 
-    // Планируем переподключение через 5 секунд
+    // Планируем переподключение через 5 секунд согласно документации
     const reconnectTimeout = setTimeout(() => {
-      console.log(`🔄 Переподключение к источнику ${source.name}...`);
+      this.log('info', `🔄 Переподключение к источнику ${source.name}...`, source.id);
       this.connectToSource(source);
     }, 5000);
 
@@ -252,12 +249,12 @@ class DepositWebSocketClient {
 
         for (const source of activeSources) {
           if (!this.connections.has(source.id) || this.connections.get(source.id)?.readyState !== WebSocket.OPEN) {
-            console.log(`🔄 Периодическая проверка: переподключение к ${source.name}`);
+            this.log('info', `🔄 Периодическая проверка: переподключение к ${source.name}`, source.id);
             this.connectToSource(source);
           }
         }
       } catch (error) {
-        console.error('❌ Ошибка периодической проверки подключений:', error);
+        this.log('error', `Ошибка периодической проверки подключений: ${error}`);
       }
     }, 5 * 60 * 1000); // 5 минут
   }
@@ -305,7 +302,7 @@ class DepositWebSocketClient {
 
   // Метод для принудительного переподключения всех соединений
   public reconnectAll() {
-    console.log('🔄 Переподключение всех WebSocket соединений...');
+    this.log('info', '🔄 Переподключение всех WebSocket соединений...');
 
     for (const [sourceId, connection] of this.connections.entries()) {
       connection.close();
@@ -330,7 +327,7 @@ class DepositWebSocketClient {
 
   // Метод завершения работы
   public shutdown() {
-    console.log('🔌 Завершение работы WebSocket клиента...');
+    this.log('info', '🔌 Завершение работы WebSocket клиента...');
 
     for (const connection of this.connections.values()) {
       connection.close();
@@ -338,6 +335,42 @@ class DepositWebSocketClient {
 
     this.clearAllTimeouts();
     this.connections.clear();
+  }
+
+  // Метод для добавления лога
+  private log(level: 'info' | 'warn' | 'error', message: string, sourceId?: string) {
+    const logEntry = {
+      timestamp: new Date(),
+      level,
+      message,
+      sourceId
+    };
+    
+    this.logs.push(logEntry);
+    
+    // Ограничиваем количество логов
+    if (this.logs.length > this.maxLogs) {
+      this.logs = this.logs.slice(-this.maxLogs);
+    }
+    
+    // Также выводим в консоль с эмодзи для удобства
+    const emoji = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : '✅';
+    const prefix = sourceId ? `[${sourceId.slice(-8)}]` : '[GLOBAL]';
+    console.log(`${emoji} ${prefix} ${message}`);
+  }
+
+  // Метод для получения логов
+  public getLogs(sourceId?: string): Array<{timestamp: Date, level: string, message: string, sourceId?: string}> {
+    if (sourceId) {
+      return this.logs.filter(log => log.sourceId === sourceId || !log.sourceId);
+    }
+    return [...this.logs];
+  }
+
+  // Метод для очистки логов
+  public clearLogs() {
+    this.logs = [];
+    this.log('info', 'Логи очищены');
   }
 }
 

@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+import { requireProcessorAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  // Проверяем авторизацию
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  const { user } = authResult;
+  
   try {
-    // Проверяем авторизацию
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    if (decoded.role !== "PROCESSOR" && decoded.role !== "ADMIN") {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
     // Для админов показываем все заявки, для процессоров - только их
-    const processorId = decoded.role === "ADMIN" ? null : decoded.userId;
+    const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем параметры запроса
     const { searchParams } = new URL(request.url);
@@ -75,25 +63,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Проверяем авторизацию (только для процессоров)
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  const { user } = authResult;
+
+  // Только процессоры могут создавать заявки
+  if (user.role !== "PROCESSOR") {
+    return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+  }
+  
   try {
-    // Проверяем авторизацию
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    if (decoded.role !== "PROCESSOR") {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
-    const processorId = decoded.userId;
+    const processorId = user.userId;
     const data = await request.json();
 
     // Валидация данных

@@ -23,31 +23,7 @@ const ALLOWED_FILE_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-async function checkAdminAuth(request: NextRequest) {
-  try {
-    // Получаем токен из cookies
-    const token = request.cookies.get("auth-token")?.value;
-    
-    if (!token) {
-      throw new Error("Не авторизован");
-    }
-
-    // Проверяем формат токена
-    const tokenParts = token.split('.');
-    if (tokenParts.length !== 3 || !tokenParts.every(part => part.length > 0)) {
-      throw new Error("Недействительный токен");
-    }
-
-    // Используем существующую функцию проверки админских прав
-    const { requireAdmin } = await import('@/lib/auth');
-    const user = await requireAdmin(token);
-    
-    return user;
-  } catch (error) {
-    console.error("Ошибка проверки админских прав:", error);
-    throw new Error("Недостаточно прав");
-  }
-}
+import { requireAdmin } from "@/lib/auth";
 
 function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';

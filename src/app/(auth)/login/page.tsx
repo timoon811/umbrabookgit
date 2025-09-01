@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import UmbraLogo from "@/components/UmbraLogo";
+import { loginSchema, validateSchema } from "@/lib/zod-schemas";
 
 function LoginForm() {
   const [formData, setFormData] = useState({
@@ -31,22 +32,17 @@ function LoginForm() {
   };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.email) {
-      newErrors.email = "Email обязателен";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Некорректный email";
+    // Исключаем rememberMe из валидации, так как это не входит в схему логина
+    const { rememberMe, ...loginData } = formData;
+    const result = validateSchema(loginSchema, loginData);
+    
+    if (!result.success) {
+      setErrors(result.errors);
+      return false;
     }
-
-    if (!formData.password) {
-      newErrors.password = "Пароль обязателен";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Пароль должен содержать минимум 6 символов";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,7 +64,7 @@ function LoginForm() {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        await response.json(); // Результат не используется
 
         // Показываем уведомление об успешном входе
         setShowSuccess(true);
@@ -92,14 +88,14 @@ function LoginForm() {
         try {
           const errorResult = await response.json();
           errorMessage = errorResult.message || errorMessage;
-        } catch (parseError) {
+        } catch {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
 
         setErrors({ general: errorMessage });
         setShowSuccess(false);
       }
-    } catch (fetchError) {
+    } catch {
       setErrors({ general: "Ошибка сети. Попробуйте еще раз." });
       setShowSuccess(false);
     } finally {

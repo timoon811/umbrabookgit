@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 
 interface DebugInfoProps {
   title: string;
-  data?: any;
-  error?: any;
+  data?: unknown;
+  error?: Error | string | null;
 }
 
 export default function DebugInfo({ title, data, error }: DebugInfoProps) {

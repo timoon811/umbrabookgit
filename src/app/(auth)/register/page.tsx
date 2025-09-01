@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UmbraLogo from "@/components/UmbraLogo";
+import { registerSchema } from "@/lib/zod-schemas";
+import { validateSchema } from "@/lib/zod-schemas";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -39,46 +41,15 @@ export default function RegisterPage() {
   };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Имя обязательно";
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Имя должно содержать минимум 2 символа";
+    const result = validateSchema(registerSchema, formData);
+    
+    if (!result.success) {
+      setErrors(result.errors);
+      return false;
     }
-
-    if (!formData.email) {
-      newErrors.email = "Email обязателен";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Некорректный email";
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Пароль обязателен";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Пароль должен содержать минимум 6 символов";
-    } else if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = "Пароль должен содержать буквы и цифры";
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Подтверждение пароля обязательно";
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Пароли не совпадают";
-    }
-
-    if (!formData.telegram) {
-      newErrors.telegram = "Telegram обязателен";
-    } else if (!formData.telegram.startsWith("@")) {
-      newErrors.telegram = "Telegram должен начинаться с @";
-    } else if (formData.telegram.length < 4) {
-      newErrors.telegram = "Telegram должен содержать минимум 3 символа после @";
-    } else if (!/^@[a-zA-Z0-9_]{3,32}$/.test(formData.telegram)) {
-      newErrors.telegram = "Telegram может содержать только буквы, цифры и подчеркивания";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

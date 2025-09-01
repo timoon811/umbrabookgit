@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 // Все быстрые действия и хоткеи отключены
 
 export interface Block {
@@ -191,10 +192,13 @@ export default function BlockEditor({
           <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4">
             {block.metadata?.url ? (
               <div>
-                <img 
+                <Image 
                   src={block.metadata.url} 
                   alt={block.metadata.alt || ''}
+                  width={800}
+                  height={600}
                   className="max-w-full h-auto rounded"
+                  unoptimized={true}
                 />
                 <input
                   type="text"

@@ -35,10 +35,10 @@ type EntityType = 'counterparty' | 'category' | 'project' | 'account';
 interface FinanceEntityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: Record<string, unknown>) => Promise<void>;
   entityType: EntityType;
   mode: 'create' | 'edit';
-  initialData?: any;
+  initialData?: Record<string, unknown>;
 }
 
 const typeOptions = {
@@ -108,7 +108,7 @@ export default function FinanceEntityModal({
 }: FinanceEntityModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -128,7 +128,7 @@ export default function FinanceEntityModal({
   }, [isOpen, entityType, mode, initialData]);
 
   const initializeFormData = () => {
-    let defaultData: any = {};
+    let defaultData: Record<string, unknown> = {};
 
     switch (entityType) {
       case 'counterparty':
@@ -166,8 +166,8 @@ export default function FinanceEntityModal({
     setFormData(initialData ? { ...defaultData, ...initialData } : defaultData);
   };
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: string, value: unknown) => {
+    setFormData((prev: Record<string, unknown>) => ({ ...prev, [field]: value }));
   };
 
   const handleCryptocurrencyChange = (crypto: string, checked: boolean) => {
@@ -176,7 +176,7 @@ export default function FinanceEntityModal({
       ? [...currentCryptos, crypto]
       : currentCryptos.filter((c: string) => c !== crypto);
 
-    setFormData((prev: any) => ({
+    setFormData((prev: Record<string, unknown>) => ({
       ...prev,
       cryptocurrencies: newCryptos
     }));

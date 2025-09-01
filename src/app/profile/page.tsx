@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAdminAccess } from "@/lib/auth";
+import WalletsTab from "@/components/WalletsTab";
 
 interface User {
   id: string;
@@ -23,7 +24,7 @@ interface PasswordChangeData {
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"info" | "security">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "security" | "wallets">("info");
   const [passwordData, setPasswordData] = useState<PasswordChangeData>({
     currentPassword: "",
     newPassword: "",
@@ -242,6 +243,16 @@ export default function ProfilePage() {
                 >
                   Безопасность
                 </button>
+                <button
+                  onClick={() => setActiveTab("wallets")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    activeTab === "wallets"
+                      ? "border-gray-500 text-gray-600 dark:text-gray-400"
+                      : "border-transparent text-black/60 dark:text-white/60 hover:text-black/80 dark:hover:text-white/80"
+                  }`}
+                >
+                  Кошельки
+                </button>
               </nav>
             </div>
           </div>
@@ -414,6 +425,8 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+
+          {activeTab === "wallets" && <WalletsTab />}
         </div>
       </div>
     </div>

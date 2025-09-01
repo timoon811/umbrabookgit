@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useToast } from '@/components/Toast';
 import FileUploader from './FileUploader';
 
@@ -134,9 +135,11 @@ export default function FileUploadTest() {
                     <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
                       Предварительный просмотр:
                     </div>
-                    <img
+                    <Image
                       src={file.url}
                       alt={file.name}
+                      width={200}
+                      height={192}
                       className="max-w-full h-auto max-h-48 rounded border border-[#171717]/10 dark:border-[#ededed]/10"
                       onLoad={() => {
                         console.log('Изображение загружено успешно:', file.url);
@@ -145,6 +148,7 @@ export default function FileUploadTest() {
                         console.error('Ошибка загрузки изображения:', file.url);
                         showError('Ошибка изображения', 'Не удалось загрузить изображение');
                       }}
+                      unoptimized={true}
                     />
                   </div>
                 )}

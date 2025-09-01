@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, Plus } from 'lucide-react';
-import { useModal } from '@/hooks/useModal';
+// import { useModal } from '@/hooks/useModal'; // Не используется
 
 interface DepositSourceFormData {
   name: string;

@@ -1,31 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+import { 
+  getCurrentUTCTime, 
+  getCurrentDayStartUTC, 
+  validate24HourReset
+} from "@/lib/time-utils";
+import { requireProcessorAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  // Проверяем авторизацию
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  const { user } = authResult;
+  
   try {
-    // Проверяем авторизацию
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    if (decoded.role !== "PROCESSOR" && decoded.role !== "ADMIN") {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
     // Для админов показываем все депозиты, для процессоров - только их
-    const processorId = decoded.role === "ADMIN" ? null : decoded.userId;
+    const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем параметры запроса
     const { searchParams } = new URL(request.url);
@@ -35,12 +28,15 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Формируем условия поиска
-    const where: any = {
+    const where: {
+      processorId?: string;
+      status?: "PENDING" | "APPROVED" | "REJECTED" | "PROCESSING";
+    } = {
       ...(processorId && { processorId }),
     };
 
     if (status && status !== "all") {
-      where.status = status.toUpperCase();
+      where.status = status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED" | "PROCESSING";
     }
 
     // Получаем депозиты с пагинацией
@@ -75,25 +71,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Проверяем авторизацию
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  const { user } = authResult;
+  
   try {
-    // Проверяем авторизацию
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    if (decoded.role !== "PROCESSOR") {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
-    }
-
-    const processorId = decoded.userId;
+    const processorId = user.userId;
     const data = await request.json();
 
     // Валидация данных
@@ -141,44 +128,105 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Получаем настройки бонусов (пока используем значения по умолчанию)
+    // Получаем настройки бонусов
     const bonusSettings = await prisma.bonus_settings.findFirst({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
     });
 
     const commissionRate = bonusSettings?.baseCommissionRate || 30.0;
-    const baseBonusRate = bonusSettings?.baseBonusRate || 5.0;
+    let bonusRate = bonusSettings?.baseBonusRate || 5.0;
 
-    // Рассчитываем бонус (пока без учета сетки)
-    let bonusRate = baseBonusRate;
-    
     // Проверяем дневную сумму для применения сетки бонусов
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Используем UTC время для корректного расчета 24-часового периода
+    const utcNow = getCurrentUTCTime();
+    const todayStart = getCurrentDayStartUTC();
     
+    // Проверяем корректность 24-часового сброса
+    const isResetValid = validate24HourReset();
+    
+    // Получаем все депозиты за текущий день (UTC)
     const todayDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
-        status: "APPROVED",
         createdAt: {
           gte: todayStart,
         },
       },
     });
 
-    const todaySum = todayDeposits.reduce((sum, d) => sum + d.amount, 0) + data.amount;
+    // Рассчитываем сумму уже существующих депозитов за день
+    const existingTodaySum = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
     
-    // Применяем сетку бонусов (пример: если сумма за день >= 900, то 10% вместо 5%)
-    if (todaySum >= 900) {
-      bonusRate = 10.0;
+    // Общая сумма за день (существующие + новый депозит)
+    const todaySum = existingTodaySum + data.amount;
+    
+    console.log(`💰 Расчет бонусов для депозита $${data.amount}:`);
+    console.log(`   - Время UTC: ${utcNow.toISOString()}`);
+    console.log(`   - Начало дня UTC: ${todayStart.toISOString()}`);
+    console.log(`   - Существующие депозиты за день: $${existingTodaySum}`);
+    console.log(`   - Общая сумма за день: $${todaySum}`);
+    console.log(`   - 24-часовой сброс: ${isResetValid ? '✅ Корректно' : '❌ Некорректно'}`);
+    
+    // Применяем сетку бонусов из базы данных
+    const bonusGrid = await prisma.bonus_grid.findFirst({
+      where: {
+        isActive: true,
+        minAmount: { lte: todaySum },
+        OR: [
+          { maxAmount: { gte: todaySum } },
+          { maxAmount: null }
+        ]
+      },
+      orderBy: { bonusPercentage: "desc" }
+    });
+
+    if (bonusGrid) {
+      bonusRate = bonusGrid.bonusPercentage;
+      console.log(`   - Применена бонусная сетка: ${bonusGrid.minAmount} - ${bonusGrid.maxAmount || '∞'} = ${bonusGrid.bonusPercentage}%`);
+    } else {
+      console.log(`   - Применена базовая ставка: ${bonusRate}%`);
     }
 
-    const bonusAmount = (data.amount * bonusRate) / 100;
+    // Рассчитываем базовый бонус
+    let bonusAmount = (data.amount * bonusRate) / 100;
 
-    // Определяем тип валюты
-    const cryptoCurrencies = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'XRP', 'ADA', 'SOL', 'DOGE', 'MATIC'];
-    const currencyType = cryptoCurrencies.includes(data.currency.toUpperCase()) ? 'CRYPTO' : 'FIAT';
+    // Проверяем дополнительные мотивации
+    const activeMotivations = await prisma.bonus_motivations.findMany({
+      where: { isActive: true }
+    });
+
+    for (const motivation of activeMotivations) {
+      try {
+        const conditions = motivation.conditions ? JSON.parse(motivation.conditions) : {};
+        let shouldApply = true;
+
+        // Проверяем условия мотивации
+        if (conditions.minDeposits) {
+          const totalDeposits = await prisma.processor_deposits.count({
+            where: { processorId }
+          });
+          if (totalDeposits < conditions.minDeposits) shouldApply = false;
+        }
+
+        if (conditions.minAmount) {
+          if (todaySum < conditions.minAmount) shouldApply = false;
+        }
+
+        if (shouldApply) {
+          if (motivation.type === 'PERCENTAGE') {
+            bonusAmount += (data.amount * motivation.value) / 100;
+          } else if (motivation.type === 'FIXED_AMOUNT') {
+            bonusAmount += motivation.value;
+          }
+        }
+      } catch (error) {
+        console.error(`Ошибка проверки мотивации ${motivation.id}:`, error);
+      }
+    }
+
+    // Определяем тип валюты - теперь все валюты криптовалюты
+    const currencyType = 'CRYPTO';
 
     // Создаем депозит
     const deposit = await prisma.processor_deposits.create({
@@ -200,7 +248,6 @@ export async function POST(request: NextRequest) {
         commissionRate,
         bonusRate,
         bonusAmount,
-        status: "PENDING",
       },
     });
 

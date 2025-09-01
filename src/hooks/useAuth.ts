@@ -35,7 +35,7 @@ export function useAuth() {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        setUser(data);
       } else {
         setUser(null);
       }

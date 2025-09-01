@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Edit, Trash2, Plus } from "lucide-react";
+// import Link from "next/link"; // Не используется
+import { Plus } from "lucide-react";
+// import { Edit, Trash2 } from "lucide-react"; // Не используются
 import ConfirmModal from "@/components/modals/ConfirmModal";
 import FinanceEntityModal from "@/components/modals/FinanceEntityModal";
 
