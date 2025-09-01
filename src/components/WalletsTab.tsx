@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CopyButton } from "./CopyButton";
+import CopyButton from "./CopyButton";
 
 interface Wallet {
   id: string;

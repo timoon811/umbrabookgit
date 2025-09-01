@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWebSocketClient } from '@/lib/websocket-client';
-import { verifyToken } from '@/lib/api-auth';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 async function checkAdminAuth(request: NextRequest) {
   try {
-    const user = await verifyToken(request);
-    if (!user || user.role !== 'admin') {
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
       throw new Error("Недостаточно прав");
     }
   } catch (error) {
