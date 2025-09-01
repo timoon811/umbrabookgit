@@ -799,60 +799,60 @@ export default function AdminProcessingPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#171717] dark:text-[#ededed] mb-2">
+      <div className="p-4 lg:p-6">
+        <div className="mb-4 lg:mb-6">
+          <h1 className="text-xl lg:text-2xl font-bold text-[#171717] dark:text-[#ededed] mb-1 lg:mb-2">
             Управление обработкой
           </h1>
-          <p className="text-[#171717]/60 dark:text-[#ededed]/60">
+          <p className="text-sm lg:text-base text-[#171717]/60 dark:text-[#ededed]/60">
             Настройки системы обработки депозитов и управление процессорами
           </p>
         </div>
 
-        {/* Общая статистика */}
+        {/* Общая статистика - адаптивная версия */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Всего депозитов</h3>
-              <div className="text-2xl font-bold text-[#171717] dark:text-[#ededed]">{stats.totalDeposits}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">${stats.totalAmount.toLocaleString()}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
+              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Всего депозитов</h3>
+              <div className="text-xl lg:text-2xl font-bold text-[#171717] dark:text-[#ededed]">{stats.totalDeposits}</div>
+              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">${stats.totalAmount.toLocaleString()}</div>
             </div>
 
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Система</h3>
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
+              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Система</h3>
               <div className="space-y-1">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs lg:text-sm">
                   <span className="text-green-600">Автоодобрение:</span>
-                  <span>Включено</span>
+                  <span className="text-[#171717] dark:text-[#ededed]">Включено</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs lg:text-sm">
                   <span className="text-blue-600">Бонусы:</span>
-                  <span>Начисляются сразу</span>
+                  <span className="text-[#171717] dark:text-[#ededed]">Сразу</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Бонусы</h3>
-              <div className="text-2xl font-bold text-green-600">${stats.totalBonuses.toLocaleString()}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Начислено всего</div>
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
+              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Бонусы</h3>
+              <div className="text-xl lg:text-2xl font-bold text-green-600">${stats.totalBonuses.toLocaleString()}</div>
+              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">Начислено всего</div>
             </div>
 
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Заявки на ЗП</h3>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pendingSalaryRequests}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">В ожидании</div>
+            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
+              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Заявки на ЗП</h3>
+              <div className="text-xl lg:text-2xl font-bold text-yellow-600">{stats.pendingSalaryRequests}</div>
+              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">В ожидании</div>
             </div>
           </div>
         )}
 
-        {/* Табы */}
+        {/* Табы - адаптивная версия с горизонтальным скроллом */}
         <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10">
-          <div className="border-b border-gray-200 dark:border-gray-800">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+          <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
+            <nav className="flex space-x-4 lg:space-x-8 px-4 lg:px-6 min-w-max" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "overview"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -862,27 +862,27 @@ export default function AdminProcessingPage() {
               </button>
               <button
                 onClick={() => setActiveTab("deposits")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "deposits"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                Все депозиты
+                Депозиты
               </button>
               <button
                 onClick={() => setActiveTab("settings")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "settings"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                Настройки бонусов
+                Бонусы
               </button>
               <button
                 onClick={() => setActiveTab("managers")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "managers"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -892,38 +892,38 @@ export default function AdminProcessingPage() {
               </button>
               <button
                 onClick={() => setActiveTab("materials")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "materials"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                Инструкции и скрипты
+                Материалы
               </button>
               <button
                 onClick={() => setActiveTab("bonusGrid")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "bonusGrid"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                Бонусная сетка
+                Сетка
               </button>
               <button
                 onClick={() => setActiveTab("salaryRequests")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                   activeTab === "salaryRequests"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
-                Запросы ЗП
+                ЗП
               </button>
             </nav>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 lg:p-6">
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
@@ -940,15 +940,15 @@ export default function AdminProcessingPage() {
 
             {activeTab === "deposits" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
                     Все депозиты обработчиков
                   </h3>
                 </div>
 
-                {/* Аналитика */}
+                {/* Аналитика - адаптивная версия */}
                 {analytics && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                       <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Общая сумма</h4>
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -982,9 +982,9 @@ export default function AdminProcessingPage() {
                   </div>
                 )}
 
-                {/* Фильтры */}
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {/* Фильтры - адаптивная версия */}
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 lg:p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
 
                     
                     <div>
@@ -1059,36 +1059,36 @@ export default function AdminProcessingPage() {
                   </div>
                 </div>
 
-                {/* Таблица депозитов */}
-                <div className="overflow-x-auto">
+                {/* Таблица депозитов - адаптивная версия */}
+                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                           onClick={() => handleSort("createdAt")}
                         >
                           Дата {sortBy === "createdAt" && (sortOrder === "asc" ? "↑" : "↓")}
                         </th>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                           onClick={() => handleSort("amount")}
                         >
                           Сумма {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Валюта
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Email депозитера
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Обработчик
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Заметки
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Действия
                         </th>
                       </tr>
@@ -1096,7 +1096,7 @@ export default function AdminProcessingPage() {
                     <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                       {deposits.map((deposit) => (
                         <tr key={deposit.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {new Date(deposit.createdAt).toLocaleDateString('ru-RU', {
                               day: '2-digit',
                               month: '2-digit',
@@ -1105,10 +1105,10 @@ export default function AdminProcessingPage() {
                               minute: '2-digit'
                             })}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                             {deposit.amount.toLocaleString()} {deposit.currency}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               deposit.currencyType === 'CRYPTO' 
                                 ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
@@ -1117,19 +1117,19 @@ export default function AdminProcessingPage() {
                               {deposit.currency}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {deposit.playerEmail}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <div>
                               <div className="font-medium">{deposit.processor.name}</div>
                               <div className="text-gray-500 dark:text-gray-400">{deposit.processor.email}</div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
                             {deposit.notes || '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => handleEditDeposit(deposit)}
@@ -1190,11 +1190,11 @@ export default function AdminProcessingPage() {
 
             {activeTab === "settings" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
                     Настройки бонусов и комиссий
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => setShowBonusGridModal(true)}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -1330,13 +1330,13 @@ export default function AdminProcessingPage() {
 
             {activeTab === "managers" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
                     Управление менеджерами
                   </h3>
                   <button 
                     onClick={() => setShowManagerModal(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm lg:text-base"
                   >
                     Добавить менеджера
                   </button>
@@ -1519,40 +1519,40 @@ export default function AdminProcessingPage() {
 
             {activeTab === "materials" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
                     Управление инструкциями и скриптами
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => setShowInstructionModal(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      className="bg-blue-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm lg:text-base"
                     >
-                      Добавить инструкцию
+                      Инструкция
                     </button>
                     <button 
                       onClick={() => setShowScriptModal(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      className="bg-green-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm lg:text-base"
                     >
-                      Добавить скрипт
+                      Скрипт
                     </button>
                     <button 
                       onClick={() => setShowResourceModal(true)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      className="bg-purple-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm lg:text-base"
                     >
-                      Добавить ресурс
+                      Ресурс
                     </button>
                     <button 
                       onClick={() => setShowTemplateModal(true)}
-                      className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                      className="bg-orange-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm lg:text-base"
                     >
-                      Добавить шаблон
+                      Шаблон
                     </button>
                   </div>
                 </div>
 
-                {/* Статистика материалов */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                {/* Статистика материалов - адаптивная версия */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Инструкции</h4>
                     <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -1824,11 +1824,11 @@ export default function AdminProcessingPage() {
 
             {activeTab === "bonusGrid" && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
                     Настройка бонусной сетки для пользователей
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">
                     Настройте, как будет выглядеть страница &quot;Бонусная сетка и условия работы&quot; для пользователей
                   </p>
                 </div>

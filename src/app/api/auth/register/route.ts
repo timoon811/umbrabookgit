@@ -20,7 +20,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, telegram, password } = validationResult.data;
+    let { name, email, telegram, password } = validationResult.data;
+    
+    // Нормализуем telegram - добавляем @ если его нет
+    if (telegram && !telegram.startsWith('@')) {
+      telegram = '@' + telegram;
+    }
 
     // Проверка уникальности email
     const existingUser = await prisma.users.findUnique({

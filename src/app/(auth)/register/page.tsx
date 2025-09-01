@@ -43,10 +43,35 @@ export default function RegisterPage() {
   };
 
   const validateForm = () => {
-    const result = validateSchema(registerSchema, formData);
+    // Делаем более мягкую валидацию на клиенте
+    const errors: Record<string, string> = {};
     
-    if (!result.success) {
-      setErrors(result.errors);
+    // Проверяем обязательные поля
+    if (!formData.name.trim()) errors.name = "Имя обязательно";
+    if (!formData.email.trim()) errors.email = "Email обязателен";
+    if (!formData.telegram.trim()) errors.telegram = "Telegram обязателен";
+    if (!formData.password) errors.password = "Пароль обязателен";
+    if (!formData.confirmPassword) errors.confirmPassword = "Подтверждение пароля обязательно";
+    
+    // Проверяем минимальные требования
+    if (formData.name.trim() && formData.name.trim().length < 2) {
+      errors.name = "Имя должно содержать минимум 2 символа";
+    }
+    
+    if (formData.email.trim() && !formData.email.includes('@')) {
+      errors.email = "Введите корректный email";
+    }
+    
+    if (formData.password && formData.password.length < 6) {
+      errors.password = "Пароль должен содержать минимум 6 символов";
+    }
+    
+    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Пароли не совпадают";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setErrors(errors);
       return false;
     }
     
@@ -217,7 +242,7 @@ export default function RegisterPage() {
                   className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm bg-transparent dark:bg-transparent text-[#171717] dark:text-[#ededed] ${
                     errors.telegram ? "border-red-300 dark:border-red-600" : "border-black/10 dark:border-white/10"
                   }`}
-                  placeholder="@username"
+                  placeholder="@username или username"
                 />
                 {errors.telegram && (
                   <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.telegram}</p>

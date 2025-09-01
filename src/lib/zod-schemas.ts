@@ -8,8 +8,7 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(6, "Пароль должен содержать минимум 6 символов")
-  .regex(/(?=.*[a-zA-Z])(?=.*\d)/, "Пароль должен содержать буквы и цифры");
+  .min(6, "Пароль должен содержать минимум 6 символов");
 
 export const nameSchema = z
   .string()
@@ -19,7 +18,18 @@ export const nameSchema = z
 
 export const telegramSchema = z
   .string()
-  .regex(/^@[a-zA-Z0-9_]{3,32}$/, "Telegram должен начинаться с @ и содержать от 3 до 32 символов (буквы, цифры, подчеркивания)");
+  .min(1, "Telegram обязателен")
+  .refine((val) => {
+    // Убираем начальные пробелы и проверяем основные требования
+    const trimmed = val.trim();
+    if (trimmed.length < 2) return false;
+    
+    // Должен начинаться с @ или мы автоматически добавим
+    const normalized = trimmed.startsWith('@') ? trimmed : '@' + trimmed;
+    
+    // Проверяем базовую структуру: @ + минимум 1 символ
+    return /^@[a-zA-Z0-9_]{1,32}$/.test(normalized);
+  }, "Telegram должен содержать от 1 до 32 символов (буквы, цифры, подчеркивания)");
 
 // Схемы для аутентификации
 export const loginSchema = z.object({
@@ -31,9 +41,12 @@ export const registerSchema = z.object({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
-  confirmPassword: z.string(),
+  confirmPassword: z.string().min(1, "Подтверждение пароля обязательно"),
   telegram: telegramSchema,
-}).refine((data) => data.password === data.confirmPassword, {
+}).refine((data) => {
+  // Более мягкая проверка совпадения паролей
+  return data.password === data.confirmPassword;
+}, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"],
 });
