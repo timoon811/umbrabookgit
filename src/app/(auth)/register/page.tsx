@@ -4,8 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UmbraLogo from "@/components/UmbraLogo";
-import { registerSchema } from "@/lib/zod-schemas";
-import { validateSchema } from "@/lib/zod-schemas";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -23,6 +21,8 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
+    console.log(`🔧 Field changed: ${name} = "${value}"`);
+    
     // Обработка поля Telegram - автоматическая подстановка @ и очистка от пробелов
     if (name === "telegram") {
       let telegramValue = value.trim();
@@ -32,6 +32,7 @@ export default function RegisterPage() {
       // Удаляем множественные символы @
       telegramValue = telegramValue.replace(/^@+/, "@");
       setFormData(prev => ({ ...prev, [name]: telegramValue }));
+      console.log(`📲 Telegram processed: "${telegramValue}"`);
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -45,6 +46,8 @@ export default function RegisterPage() {
   const validateForm = () => {
     // Делаем более мягкую валидацию на клиенте
     const errors: Record<string, string> = {};
+    
+    console.log('🔍 Validating form data:', formData);
     
     // Проверяем обязательные поля
     if (!formData.name.trim()) errors.name = "Имя обязательно";
@@ -68,7 +71,15 @@ export default function RegisterPage() {
     
     if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
       errors.confirmPassword = "Пароли не совпадают";
+      console.log('❌ Password mismatch:', {
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        passwordLength: formData.password?.length,
+        confirmPasswordLength: formData.confirmPassword?.length
+      });
     }
+    
+    console.log('🔍 Validation errors:', errors);
     
     if (Object.keys(errors).length > 0) {
       setErrors(errors);
@@ -97,6 +108,7 @@ export default function RegisterPage() {
           email: formData.email.toLowerCase(),
           telegram: formData.telegram.trim(),
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         }),
       });
 
@@ -172,7 +184,7 @@ export default function RegisterPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-[#0a0a0a] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-black/5 dark:border-white/10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             {errors.general && (
               <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
                 <div className="text-sm text-red-700 dark:text-red-400">
@@ -212,7 +224,7 @@ export default function RegisterPage() {
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="text"
                   autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}

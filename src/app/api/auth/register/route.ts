@@ -6,9 +6,11 @@ import { registerSchema, validateSchema } from "@/lib/zod-schemas";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('📝 Registration attempt with data:', body);
 
     // Валидация с помощью Zod
     const validationResult = validateSchema(registerSchema, body);
+    console.log('🔍 Validation result:', validationResult);
     if (!validationResult.success) {
       return NextResponse.json(
         { 

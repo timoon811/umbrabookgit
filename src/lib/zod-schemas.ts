@@ -3,8 +3,9 @@ import { z } from "zod";
 // Базовые схемы
 export const emailSchema = z
   .string()
-  .email("Некорректный формат email")
-  .toLowerCase();
+  .min(1, "Email обязателен")
+  .refine((val) => val.includes('@'), "Некорректный формат email")
+  .transform((val) => val.toLowerCase());
 
 export const passwordSchema = z
   .string()
@@ -18,18 +19,7 @@ export const nameSchema = z
 
 export const telegramSchema = z
   .string()
-  .min(1, "Telegram обязателен")
-  .refine((val) => {
-    // Убираем начальные пробелы и проверяем основные требования
-    const trimmed = val.trim();
-    if (trimmed.length < 2) return false;
-    
-    // Должен начинаться с @ или мы автоматически добавим
-    const normalized = trimmed.startsWith('@') ? trimmed : '@' + trimmed;
-    
-    // Проверяем базовую структуру: @ + минимум 1 символ
-    return /^@[a-zA-Z0-9_]{1,32}$/.test(normalized);
-  }, "Telegram должен содержать от 1 до 32 символов (буквы, цифры, подчеркивания)");
+  .min(1, "Telegram обязателен");
 
 // Схемы для аутентификации
 export const loginSchema = z.object({
@@ -230,14 +220,18 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): {
   errors: { [key: string]: string };
 } {
   try {
+    console.log('🔍 Validating with schema:', { data });
     const validatedData = schema.parse(data);
+    console.log('✅ Validation passed:', { validatedData });
     return { success: true, data: validatedData };
   } catch (error) {
+    console.log('❌ Validation failed:', error);
     if (error instanceof z.ZodError) {
       const errors: { [key: string]: string } = {};
       error.issues.forEach((err) => {
         const path = err.path.join('.');
         errors[path] = err.message;
+        console.log(`❌ Field ${path}: ${err.message}`, { value: err.input, code: err.code });
       });
       return { success: false, errors };
     }
