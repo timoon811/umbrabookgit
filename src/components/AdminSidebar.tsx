@@ -20,11 +20,9 @@ const navigationSections = [
   {
     title: "ФИНАНСЫ",
     items: [
-      { name: "Сводка", href: "/admin/finance" },
       { name: "Проекты", href: "/admin/finance/projects" },
       { name: "Счета", href: "/admin/finance/accounts" },
       { name: "Операции", href: "/admin/finance/transactions" },
-      { name: "Отчёты", href: "/admin/finance/reports" },
       { name: "Настройки", href: "/admin/finance/settings" },
     ],
   },

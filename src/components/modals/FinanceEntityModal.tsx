@@ -51,6 +51,8 @@ const typeOptions = {
   category: [
     { value: 'INCOME', label: 'Доход' },
     { value: 'EXPENSE', label: 'Расход' },
+    { value: 'TRANSFER', label: 'Перевод' },
+    { value: 'EXCHANGE', label: 'Обмен' },
   ],
   project: [
     { value: 'ACTIVE', label: 'Активный' },
