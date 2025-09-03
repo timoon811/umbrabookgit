@@ -9,17 +9,22 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
+    const projectId = searchParams.get('projectId');
     const limit = parseInt(searchParams.get('limit') || '50');
 
     const where: any = {};
     if (accountId) {
       where.accountId = accountId;
     }
+    if (projectId) {
+      where.projectId = projectId;
+    }
 
     const transactions = await prisma.finance_transactions.findMany({
       where,
       include: {
         account: { select: { id: true, name: true, currency: true, commission: true } },
+        toAccount: { select: { id: true, name: true, currency: true } },
         counterparty: { select: { id: true, name: true } },
         category: { select: { id: true, name: true } },
         project: { select: { id: true, name: true } }
@@ -51,12 +56,31 @@ export async function POST(request: NextRequest) {
       description,
       counterpartyId,
       categoryId,
-      projectId
+      projectId,
+      toAccountId,
+      fromCurrency,
+      toCurrency,
+      exchangeRate,
+      toAmount
     } = body || {};
 
     if (!accountId || !amount || !type) {
       return NextResponse.json({
         error: "accountId, amount и type обязательны"
+      }, { status: 400 });
+    }
+
+    // Дополнительная валидация для переводов
+    if (type === 'TRANSFER' && !toAccountId) {
+      return NextResponse.json({
+        error: "Для переводов обязательно указание счета получателя (toAccountId)"
+      }, { status: 400 });
+    }
+
+    // Дополнительная валидация для обменов
+    if (type === 'EXCHANGE' && (!fromCurrency || !toCurrency || !exchangeRate || !toAmount)) {
+      return NextResponse.json({
+        error: "Для обмена обязательны поля: fromCurrency, toCurrency, exchangeRate, toAmount"
       }, { status: 400 });
     }
 
@@ -86,6 +110,16 @@ export async function POST(request: NextRequest) {
       commissionAmount = (parseFloat(amount) * commissionPercent) / 100;
       netAmount = parseFloat(amount) + commissionAmount; // Общая сумма списания
       actualBalanceChange = -netAmount; // Баланс уменьшается на общую сумму
+    } else if (type === 'TRANSFER') {
+      // При переводах комиссия добавляется к сумме перевода
+      commissionAmount = (parseFloat(amount) * commissionPercent) / 100;
+      netAmount = parseFloat(amount) + commissionAmount; // Общая сумма списания
+      actualBalanceChange = -netAmount; // Баланс отправителя уменьшается
+    } else if (type === 'EXCHANGE') {
+      // При обмене комиссия рассчитывается от суммы обмена
+      commissionAmount = (parseFloat(amount) * commissionPercent) / 100;
+      netAmount = parseFloat(amount) + commissionAmount; // Общая сумма списания в исходной валюте
+      actualBalanceChange = -netAmount; // Баланс уменьшается на сумму с комиссией
     }
 
     // Создаем транзакцию с учетом комиссий
@@ -103,14 +137,29 @@ export async function POST(request: NextRequest) {
           counterpartyId,
           categoryId,
           projectId,
+          // Поля для переводов
+          toAccountId: type === 'TRANSFER' ? toAccountId : undefined,
+          // Поля для обменов
+          fromCurrency: type === 'EXCHANGE' ? fromCurrency : undefined,
+          toCurrency: type === 'EXCHANGE' ? toCurrency : undefined,
+          exchangeRate: type === 'EXCHANGE' ? parseFloat(exchangeRate) : undefined,
+          toAmount: type === 'EXCHANGE' ? parseFloat(toAmount) : undefined,
         }
       });
 
-      // Обновляем баланс счета
+      // Обновляем баланс счета отправителя
       await db.finance_accounts.update({
         where: { id: accountId },
         data: { balance: { increment: actualBalanceChange } }
       });
+
+      // Для переводов обновляем баланс счета получателя
+      if (type === 'TRANSFER' && toAccountId) {
+        await db.finance_accounts.update({
+          where: { id: toAccountId },
+          data: { balance: { increment: parseFloat(amount) } } // Получатель получает сумму без комиссии
+        });
+      }
 
       return created;
     });

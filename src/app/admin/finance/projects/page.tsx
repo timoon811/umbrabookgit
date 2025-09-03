@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FileText, TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react";
+import ProjectTransactionModal from "@/components/modals/ProjectTransactionModal";
+import { useToast } from "@/components/Toast";
 
 interface ProjectWithStats {
   id: string;
@@ -29,7 +31,7 @@ interface ProjectWithStats {
 
 interface Transaction {
   id: string;
-  type: 'INCOME' | 'EXPENSE';
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'EXCHANGE';
   amount: number;
   commissionPercent: number;
   commissionAmount: number;
@@ -43,6 +45,11 @@ interface Transaction {
     currency: string;
     commission: number;
   };
+  toAccount?: {
+    id: string;
+    name: string;
+    currency: string;
+  } | null;
   counterparty: {
     id: string;
     name: string;
@@ -51,9 +58,17 @@ interface Transaction {
     id: string;
     name: string;
   } | null;
+  // Поля для переводов
+  toAccountId?: string | null;
+  // Поля для обменов
+  fromCurrency?: string | null;
+  toCurrency?: string | null;
+  exchangeRate?: number | null;
+  toAmount?: number | null;
 }
 
 export default function FinanceProjectsPage() {
+  const { showSuccess, showError } = useToast();
 
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +87,15 @@ export default function FinanceProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<ProjectWithStats | null>(null);
   const [projectTransactions, setProjectTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  
+  // Add transaction modal states
+  const [addTransactionModalOpen, setAddTransactionModalOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('INCOME');
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [counterparties, setCounterparties] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [formDataLoading, setFormDataLoading] = useState(false);
 
   // Функция для открытия модального окна операций
   const openOperationsModal = async (project: ProjectWithStats) => {
@@ -89,6 +113,95 @@ export default function FinanceProjectsPage() {
       console.error('Ошибка загрузки операций:', error);
     } finally {
       setTransactionsLoading(false);
+    }
+  };
+
+  // Функция для загрузки данных формы (счета, категории, контрагенты)
+  const loadFormData = async () => {
+    setFormDataLoading(true);
+    try {
+      const [accountsRes, categoriesRes, counterpartiesRes, projectsRes] = await Promise.all([
+        fetch('/api/admin/finance/accounts'),
+        fetch('/api/admin/finance/categories'),
+        fetch('/api/admin/finance/counterparties'),
+        fetch('/api/admin/finance/projects')
+      ]);
+
+      if (accountsRes.ok) {
+        const data = await accountsRes.json();
+        setAccounts(Array.isArray(data) ? data : data.accounts || []);
+      }
+      
+      if (categoriesRes.ok) {
+        const data = await categoriesRes.json();
+        setCategories(data.categories || data || []);
+      }
+      
+      if (counterpartiesRes.ok) {
+        const data = await counterpartiesRes.json();
+        setCounterparties(data.counterparties || data || []);
+      }
+      
+      if (projectsRes.ok) {
+        const data = await projectsRes.json();
+        setAllProjects(data.projects || data || []);
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных формы:', error);
+    } finally {
+      setFormDataLoading(false);
+    }
+  };
+
+  // Функция для открытия модального окна добавления операции
+  const openAddTransactionModal = (type: 'INCOME' | 'EXPENSE') => {
+    setTransactionType(type);
+    setAddTransactionModalOpen(true);
+    loadFormData();
+  };
+
+  // Функция для создания новой операции
+  const handleCreateTransaction = async (transactionData: any) => {
+    try {
+      const response = await fetch('/api/admin/finance/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...transactionData,
+          projectId: selectedProject?.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Обновляем список операций проекта
+        if (selectedProject) {
+          const updatedResponse = await fetch(`/api/admin/finance/transactions?projectId=${selectedProject.id}`);
+          if (updatedResponse.ok) {
+            const data = await updatedResponse.json();
+            setProjectTransactions(data.transactions || []);
+          }
+        }
+        
+        // Обновляем общий список проектов
+        fetchProjects();
+        
+        setAddTransactionModalOpen(false);
+        
+        // Показываем уведомление об успехе
+        showSuccess(
+          'Операция создана', 
+          `${transactionData.type === 'INCOME' ? 'Доходная' : 'Расходная'} операция успешно добавлена в проект "${selectedProject?.name}"`
+        );
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка создания операции', errorData.error || 'Не удалось создать операцию');
+      }
+    } catch (error) {
+      console.error('Ошибка создания операции:', error);
+      showError('Ошибка создания операции', 'Произошла неожиданная ошибка при создании операции');
     }
   };
 
@@ -335,9 +448,15 @@ export default function FinanceProjectsPage() {
                             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
                               transaction.type === 'INCOME'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : transaction.type === 'EXPENSE'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : transaction.type === 'TRANSFER'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
                             }`}>
-                              {transaction.type === 'INCOME' ? 'Пополнение' : 'Расход'}
+                              {transaction.type === 'INCOME' ? 'Пополнение' : 
+                               transaction.type === 'EXPENSE' ? 'Расход' :
+                               transaction.type === 'TRANSFER' ? 'Перевод' : 'Обмен'}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -373,6 +492,17 @@ export default function FinanceProjectsPage() {
                             <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
                               {transaction.account?.currency}
                             </div>
+                            {transaction.type === 'TRANSFER' && transaction.toAccount && (
+                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                → {transaction.toAccount.name} ({transaction.toAccount.currency})
+                              </div>
+                            )}
+                            {transaction.type === 'EXCHANGE' && transaction.fromCurrency && transaction.toCurrency && (
+                              <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                {transaction.fromCurrency} → {transaction.toCurrency}
+                                {transaction.exchangeRate && ` (${transaction.exchangeRate})`}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
@@ -398,7 +528,45 @@ export default function FinanceProjectsPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 p-6 border-t border-[#171717]/10 dark:border-[#ededed]/10">
+            <div className="flex justify-between items-center p-6 border-t border-[#171717]/10 dark:border-[#ededed]/10">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => openAddTransactionModal('INCOME')}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Доходная операция
+                </button>
+                <button
+                  onClick={() => openAddTransactionModal('EXPENSE')}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Расходная операция
+                </button>
+                <button
+                  onClick={() => openAddTransactionModal('TRANSFER')}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Перевод
+                </button>
+                <button
+                  onClick={() => openAddTransactionModal('EXCHANGE')}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Обмен
+                </button>
+              </div>
               <button
                 onClick={() => setOperationsModalOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-[#171717]/80 dark:text-[#ededed]/80 bg-[#171717]/5 dark:bg-[#ededed]/5 hover:bg-[#171717]/10 dark:hover:bg-[#ededed]/10 rounded-lg transition-colors"
@@ -690,6 +858,22 @@ export default function FinanceProjectsPage() {
           </div>
         )}
       </div>
+
+      {/* Модальное окно для добавления операции */}
+      {addTransactionModalOpen && (
+        <ProjectTransactionModal
+          isOpen={addTransactionModalOpen}
+          onClose={() => setAddTransactionModalOpen(false)}
+          onSave={handleCreateTransaction}
+          transactionType={transactionType}
+          selectedProject={selectedProject}
+          accounts={accounts}
+          categories={categories}
+          counterparties={counterparties}
+          allProjects={allProjects}
+          isLoading={formDataLoading}
+        />
+      )}
     </>
   );
 }

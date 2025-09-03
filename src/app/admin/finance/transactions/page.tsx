@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 
 interface Transaction {
   id: string;
@@ -225,71 +224,9 @@ export default function FinanceTransactionsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Левая навигация */}
-      <div className="w-64 bg-gray-800 text-white">
-        <div className="p-6">
-          <div className="flex items-center mb-6">
-            <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center mr-3">
-              <span className="text-white font-bold">tr</span>
-            </div>
-            <div>
-              <div className="font-semibold">Mine</div>
-              <div className="text-sm text-gray-400">tr TT</div>
-            </div>
-          </div>
-          
-          <div className="mb-6">
-            <div className="text-sm text-gray-400 mb-2">Аккаунт настроен на 75%</div>
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div className="bg-gray-600 h-2 rounded-full" style={{ width: '75%' }}></div>
-            </div>
-          </div>
-
-          <nav className="space-y-2">
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Рабочий стол
-            </Link>
-            <div className="block py-2 px-3 rounded bg-gray-600">
-              Операции
-            </div>
-            <Link href="/admin/finance/projects" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Проекты
-            </Link>
-            <Link href="/admin/finance/settings" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Контрагенты
-            </Link>
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Согласование платежей
-            </Link>
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Аналитика
-            </Link>
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Планирование
-            </Link>
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700">
-              Инструменты учета
-            </Link>
-          </nav>
-
-          <div className="mt-auto pt-6 space-y-2">
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700 text-sm">
-              Подписка и услуги
-            </Link>
-            <Link href="/admin/finance/settings" className="block py-2 px-3 rounded hover:bg-gray-700 text-sm">
-              Настройки
-            </Link>
-            <Link href="/admin/finance" className="block py-2 px-3 rounded hover:bg-gray-700 text-sm">
-              Помощь
-            </Link>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Основная область */}
-      <div className="flex-1 flex">
-        <div className="flex-1 p-6">
+      <div className="p-6">
           {/* Заголовок и статистика */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -712,7 +649,6 @@ export default function FinanceTransactionsPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }
 

@@ -145,7 +145,8 @@ model finance_accounts {
   isArchived       Boolean                @default(false)
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
-  transactions     finance_transactions[]
+  transactions     finance_transactions[] @relation("AccountTransactions")
+  toTransactions   finance_transactions[] @relation("ToAccountTransactions")
 
   @@map("finance_accounts")
 }
@@ -215,12 +216,24 @@ model finance_transactions {
   date              DateTime                @default(now())
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
-  account           finance_accounts        @relation(fields: [accountId], references: [id])
+  
+  // Поля для переводов (TRANSFER)
+  toAccountId       String?                 // Счет получатель для переводов
+  
+  // Поля для обменов (EXCHANGE)
+  fromCurrency      String?                 // Исходная валюта для обмена
+  toCurrency        String?                 // Целевая валюта для обмена
+  exchangeRate      Float?                  // Курс обмена
+  toAmount          Float?                  // Сумма получения в целевой валюте
+  
+  account           finance_accounts        @relation(name: "AccountTransactions", fields: [accountId], references: [id])
+  toAccount         finance_accounts?       @relation(name: "ToAccountTransactions", fields: [toAccountId], references: [id])
   category          finance_categories?     @relation(fields: [categoryId], references: [id])
   counterparty      finance_counterparties? @relation(fields: [counterpartyId], references: [id])
   project           finance_projects?       @relation(fields: [projectId], references: [id])
 
   @@index([accountId])
+  @@index([toAccountId])
   @@index([categoryId])
   @@index([projectId])
   @@index([projectKey])
@@ -534,6 +547,7 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+  EXCHANGE
 }
 
 enum DepositStatus {
