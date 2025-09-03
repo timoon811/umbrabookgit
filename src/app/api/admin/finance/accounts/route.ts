@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUserFromCookies } from "@/lib/auth";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+
+const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+
+// Проверка прав администратора
+async function checkAdminAuth() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth-token")?.value;
+
+  if (!token) {
+    throw new Error("Не авторизован");
+  }
+
+  const decoded = jwt.verify(token, JWT_SECRET) as {
+    userId: string;
+    role: string;
+  };
+
+  if (decoded.role !== "ADMIN") {
+    throw new Error("Недостаточно прав");
+  }
+
+  return decoded.userId;
+}
 
 // GET /api/admin/finance/accounts
 export async function GET() {
   try {
-    const user = await getAuthenticatedUserFromCookies();
-
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Недостаточно прав" }, { status: 403 });
-    }
+    await checkAdminAuth();
 
     const accounts = await prisma.finance_accounts.findMany({
       orderBy: { createdAt: "asc" },
@@ -34,11 +54,11 @@ export async function GET() {
     }));
 
     return NextResponse.json(processedAccounts);
-  } catch (e: unknown) {
-    const error = e as Error;
+  } catch (error: any) {
+    console.error("Ошибка при получении счетов:", error);
     return NextResponse.json(
-      { message: error.message || "Server error" },
-      { status: error.message === "Не авторизован" ? 401 : 500 }
+      { error: error.message || "Не удалось получить счета" },
+      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
     );
   }
 }
@@ -46,11 +66,7 @@ export async function GET() {
 // POST /api/admin/finance/accounts
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUserFromCookies();
-
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Недостаточно прав" }, { status: 403 });
-    }
+    await checkAdminAuth();
 
     const body = await request.json();
     const { name, type = "OTHER", currency = "USD", balance = 0, commission = 0, cryptocurrencies } = body || {};
@@ -71,11 +87,11 @@ export async function POST(request: NextRequest) {
       }
     });
     return NextResponse.json(acc, { status: 201 });
-  } catch (e: unknown) {
-    const error = e as Error;
+  } catch (error: any) {
+    console.error("Ошибка при создании счета:", error);
     return NextResponse.json(
-      { message: error.message || "Server error" },
-      { status: error.message === "Не авторизован" ? 401 : 500 }
+      { error: error.message || "Не удалось создать счет" },
+      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
     );
   }
 }

@@ -61,7 +61,7 @@ export async function PATCH(
     await checkAdminAuth();
     
     const body = await request.json();
-    const { name, type, isArchived } = body;
+    const { name, type, email, phone, address, taxNumber, bankDetails, isArchived } = body;
 
     // Проверяем, существует ли контрагент
     const existingCounterparty = await prisma.finance_counterparties.findUnique({
@@ -76,6 +76,11 @@ export async function PATCH(
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (taxNumber !== undefined) updateData.taxNumber = taxNumber;
+    if (bankDetails !== undefined) updateData.bankDetails = bankDetails;
     if (isArchived !== undefined) updateData.isArchived = isArchived;
 
     const updatedCounterparty = await prisma.finance_counterparties.update({
@@ -85,6 +90,11 @@ export async function PATCH(
         id: true,
         name: true,
         type: true,
+        email: true,
+        phone: true,
+        address: true,
+        taxNumber: true,
+        bankDetails: true,
         isArchived: true,
         createdAt: true,
         updatedAt: true,

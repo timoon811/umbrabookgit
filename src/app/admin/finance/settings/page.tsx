@@ -199,10 +199,55 @@ function FinanceSettingsContent() {
     setEntityModalOpen(true);
   };
 
-  const openEditModal = (entityType: 'counterparty' | 'category' | 'project' | 'account', entity: any) => {
-    setCurrentEntity(entity);
-    setModalMode('edit');
-    setEntityModalOpen(true);
+  const openEditModal = async (entityType: 'counterparty' | 'category' | 'project' | 'account', entity: any) => {
+    try {
+      let fullEntityData = entity;
+      
+      // Получаем полные данные с сервера для каждого типа сущности
+      if (entityType === 'counterparty') {
+        const response = await fetch(`/api/admin/finance/counterparties/${entity.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          fullEntityData = data.counterparty;
+        }
+      } else if (entityType === 'category') {
+        const response = await fetch(`/api/admin/finance/categories/${entity.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          fullEntityData = data.category;
+        }
+      } else if (entityType === 'project') {
+        const response = await fetch(`/api/admin/finance/projects/${entity.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          fullEntityData = data.project;
+        }
+      } else if (entityType === 'account') {
+        const response = await fetch(`/api/admin/finance/accounts/${entity.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          fullEntityData = data.account || data; // API может вернуть данные напрямую
+        }
+      }
+      
+      setCurrentEntity({ ...fullEntityData, type: entityType });
+      setModalMode('edit');
+      setEntityModalOpen(true);
+    } catch (error) {
+      console.error('Ошибка при получении данных для редактирования:', error);
+      // В случае ошибки используем данные из списка
+      setCurrentEntity({ ...entity, type: entityType });
+      setModalMode('edit');
+      setEntityModalOpen(true);
+    }
   };
 
   const openDeleteModal = (entity: any) => {
@@ -214,10 +259,16 @@ function FinanceSettingsContent() {
       'deposit-source': 'источник депозитов'
     };
 
+    // Определяем правильный ключ для получения названия типа сущности
+    const entityTypeKey = activeTab === 'counterparties' ? 'counterparty' : 
+                         activeTab === 'categories' ? 'category' :
+                         activeTab === 'projects' ? 'project' :
+                         activeTab === 'accounts' ? 'account' : 'unknown';
+
     setEntityToDelete({
       id: entity.id,
       name: entity.description || entity.name,
-      type: entityNames[activeTab.slice(0, -1) as keyof typeof entityNames] || 'элемент'
+      type: entityNames[entityTypeKey as keyof typeof entityNames] || 'элемент'
     });
     setConfirmModalOpen(true);
   };
@@ -270,8 +321,20 @@ function FinanceSettingsContent() {
   const handleDeleteEntity = async () => {
     if (!entityToDelete) return;
 
-    const entityType = activeTab.slice(0, -1);
-    const endpoint = `/api/admin/finance/${entityType === 'counterparty' ? 'counterparties' : entityType === 'category' ? 'categories' : entityType === 'project' ? 'projects' : 'accounts'}/${entityToDelete.id}`;
+    // Определяем правильный тип сущности и endpoint
+    const entityTypeKey = activeTab === 'counterparties' ? 'counterparty' : 
+                         activeTab === 'categories' ? 'category' :
+                         activeTab === 'projects' ? 'project' :
+                         activeTab === 'accounts' ? 'account' : 'unknown';
+    
+    const endpointMap = {
+      'counterparty': 'counterparties',
+      'category': 'categories', 
+      'project': 'projects',
+      'account': 'accounts'
+    };
+
+    const endpoint = `/api/admin/finance/${endpointMap[entityTypeKey as keyof typeof endpointMap]}/${entityToDelete.id}`;
 
     try {
       const response = await fetch(endpoint, {

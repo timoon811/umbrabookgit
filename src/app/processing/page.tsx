@@ -467,29 +467,9 @@ export default function ProcessingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#171717] dark:text-[#ededed]">
-                Мой кабинет
-              </h1>
-              <p className="text-[#171717]/60 dark:text-[#ededed]/60 mt-1">
-                Панель обработчика депозитов (суммы в USD)
-              </p>
+              {/* Заголовок убран по запросу */}
             </div>
-            
-            {/* Быстрые действия */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDepositModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Внести депозит
-              </button>
-              <button
-                onClick={() => setShowSalaryModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Заявка на ЗП
-              </button>
-            </div>
+
           </div>
         </div>
       </div>
@@ -572,6 +552,22 @@ export default function ProcessingPage() {
           </div>
         )}
 
+        {/* Быстрые действия */}
+        <div className="flex gap-3 mb-6">
+          <button
+            onClick={() => setShowDepositModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Внести депозит
+          </button>
+          <button
+            onClick={() => setShowSalaryModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Заявка на ЗП
+          </button>
+        </div>
+
         {/* Табы */}
         <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800">
           <div className="border-b border-gray-200 dark:border-gray-800">
@@ -638,39 +634,26 @@ export default function ProcessingPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700">
-                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Дата</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Игрок</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Оффер</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Дата и время</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Email игрока</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сумма</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сеть</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Бонус</th>
                         </tr>
                       </thead>
                       <tbody>
                         {deposits.map((deposit) => (
                           <tr key={deposit.id} className="border-b border-gray-100 dark:border-gray-800">
                             <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                              {new Date(deposit.createdAt).toLocaleDateString()}
+                              {new Date(deposit.createdAt).toLocaleString()}
                             </td>
                             <td className="py-3 px-4 text-sm">
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-gray-100">{deposit.playerId}</div>
-                                {deposit.playerNick && (
-                                  <div className="text-gray-500 dark:text-gray-400">{deposit.playerNick}</div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                              {deposit.offerName || "-"}
+                              <div className="font-medium text-gray-900 dark:text-gray-100">{deposit.playerId}</div>
                             </td>
                             <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                               ${deposit.amount}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                               {getCurrencyDisplayName(deposit.currency)}
-                            </td>
-                            <td className="py-3 px-4 text-sm font-medium text-green-600">
-                              ${deposit.bonusAmount}
                             </td>
                           </tr>
                         ))}

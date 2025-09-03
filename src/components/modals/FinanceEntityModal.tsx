@@ -75,22 +75,20 @@ const currencyOptions = [
 ];
 
 const cryptocurrencyOptions = [
-  { value: 'BTC', label: 'Bitcoin (BTC)' },
-  { value: 'ETH', label: 'Ethereum (ETH)' },
-  { value: 'BNB', label: 'Binance Coin (BNB)' },
-  { value: 'SOL', label: 'Solana (SOL)' },
-  { value: 'ADA', label: 'Cardano (ADA)' },
-  { value: 'XRP', label: 'Ripple (XRP)' },
-  { value: 'DOT', label: 'Polkadot (DOT)' },
-  { value: 'DOGE', label: 'Dogecoin (DOGE)' },
-  { value: 'AVAX', label: 'Avalanche (AVAX)' },
-  { value: 'LTC', label: 'Litecoin (LTC)' },
-  { value: 'MATIC', label: 'Polygon (MATIC)' },
-  { value: 'LINK', label: 'Chainlink (LINK)' },
-  { value: 'UNI', label: 'Uniswap (UNI)' },
-  { value: 'ALGO', label: 'Algorand (ALGO)' },
-  { value: 'ICP', label: 'Internet Computer (ICP)' },
-  { value: 'FIL', label: 'Filecoin (FIL)' },
+  { value: 'BTC', label: 'BTC' },
+  { value: 'ETH', label: 'ETH' },
+  { value: 'TRX', label: 'TRX' },
+  { value: 'USDT_TRC20', label: 'USDT TRC20' },
+  { value: 'USDT_ERC20', label: 'USDT ERC20' },
+  { value: 'USDT_BEP20', label: 'USDT BEP20' },
+  { value: 'USDT_SOL20', label: 'USDT SOL20' },
+  { value: 'USDC', label: 'USDC' },
+  { value: 'XRP', label: 'XRP' },
+  { value: 'BASE', label: 'BASE' },
+  { value: 'BNB', label: 'BNB' },
+  { value: 'TRON', label: 'TRON' },
+  { value: 'TON', label: 'TON' },
+  { value: 'SOLANA', label: 'SOLANA' },
 ];
 
 const colorOptions = [

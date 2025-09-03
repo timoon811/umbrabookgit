@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         type: true,
+        email: true,
+        phone: true,
+        address: true,
+        taxNumber: true,
+        bankDetails: true,
         isArchived: true,
         createdAt: true,
         updatedAt: true,
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
     await checkAdminAuth();
     
     const body = await request.json();
-    const { name, type, isArchived = false } = body;
+    const { name, type, email, phone, address, taxNumber, bankDetails, isArchived = false } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Название контрагента обязательно" }, { status: 400 });
@@ -84,6 +89,11 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         type: type || "CLIENT",
+        email,
+        phone,
+        address,
+        taxNumber,
+        bankDetails,
         isArchived,
       }
     });
