@@ -7,15 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_ke
 const publicRoutes = [
   "/login",
   "/register",
-  "/docs", // Документация доступна публично
   "/api/auth/login",
-  "/api/auth/register",
+  "/api/auth/register", 
   "/api/auth/refresh",
   "/api/auth/me", // Добавляем для проверки статуса аутентификации
-  "/api/documentation", // Публичная документация
-  "/api/courses", // Публичные курсы
-  "/api/search", // Поиск
-  "/api/documentation/search", // Поиск в документации
 ];
 
 // Маршруты только для администраторов
@@ -32,6 +27,7 @@ const processorRestrictedRoutes = [
 // Внутренние маршруты, требующие авторизации
 const protectedRoutes = [
   "/", // Главная страница (требует авторизации)
+  "/docs", // Документация (теперь требует авторизации)
   "/courses", // Курсы
   "/profile", // Профиль
   "/processing", // Кабинет обработчика
@@ -110,7 +106,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Проверяем, является ли маршрут публичным
-  if (publicRoutes.includes(pathname) || pathname.startsWith('/docs/')) {
+  if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
 

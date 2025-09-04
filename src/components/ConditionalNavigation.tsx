@@ -29,18 +29,20 @@ export default function ConditionalNavigation() {
             Umbra Platform
           </Link>
           
-          {/* Навигационные кнопки */}
+          {/* Навигационные кнопки - только для авторизованных */}
           <div className="flex items-center gap-2">
-            {/* Документация - доступна всем */}
-            <Link
-              href="/docs"
-              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-            >
-              Документация
-            </Link>
+            {/* Документация - доступна только авторизованным */}
+            {mounted && user && (
+              <Link
+                href="/docs"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Документация
+              </Link>
+            )}
             
-            {/* Курсы - скрыты для процессоров */}
-            {mounted && user?.role !== "PROCESSOR" && (
+            {/* Курсы - скрыты для процессоров и неавторизованных */}
+            {mounted && user && user?.role !== "PROCESSOR" && (
               <Link
                 href="/courses"
                 className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"

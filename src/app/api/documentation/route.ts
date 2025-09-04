@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  // Публичный API - авторизация не требуется для просмотра опубликованной документации
+  // Проверяем авторизацию - документация теперь требует авторизации
+  const authResult = await requireAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
   try {
     // Получаем все опубликованные документы
     const documentation = await prisma.documentation.findMany({

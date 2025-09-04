@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/api-auth";
 
 // Интерфейсы для типизации
 interface DocumentationResult {
@@ -64,9 +65,13 @@ function calculateRelevance(title: string, content: string | null, query: string
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    // Публичный поиск - авторизация не требуется для поиска в опубликованном контенте
+  // Проверяем авторизацию - поиск теперь требует авторизации
+  const authResult = await requireAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
 
+  try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const type = searchParams.get('type'); // 'all', 'docs', 'courses'

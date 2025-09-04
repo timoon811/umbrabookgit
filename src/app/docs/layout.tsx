@@ -5,6 +5,7 @@ import DocsNavigation from "@/components/DocsNavigation";
 import TableOfContents from "@/components/TableOfContents";
 import SmartSidebar from "@/components/SmartSidebar";
 import BodyClassManager from "@/components/BodyClassManager";
+import AuthGuard from "@/components/AuthGuard";
 
 interface DocsLayoutProps {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
   const nav = await getDocsNav('docs');
 
   return (
-    <>
+    <AuthGuard>
       <BodyClassManager className="page-with-custom-layout" />
       <div className="min-h-screen bg-white dark:bg-gray-900">
         {/* Убираем дублирующийся хэдер - используем основной из ConditionalNavigation */}
@@ -44,7 +45,7 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
         </aside>
         </div>
       </div>
-    </>
+    </AuthGuard>
   );
 }
 

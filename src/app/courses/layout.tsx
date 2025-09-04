@@ -4,6 +4,7 @@ import CoursesNavigation from "@/components/CoursesNavigation";
 import TableOfContents from "@/components/TableOfContents";
 import SmartSidebar from "@/components/SmartSidebar";
 import BodyClassManager from "@/components/BodyClassManager";
+import AuthGuard from "@/components/AuthGuard";
 
 interface CoursesLayoutProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ export default async function CoursesLayout({ children }: CoursesLayoutProps) {
   const nav = await getCoursesNav('courses');
 
   return (
-    <>
+    <AuthGuard blockProcessors={true}>
       <BodyClassManager className="page-with-custom-layout" />
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <div className="docs-layout">
@@ -41,7 +42,7 @@ export default async function CoursesLayout({ children }: CoursesLayoutProps) {
         </aside>
         </div>
       </div>
-    </>
+    </AuthGuard>
   );
 }
 

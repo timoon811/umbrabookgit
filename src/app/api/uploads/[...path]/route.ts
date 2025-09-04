@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // Проверяем авторизацию - файлы требуют авторизации
+  const authResult = await requireAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
   try {
     const pathArray = params.path;
     const filename = pathArray[pathArray.length - 1];

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import AuthGuard from "@/components/AuthGuard";
 
 // Динамический импорт Swagger UI для избежания SSR проблем
 const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false });
@@ -56,66 +57,68 @@ export default function ApiDocsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#171717] dark:text-[#ededed] mb-4">
-            API Документация
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Интерактивная документация для API платформы Umbra. 
-            Здесь вы можете ознакомиться со всеми доступными endpoints, 
-            их параметрами и схемами данных.
-          </p>
-        </div>
+    <AuthGuard>
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-[#171717] dark:text-[#ededed] mb-4">
+              API Документация
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Интерактивная документация для API платформы Umbra. 
+              Здесь вы можете ознакомиться со всеми доступными endpoints, 
+              их параметрами и схемами данных.
+            </p>
+          </div>
 
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 overflow-hidden">
-          {swaggerSpec && (
-            <SwaggerUI
-              spec={swaggerSpec}
-              docExpansion="list"
-              defaultModelsExpandDepth={1}
-              defaultModelExpandDepth={1}
-              displayOperationId={false}
-              displayRequestDuration={true}
-              tryItOutEnabled={true}
-              filter={true}
-              showExtensions={false}
-              showCommonExtensions={false}
-              deepLinking={true}
-              supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
-              onComplete={() => {
-                // Настройка темы для Swagger UI
-                const style = document.createElement('style');
-                style.textContent = `
-                  .swagger-ui {
-                    font-family: inherit;
-                  }
-                  .swagger-ui .topbar {
-                    display: none;
-                  }
-                  .swagger-ui .info {
-                    margin: 20px 0;
-                  }
-                  .swagger-ui .scheme-container {
-                    background: transparent;
-                    box-shadow: none;
-                  }
-                `;
-                document.head.appendChild(style);
-              }}
-            />
-          )}
-        </div>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 overflow-hidden">
+            {swaggerSpec && (
+              <SwaggerUI
+                spec={swaggerSpec}
+                docExpansion="list"
+                defaultModelsExpandDepth={1}
+                defaultModelExpandDepth={1}
+                displayOperationId={false}
+                displayRequestDuration={true}
+                tryItOutEnabled={true}
+                filter={true}
+                showExtensions={false}
+                showCommonExtensions={false}
+                deepLinking={true}
+                supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
+                onComplete={() => {
+                  // Настройка темы для Swagger UI
+                  const style = document.createElement('style');
+                  style.textContent = `
+                    .swagger-ui {
+                      font-family: inherit;
+                    }
+                    .swagger-ui .topbar {
+                      display: none;
+                    }
+                    .swagger-ui .info {
+                      margin: 20px 0;
+                    }
+                    .swagger-ui .scheme-container {
+                      background: transparent;
+                      box-shadow: none;
+                    }
+                  `;
+                  document.head.appendChild(style);
+                }}
+              />
+            )}
+          </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Документация обновляется автоматически при изменении API.
-            <br />
-            Для получения доступа к API используйте аутентификацию через cookie.
-          </p>
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Документация обновляется автоматически при изменении API.
+              <br />
+              Для получения доступа к API используйте аутентификацию через cookie.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

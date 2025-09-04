@@ -5,13 +5,37 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolink from "rehype-autolink-headings";
 import CopyButton from "@/components/CopyButton";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 
 export default async function CourseDocPage({
   params,
 }: {
   params: Promise<{ slug: string[] }>;
 }) {
+  // Проверяем авторизацию на сервере
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get("auth-token")?.value;
+  
+  if (!authToken) {
+    redirect("/login");
+  }
+  
+  try {
+    const user = await verifyToken(authToken);
+    if (!user) {
+      redirect("/login");
+    }
+    
+    // Блокируем доступ для процессоров
+    if (user.role === "PROCESSOR") {
+      redirect("/processing");
+    }
+  } catch (error) {
+    console.error("Ошибка проверки токена:", error);
+    redirect("/login");
+  }
   try {
     const { slug: slugArray } = await params;
     const slug = slugArray.join("/");
