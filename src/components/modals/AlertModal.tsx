@@ -134,7 +134,7 @@ export default function AlertModal({
                   ? 'bg-yellow-600 hover:bg-yellow-700'
                   : type === 'success'
                   ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-gray-900 hover:bg-gray-800 dark:bg-white/10 dark:hover:bg_white/20'
+                  : 'bg-gray-900 hover:bg-gray-800 dark:bg-white/10 dark:hover:bg-white/20'
               }`}
             >
               {confirmText}

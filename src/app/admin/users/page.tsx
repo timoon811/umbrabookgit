@@ -59,7 +59,11 @@ export default function UsersPage() {
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // Bulk selection state
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [selectedPendingUsers, setSelectedPendingUsers] = useState<Set<string>>(new Set());
+
   // Custom modal hooks
   const { alertModal, confirmModal, success, error, confirm } = useModal();
 
@@ -99,6 +103,52 @@ export default function UsersPage() {
     loadUsers();
     loadPendingUsers();
   }, []);
+
+  // Bulk selection handlers
+  const handleUserSelect = (userId: string, selected: boolean) => {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(userId);
+      } else {
+        newSet.delete(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handlePendingUserSelect = (userId: string, selected: boolean) => {
+    setSelectedPendingUsers(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(userId);
+      } else {
+        newSet.delete(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllUsers = (selected: boolean) => {
+    if (selected) {
+      setSelectedUsers(new Set(filteredUsers.map(user => user.id)));
+    } else {
+      setSelectedUsers(new Set());
+    }
+  };
+
+  const handleSelectAllPendingUsers = (selected: boolean) => {
+    if (selected) {
+      setSelectedPendingUsers(new Set(filteredPendingUsers.map(user => user.id)));
+    } else {
+      setSelectedPendingUsers(new Set());
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedUsers(new Set());
+    setSelectedPendingUsers(new Set());
+  };
 
   // Actions
   const handleViewUser = (user: User | PendingUser) => {
@@ -260,6 +310,158 @@ export default function UsersPage() {
     }
   };
 
+  // Bulk operations
+  const handleBulkBlockUsers = async (userIds: string[], block: boolean) => {
+    const action = block ? 'block' : 'unblock';
+    const actionText = block ? 'заблокировать' : 'разблокировать';
+
+    const confirmed = await confirm(
+      `${block ? 'Заблокировать' : 'Разблокировать'} пользователей`,
+      `Вы уверены, что хотите ${actionText} ${userIds.length} ${userIds.length === 1 ? 'пользователя' : userIds.length < 5 ? 'пользователей' : 'пользователей'}?`,
+      {
+        type: block ? 'warning' : 'info',
+        actionType: action
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds,
+          action
+        }),
+      });
+
+      if (response.ok) {
+        loadUsers();
+        clearSelection();
+        success(`${userIds.length} ${userIds.length === 1 ? 'пользователь' : userIds.length < 5 ? 'пользователя' : 'пользователей'} ${block ? 'заблокирован' : 'разблокирован'}`);
+      } else {
+        const result = await response.json();
+        error(result.message || "Ошибка выполнения действия");
+      }
+    } catch {
+      error("Ошибка сети");
+    }
+  };
+
+  const handleBulkApproveUsers = async (userIds: string[]) => {
+    const confirmed = await confirm(
+      "Одобрить заявки",
+      `Вы уверены, что хотите одобрить ${userIds.length} ${userIds.length === 1 ? 'заявку' : userIds.length < 5 ? 'заявки' : 'заявок'}?`,
+      {
+        type: 'info',
+        actionType: 'approve'
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds,
+          action: 'approve'
+        }),
+      });
+
+      if (response.ok) {
+        loadPendingUsers();
+        loadUsers();
+        clearSelection();
+        success(`${userIds.length} ${userIds.length === 1 ? 'заявка' : userIds.length < 5 ? 'заявки' : 'заявок'} одобрена`);
+      } else {
+        const result = await response.json();
+        error(result.message || "Ошибка выполнения действия");
+      }
+    } catch {
+      error("Ошибка сети");
+    }
+  };
+
+  const handleBulkRejectUsers = async (userIds: string[]) => {
+    const confirmed = await confirm(
+      "Отклонить заявки",
+      `Вы уверены, что хотите отклонить ${userIds.length} ${userIds.length === 1 ? 'заявку' : userIds.length < 5 ? 'заявки' : 'заявок'}?`,
+      {
+        type: 'warning',
+        actionType: 'reject'
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds,
+          action: 'reject'
+        }),
+      });
+
+      if (response.ok) {
+        loadPendingUsers();
+        clearSelection();
+        success(`${userIds.length} ${userIds.length === 1 ? 'заявка' : userIds.length < 5 ? 'заявки' : 'заявок'} отклонена`);
+      } else {
+        const result = await response.json();
+        error(result.message || "Ошибка выполнения действия");
+      }
+    } catch {
+      error("Ошибка сети");
+    }
+  };
+
+  const handleBulkDeleteUsers = async (userIds: string[]) => {
+    const confirmed = await confirm(
+      "Удалить пользователей",
+      `Вы уверены, что хотите удалить ${userIds.length} ${userIds.length === 1 ? 'пользователя' : userIds.length < 5 ? 'пользователей' : 'пользователей'}? Это действие необратимо.`,
+      {
+        type: 'danger',
+        actionType: 'delete'
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds
+        }),
+      });
+
+      if (response.ok) {
+        loadUsers();
+        clearSelection();
+        success(`${userIds.length} ${userIds.length === 1 ? 'пользователь' : userIds.length < 5 ? 'пользователей' : 'пользователей'} удален`);
+      } else {
+        const result = await response.json();
+        error(result.message || "Ошибка удаления");
+      }
+    } catch {
+      error("Ошибка сети");
+    }
+  };
+
   // Helper functions
   const getRoleBadge = (role: string) => {
     const roleConfig = {
@@ -371,11 +573,33 @@ export default function UsersPage() {
         </nav>
           </div>
 
+      {/* Bulk Actions Panel */}
+      {activeTab === 'all' && selectedUsers.size > 0 && (
+        <BulkActionsPanel
+          selectedCount={selectedUsers.size}
+          onBlock={(block) => handleBulkBlockUsers(Array.from(selectedUsers), block)}
+          onDelete={() => handleBulkDeleteUsers(Array.from(selectedUsers))}
+          onClear={clearSelection}
+        />
+      )}
+
+      {activeTab === 'pending' && selectedPendingUsers.size > 0 && (
+        <BulkActionsPanel
+          selectedCount={selectedPendingUsers.size}
+          onApprove={() => handleBulkApproveUsers(Array.from(selectedPendingUsers))}
+          onReject={() => handleBulkRejectUsers(Array.from(selectedPendingUsers))}
+          onClear={clearSelection}
+        />
+      )}
+
       {/* Content */}
       {activeTab === 'all' ? (
-        <UsersTable 
+        <UsersTable
           users={filteredUsers}
           loading={loading}
+          selectedUsers={selectedUsers}
+          onUserSelect={handleUserSelect}
+          onSelectAll={handleSelectAllUsers}
           onView={handleViewUser}
           onEdit={handleEditUser}
           onBlock={handleBlockUser}
@@ -384,9 +608,12 @@ export default function UsersPage() {
           getStatusBadge={getStatusBadge}
         />
       ) : (
-        <PendingUsersTable 
+        <PendingUsersTable
           users={filteredPendingUsers}
           loading={pendingLoading}
+          selectedUsers={selectedPendingUsers}
+          onUserSelect={handlePendingUserSelect}
+          onSelectAll={handleSelectAllPendingUsers}
           onView={handleViewUser}
           onApprove={(id) => handlePendingAction(id, 'approve')}
           onReject={(id) => handlePendingAction(id, 'reject')}
@@ -439,18 +666,24 @@ export default function UsersPage() {
 }
 
 // Users Table Component
-function UsersTable({ 
-  users, 
-  loading, 
-  onView, 
-  onEdit, 
-  onBlock, 
-  onDelete, 
-  getRoleBadge, 
-  getStatusBadge 
+function UsersTable({
+  users,
+  loading,
+  selectedUsers,
+  onUserSelect,
+  onSelectAll,
+  onView,
+  onEdit,
+  onBlock,
+  onDelete,
+  getRoleBadge,
+  getStatusBadge
 }: {
   users: User[];
   loading: boolean;
+  selectedUsers: Set<string>;
+  onUserSelect: (userId: string, selected: boolean) => void;
+  onSelectAll: (selected: boolean) => void;
   onView: (user: User) => void;
   onEdit: (user: User) => void;
   onBlock: (id: string, isBlocked: boolean) => void;
@@ -491,6 +724,14 @@ function UsersTable({
           <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/[0.02]">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.size === users.length && users.length > 0}
+                  onChange={(e) => onSelectAll(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                   Пользователь
                 </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
@@ -513,6 +754,14 @@ function UsersTable({
           <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
               {users.map((user) => (
               <tr key={user.id} className="hover:bg-[#171717]/[0.01] dark:hover:bg-[#ededed]/[0.01]">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.has(user.id)}
+                      onChange={(e) => onUserSelect(user.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -563,42 +812,50 @@ function UsersTable({
       <div className="lg:hidden">
         {users.map((user) => (
           <div key={user.id} className="p-4 border-b border-[#171717]/5 dark:border-[#ededed]/10 last:border-b-0">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center flex-1">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-white">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selectedUsers.has(user.id)}
+                onChange={(e) => onUserSelect(user.id, e.target.checked)}
+                className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+              />
+              <div className="flex-1">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium text-white">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
+                      {user.name}
+                    </div>
+                    <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                      {user.email}
+                    </div>
+                    <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                      {user.telegram}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getRoleBadge(user.role)}
+                      {getStatusBadge(user.status, user.isBlocked)}
+                    </div>
+                    <div className="text-xs text-[#171717]/40 dark:text-[#ededed]/40 mt-1">
+                      Регистрация: {new Date(user.createdAt).toLocaleDateString("ru")}
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
-                    {user.name}
-                  </div>
-                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    {user.email}
-                  </div>
-                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    {user.telegram}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getRoleBadge(user.role)}
-                    {getStatusBadge(user.status, user.isBlocked)}
-                  </div>
-                  <div className="text-xs text-[#171717]/40 dark:text-[#ededed]/40 mt-1">
-                    Регистрация: {new Date(user.createdAt).toLocaleDateString("ru")}
-                  </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <UserActionButtons
+                    user={user}
+                    onView={onView}
+                    onEdit={onEdit}
+                    onBlock={onBlock}
+                    onDelete={onDelete}
+                    mobile
+                  />
                 </div>
               </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <UserActionButtons
-                user={user}
-                onView={onView}
-                onEdit={onEdit}
-                onBlock={onBlock}
-                onDelete={onDelete}
-                mobile
-              />
             </div>
           </div>
         ))}
@@ -692,16 +949,22 @@ function UserActionButtons({
 }
 
 // Pending Users Table Component
-function PendingUsersTable({ 
-  users, 
-  loading, 
-  onView, 
-  onApprove, 
-  onReject, 
-  getRoleBadge 
+function PendingUsersTable({
+  users,
+  loading,
+  selectedUsers,
+  onUserSelect,
+  onSelectAll,
+  onView,
+  onApprove,
+  onReject,
+  getRoleBadge
 }: {
   users: PendingUser[];
   loading: boolean;
+  selectedUsers: Set<string>;
+  onUserSelect: (userId: string, selected: boolean) => void;
+  onSelectAll: (selected: boolean) => void;
   onView: (user: PendingUser) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -740,6 +1003,14 @@ function PendingUsersTable({
           <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/[0.02]">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.size === users.length && users.length > 0}
+                  onChange={(e) => onSelectAll(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Пользователь
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
@@ -762,6 +1033,14 @@ function PendingUsersTable({
           <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-[#171717]/[0.01] dark:hover:bg-[#ededed]/[0.01]">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.has(user.id)}
+                    onChange={(e) => onUserSelect(user.id, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
@@ -813,43 +1092,51 @@ function PendingUsersTable({
       <div className="lg:hidden">
         {users.map((user) => (
           <div key={user.id} className="p-4 border-b border-[#171717]/5 dark:border-[#ededed]/10 last:border-b-0">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center flex-1">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-white">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
-                    {user.name}
-                  </div>
-                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    {user.email}
-                  </div>
-                  <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
-                    {user.telegram}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getRoleBadge(user.role)}
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                      Ожидает
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selectedUsers.has(user.id)}
+                onChange={(e) => onUserSelect(user.id, e.target.checked)}
+                className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+              />
+              <div className="flex-1">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium text-white">
+                      {user.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <div className="text-xs text-[#171717]/40 dark:text-[#ededed]/40 mt-1">
-                    Регистрация: {new Date(user.createdAt).toLocaleDateString("ru")}
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
+                      {user.name}
+                    </div>
+                    <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                      {user.email}
+                    </div>
+                    <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
+                      {user.telegram}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {getRoleBadge(user.role)}
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                        Ожидает
+                      </span>
+                    </div>
+                    <div className="text-xs text-[#171717]/40 dark:text-[#ededed]/40 mt-1">
+                      Регистрация: {new Date(user.createdAt).toLocaleDateString("ru")}
+                    </div>
                   </div>
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <PendingUserActionButtons
+                    user={user}
+                    onView={onView}
+                    onApprove={onApprove}
+                    onReject={onReject}
+                    mobile
+                  />
+                </div>
               </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <PendingUserActionButtons
-                user={user}
-                onView={onView}
-                onApprove={onApprove}
-                onReject={onReject}
-                mobile
-              />
             </div>
           </div>
         ))}
@@ -881,7 +1168,7 @@ function PendingUserActionButtons({
       {/* Посмотреть */}
       <button
         onClick={() => onView(user)}
-        className={`${buttonClass} bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg_white/10 dark:text-white dark:hover:bg-white/20`}
+        className={`${buttonClass} bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20`}
         title="Посмотреть профиль"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1004,6 +1291,93 @@ function ViewUserModal({
             className="px-4 py-2 rounded-lg text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed] hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-colors"
           >
             Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Bulk Actions Panel Component
+function BulkActionsPanel({
+  selectedCount,
+  onBlock,
+  onDelete,
+  onApprove,
+  onReject,
+  onClear
+}: {
+  selectedCount: number;
+  onBlock?: (block: boolean) => void;
+  onDelete?: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Выбрано: {selectedCount}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onApprove && (
+            <button
+              onClick={onApprove}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+            >
+              Одобрить
+            </button>
+          )}
+
+          {onReject && (
+            <button
+              onClick={onReject}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Отклонить
+            </button>
+          )}
+
+          {onBlock && (
+            <>
+              <button
+                onClick={() => onBlock(true)}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors"
+              >
+                Заблокировать
+              </button>
+              <button
+                onClick={() => onBlock(false)}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+              >
+                Разблокировать
+              </button>
+            </>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Удалить
+            </button>
+          )}
+
+          <button
+            onClick={onClear}
+            className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition-colors"
+          >
+            Очистить
           </button>
         </div>
       </div>
