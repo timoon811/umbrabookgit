@@ -340,7 +340,7 @@ export default function DepositsDiagnostics() {
                   </td>
                   <td className="py-3 px-4 text-[#171717] dark:text-[#ededed]">{source.depositsCount}</td>
                   <td className="py-3 px-4">
-                    <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{source.tokenPreview}</code>
+                    <code className="text-xs bg-gray-100 dark:bg-[#0a0a0a] px-2 py-1 rounded">{source.tokenPreview}</code>
                   </td>
                 </tr>
               ))}
@@ -373,7 +373,7 @@ export default function DepositsDiagnostics() {
                 {data.recentDeposits.map((deposit) => (
                   <tr key={deposit.id} className="border-b border-[#171717]/5 dark:border-[#ededed]/5 hover:bg-[#171717]/2 dark:hover:bg-[#ededed]/2">
                     <td className="py-3 px-4">
-                      <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{deposit.id.slice(-8)}</code>
+                      <code className="text-xs bg-gray-100 dark:bg-[#0a0a0a] px-2 py-1 rounded">{deposit.id.slice(-8)}</code>
                     </td>
                     <td className="py-3 px-4 text-[#171717] dark:text-[#ededed]">{deposit.mammothLogin}</td>
                     <td className="py-3 px-4">

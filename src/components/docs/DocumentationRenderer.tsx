@@ -4,38 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { normalizeFileUrl, isImageFile } from '@/lib/file-utils';
-
-interface Block {
-  id: string;
-  type: string;
-  content: string;
-  metadata?: {
-    alignment?: 'left' | 'center' | 'right';
-    color?: string;
-    backgroundColor?: string;
-    url?: string;
-    alt?: string;
-    caption?: string;
-    language?: string;
-    fontSize?: 'small' | 'normal' | 'large' | 'xlarge';
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    strikethrough?: boolean;
-    highlight?: boolean;
-    highlightColor?: string;
-    linkUrl?: string;
-    linkTitle?: string;
-    internalPageId?: string;
-    youtubeId?: string;
-    videoUrl?: string;
-    isCallout?: boolean;
-    calloutType?: 'info' | 'warning' | 'error' | 'success';
-    name?: string;     // Для файлов
-    size?: number;     // Размер файла в байтах
-    type?: string;     // MIME тип файла
-  };
-}
+import { Block } from '@/types/editor';
+import { parseMarkdownToBlocks } from '@/lib/block-utils';
 
 interface DocumentationRendererProps {
   content: string;
@@ -63,149 +33,6 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
     setBlocks(parsedBlocks);
   }, [content]);
 
-  const parseMarkdownToBlocks = (markdown: string): Block[] => {
-    const lines = markdown.split('\n');
-    const blocks: Block[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (!line) continue;
-
-      // YouTube ссылки
-      const youtubeMatch = line.match(/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (youtubeMatch) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'youtube',
-          content: line,
-          metadata: { youtubeId: youtubeMatch[1] }
-        });
-        continue;
-      }
-
-      // Заголовки
-      if (line.startsWith('# ')) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'heading1',
-          content: line.substring(2),
-          metadata: {}
-        });
-        continue;
-      }
-
-      if (line.startsWith('## ')) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'heading2',
-          content: line.substring(3),
-          metadata: {}
-        });
-        continue;
-      }
-
-      if (line.startsWith('### ')) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'heading3',
-          content: line.substring(4),
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Цитаты
-      if (line.startsWith('> ')) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'quote',
-          content: line.substring(2),
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Изображения
-      const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-      if (imageMatch) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'image',
-          content: imageMatch[2],
-          metadata: { url: imageMatch[2], alt: imageMatch[1], caption: imageMatch[1] }
-        });
-        continue;
-      }
-
-      // Файлы
-      const fileMatch = line.match(/\[📎\s*([^\]]+)\]\(([^)]+)\)/);
-      if (fileMatch) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'file',
-          content: fileMatch[2],
-          metadata: { url: fileMatch[2], name: fileMatch[1] }
-        });
-        continue;
-      }
-
-      // Списки
-      if (line.match(/^[-*] /)) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'list',
-          content: line.substring(2),
-          metadata: {}
-        });
-        continue;
-      }
-
-      if (line.match(/^\d+\. /)) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'numbered-list',
-          content: line.replace(/^\d+\. /, ''),
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Внутренние ссылки на страницы
-      const internalLinkMatch = line.match(/\[([^\]]+)\]\(\/docs\/([^)]+)\)/);
-      if (internalLinkMatch) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'internal-link',
-          content: internalLinkMatch[1],
-          metadata: { internalPageId: internalLinkMatch[2] }
-        });
-        continue;
-      }
-
-      // Внешние ссылки
-      const externalLinkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if (externalLinkMatch) {
-        blocks.push({
-          id: `block-${i}`,
-          type: 'external-link',
-          content: externalLinkMatch[1],
-          metadata: { linkUrl: externalLinkMatch[2] }
-        });
-        continue;
-      }
-
-      // Обычный текст
-      blocks.push({
-        id: `block-${i}`,
-        type: 'paragraph',
-        content: line,
-        metadata: {}
-      });
-    }
-
-    return blocks;
-  };
 
   const renderBlock = (block: Block) => {
     const getAlignmentClass = () => {
@@ -268,7 +95,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
       processed = processed.replace(/==(.*?)==/g, '<mark>$1</mark>');
       
       // Код
-      processed = processed.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm">$1</code>');
+      processed = processed.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-[#0a0a0a] px-1 py-0.5 rounded text-sm">$1</code>');
 
       return <span dangerouslySetInnerHTML={{ __html: processed }} />;
     };
@@ -344,7 +171,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
 
       case 'code':
         return (
-          <div key={block.id} className="bg-gray-100 dark:bg-gray-800 rounded-lg border mb-6">
+          <div key={block.id} className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border mb-6">
             {block.metadata?.language && (
               <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
                 {block.metadata.language}
@@ -373,7 +200,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 const fallback = document.createElement('div');
-                fallback.className = 'bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center text-gray-500 dark:text-gray-400';
+                fallback.className = 'bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-8 text-center text-gray-500 dark:text-gray-400';
                 fallback.innerHTML = `<div>🖼️</div><div class="mt-2 text-sm">Изображение не загружено</div>`;
                 target.parentNode?.appendChild(fallback);
               }}

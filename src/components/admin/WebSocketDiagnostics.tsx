@@ -345,7 +345,7 @@ export default function WebSocketDiagnostics() {
                       ) : (
                         <Key className="w-4 h-4 text-red-600 dark:text-red-400" />
                       )}
-                      <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                      <code className="text-xs bg-gray-100 dark:bg-[#0a0a0a] px-2 py-1 rounded">
                         {source.token.preview}
                       </code>
                     </div>

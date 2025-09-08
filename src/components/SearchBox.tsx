@@ -90,7 +90,7 @@ export default function SearchBox() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
-          className="h-10 w-80 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-10 pr-16 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+          className="h-10 w-80 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#0a0a0a] pl-10 pr-16 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
           placeholder="Поиск по документации и курсам..."
           readOnly
         />
@@ -98,7 +98,7 @@ export default function SearchBox() {
           <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
             ⌘
           </kbd>
-          <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
+          <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
             K
           </kbd>
         </div>
@@ -115,7 +115,7 @@ export default function SearchBox() {
           value={searchQuery}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className="h-10 w-80 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-10 pr-16 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
+          className="h-10 w-80 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#0a0a0a] pl-10 pr-16 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
           placeholder="Поиск по документации и курсам..."
         />
         {searchQuery && (
@@ -134,7 +134,7 @@ export default function SearchBox() {
           <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
             ⌘
           </kbd>
-          <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
+          <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-500">
             K
           </kbd>
         </div>

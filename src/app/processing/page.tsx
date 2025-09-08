@@ -56,6 +56,18 @@ interface SalaryRequest {
   adminComment?: string;
 }
 
+interface ProcessorShift {
+  id: string;
+  shiftType: 'MORNING' | 'DAY' | 'NIGHT';
+  shiftDate: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  actualStart?: string;
+  actualEnd?: string;
+  status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'MISSED';
+  notes?: string;
+}
+
 export default function ProcessingPage() {
   const router = useRouter();
   const { showSuccess, showError, showWarning } = useToast();
@@ -95,6 +107,13 @@ export default function ProcessingPage() {
     notes: "",
   });
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
+
+  // Состояния для управления сменами
+  const [currentShift, setCurrentShift] = useState<ProcessorShift | null>(null);
+  const [shiftTimeRemaining, setShiftTimeRemaining] = useState<number | null>(null);
+  const [shiftTimer, setShiftTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isShiftActive, setIsShiftActive] = useState(false);
+  const [shiftLoading, setShiftLoading] = useState(false);
 
   // Состояния для материалов
   const [instructions, setInstructions] = useState<Array<{
@@ -184,7 +203,7 @@ export default function ProcessingPage() {
   const loadProcessorData = async () => {
     try {
       setLoading(true);
-      
+
       // Загружаем статистику
       const statsResponse = await fetch("/api/processor/stats");
       if (statsResponse.ok) {
@@ -198,6 +217,9 @@ export default function ProcessingPage() {
         const depositsData = await depositsResponse.json();
         setDeposits(depositsData.deposits || []);
       }
+
+      // Загружаем информацию о смене
+      await loadShiftData();
 
       // Загружаем заявки на зарплату
       const salaryResponse = await fetch("/api/processor/salary-requests");
@@ -288,6 +310,127 @@ export default function ProcessingPage() {
       console.error("Ошибка загрузки настроек бонусов:", error);
     }
   };
+
+  // Загрузка данных о смене
+  const loadShiftData = async () => {
+    try {
+      const response = await fetch("/api/processor/shifts");
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentShift(data.shift);
+        setIsShiftActive(data.isActive);
+
+        if (data.timeRemaining !== null) {
+          setShiftTimeRemaining(data.timeRemaining);
+          startTimer(data.timeRemaining);
+        }
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки данных смены:", error);
+    }
+  };
+
+  // Функция для запуска таймера
+  const startTimer = (initialTime: number) => {
+    if (shiftTimer) {
+      clearInterval(shiftTimer);
+    }
+
+    setShiftTimeRemaining(initialTime);
+
+    const timer = setInterval(() => {
+      setShiftTimeRemaining(prev => {
+        if (prev === null || prev <= 1000) {
+          clearInterval(timer);
+          setShiftTimer(null);
+          return 0;
+        }
+        return prev - 1000;
+      });
+    }, 1000);
+
+    setShiftTimer(timer);
+  };
+
+  // Начать смену
+  const startShift = async () => {
+    setShiftLoading(true);
+    try {
+      const response = await fetch("/api/processor/shifts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start" }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentShift(data.shift);
+        setIsShiftActive(true);
+        startTimer(8 * 60 * 60 * 1000); // 8 часов
+        showSuccess(data.message);
+      } else {
+        const error = await response.json();
+        showError(error.error || "Ошибка при начале смены");
+      }
+    } catch (error) {
+      console.error("Ошибка начала смены:", error);
+      showError("Ошибка при начале смены");
+    } finally {
+      setShiftLoading(false);
+    }
+  };
+
+  // Закончить смену
+  const endShift = async () => {
+    setShiftLoading(true);
+    try {
+      const response = await fetch("/api/processor/shifts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "end" }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentShift(data.shift);
+        setIsShiftActive(false);
+        setShiftTimeRemaining(null);
+
+        if (shiftTimer) {
+          clearInterval(shiftTimer);
+          setShiftTimer(null);
+        }
+
+        showSuccess(data.message);
+      } else {
+        const error = await response.json();
+        showError(error.error || "Ошибка при завершении смены");
+      }
+    } catch (error) {
+      console.error("Ошибка завершения смены:", error);
+      showError("Ошибка при завершении смены");
+    } finally {
+      setShiftLoading(false);
+    }
+  };
+
+  // Форматирование времени
+  const formatTime = (milliseconds: number) => {
+    const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (shiftTimer) {
+        clearInterval(shiftTimer);
+      }
+    };
+  }, [shiftTimer]);
 
   // Отправка депозита
   const handleSubmitDeposit = async (e: React.FormEvent) => {
@@ -474,6 +617,97 @@ export default function ProcessingPage() {
         </div>
       </div>
 
+      {/* Управление сменами */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                Управление сменой
+              </h3>
+              {currentShift && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Смена: {
+                    currentShift.shiftType === 'MORNING' ? '🌅 Утреняя (06:00-14:00)' :
+                    currentShift.shiftType === 'DAY' ? '☀️ Дневная (14:00-22:00)' :
+                    '🌙 Ночная (22:00-06:00)'
+                  }
+                  {currentShift.actualStart && (
+                    <span className="ml-2">
+                      • Начало: {new Date(currentShift.actualStart).toLocaleTimeString('ru-RU')}
+                    </span>
+                  )}
+                  {currentShift.actualEnd && (
+                    <span className="ml-2">
+                      • Завершение: {new Date(currentShift.actualEnd).toLocaleTimeString('ru-RU')}
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            {isShiftActive && shiftTimeRemaining !== null && (
+              <div className="text-right">
+                <div className="text-sm text-gray-600 dark:text-gray-400">Осталось времени</div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatTime(shiftTimeRemaining)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3">
+            {!isShiftActive ? (
+              <button
+                onClick={startShift}
+                disabled={shiftLoading}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {shiftLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+                Начать смену
+              </button>
+            ) : (
+              <button
+                onClick={endShift}
+                disabled={shiftLoading}
+                className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {shiftLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+                Закончить смену
+              </button>
+            )}
+
+            {currentShift && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a] rounded-lg">
+                <div className={`w-3 h-3 rounded-full ${
+                  currentShift.status === 'ACTIVE' ? 'bg-green-500' :
+                  currentShift.status === 'COMPLETED' ? 'bg-blue-500' :
+                  'bg-gray-400'
+                }`}></div>
+                <span className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                  {currentShift.status === 'ACTIVE' ? 'Смена активна' :
+                   currentShift.status === 'COMPLETED' ? 'Смена завершена' :
+                   'Смена запланирована'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* KPI виджеты */}
         {stats && (
@@ -621,7 +855,7 @@ export default function ProcessingPage() {
               <div className="space-y-4">
                 {deposits.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
@@ -668,7 +902,7 @@ export default function ProcessingPage() {
               <div className="space-y-4">
                 {salaryRequests.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                       </svg>
@@ -934,7 +1168,7 @@ export default function ProcessingPage() {
                                   {script.description}
                                 </p>
                               )}
-                              <div className="bg-gray-100 dark:bg-gray-700 rounded p-3 text-sm font-mono">
+                              <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded p-3 text-sm font-mono">
                                 {script.content}
                               </div>
                             </div>
@@ -1018,7 +1252,7 @@ export default function ProcessingPage() {
                                   {template.description}
                                 </p>
                               )}
-                              <div className="bg-gray-100 dark:bg-gray-700 rounded p-3 text-sm font-mono">
+                              <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded p-3 text-sm font-mono">
                                 {template.content}
                               </div>
                             </div>

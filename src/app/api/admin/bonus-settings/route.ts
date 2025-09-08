@@ -66,9 +66,12 @@ export async function POST(request: NextRequest) {
       // Создание новой ступени бонусной сетки
       const bonusGrid = await prisma.bonus_grid.create({
         data: {
+          shiftType: settings.shiftType || 'MORNING',
           minAmount: settings.minAmount,
           maxAmount: settings.maxAmount,
           bonusPercentage: settings.bonusPercentage,
+          fixedBonus: settings.fixedBonus,
+          fixedBonusMin: settings.fixedBonusMin,
           description: settings.description,
         },
       });

@@ -23,7 +23,7 @@ export default function UserActions() {
     return (
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="w-16 h-4 bg-gray-200 dark:bg-[#0a0a0a] rounded animate-pulse"></div>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export default function UserActions() {
     return (
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        <div className="w-16 h-4 bg-gray-200 dark:bg-[#0a0a0a] rounded animate-pulse"></div>
       </div>
     );
   }
@@ -44,7 +44,7 @@ export default function UserActions() {
       <div className="flex items-center gap-2">
         <Link
           href="/login"
-          className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"
+          className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors"
         >
           Войти
         </Link>

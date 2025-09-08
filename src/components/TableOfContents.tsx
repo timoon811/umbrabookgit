@@ -60,9 +60,9 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
               <a
                 href={`#${item.id}`}
                 onClick={(e) => handleClick(item.id, e)}
-                className={`block py-1 px-2 text-xs transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                className={`block py-1 px-2 text-xs transition-colors rounded hover:bg-gray-100 dark:hover:bg-[#0a0a0a] ${
                   activeId === item.id
-                    ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 font-medium border-l-2 border-blue-500'
+                    ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-[#0a0a0a] font-medium border-l-2 border-blue-500'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 } ${
                   item.depth === 2

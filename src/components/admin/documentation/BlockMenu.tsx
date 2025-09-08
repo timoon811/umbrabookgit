@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Block } from './AdvancedContentEditor';
+import { Block, blockTypes } from '@/types/editor';
 
 interface BlockMenuProps {
   isOpen: boolean;
@@ -11,37 +11,6 @@ interface BlockMenuProps {
   currentBlockType?: string;
 }
 
-interface BlockType {
-  type: string;
-  title: string;
-  description: string;
-  icon: string;
-  shortcut?: string;
-  category: 'basic' | 'media' | 'structure' | 'advanced';
-}
-
-const blockTypes: BlockType[] = [
-  // Basic
-  { type: 'paragraph', title: 'Текст', description: 'Обычный абзац текста', icon: '¶', category: 'basic' },
-  { type: 'heading1', title: 'Заголовок 1', description: 'Крупный заголовок раздела', icon: 'H1', shortcut: 'Ctrl+1', category: 'basic' },
-  { type: 'heading2', title: 'Заголовок 2', description: 'Заголовок подраздела', icon: 'H2', shortcut: 'Ctrl+2', category: 'basic' },
-  { type: 'heading3', title: 'Заголовок 3', description: 'Малый заголовок', icon: 'H3', shortcut: 'Ctrl+3', category: 'basic' },
-  
-  // Structure
-  { type: 'list', title: 'Список', description: 'Маркированный список', icon: '•', category: 'structure' },
-  { type: 'numbered-list', title: 'Нумерованный список', description: 'Пронумерованный список', icon: '1.', category: 'structure' },
-  { type: 'quote', title: 'Цитата', description: 'Выделенная цитата', icon: '❝', category: 'structure' },
-  { type: 'callout', title: 'Выноска', description: 'Важная информация', icon: '💡', category: 'structure' },
-  { type: 'divider', title: 'Разделитель', description: 'Горизонтальная линия', icon: '—', category: 'structure' },
-  
-  // Media
-  { type: 'image', title: 'Изображение', description: 'Картинка или фото', icon: '🖼', category: 'media' },
-  { type: 'file', title: 'Файл', description: 'Документ, архив или другой файл', icon: '📎', category: 'media' },
-  { type: 'youtube', title: 'YouTube', description: 'Видео с YouTube', icon: '📺', category: 'media' },
-  
-  // Advanced
-  { type: 'code', title: 'Код', description: 'Блок кода с подсветкой', icon: '</>', category: 'advanced' },
-];
 
 const categoryNames = {
   basic: 'Основные',
@@ -158,7 +127,7 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
               setSelectedIndex(0);
             }}
             placeholder="Поиск блоков..."
-            className="w-full px-3 py-2 pl-8 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-300 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 pl-8 text-sm bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-300 focus:border-transparent outline-none"
           />
           <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -191,12 +160,12 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
                       onClose();
                     }}
                     onMouseEnter={() => setSelectedIndex(globalIndex)}
-                    className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                      isSelected ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-[#0a0a0a] transition-colors ${
+                      isSelected ? 'bg-gray-100 dark:bg-[#0a0a0a]' : ''
                     } ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                      <div className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-[#0a0a0a] rounded text-sm">
                         {block.icon}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -225,7 +194,7 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
       </div>
 
       {/* Подсказки */}
-      <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a]">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <span>↑↓ навигация • Enter выбор</span>
           <span>Esc закрыть</span>

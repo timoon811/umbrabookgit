@@ -283,7 +283,7 @@ export default function WebSocketLogs() {
                       {log.level.toUpperCase()}
                     </span>
                     {log.sourceId && (
-                      <span className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                      <span className="text-xs font-mono bg-gray-100 dark:bg-[#0a0a0a] px-2 py-0.5 rounded">
                         {log.sourceId.slice(-8)}
                       </span>
                     )}

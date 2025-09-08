@@ -4,42 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 import { DocumentationPage, DocumentationSection } from '@/types/documentation';
+import { Block } from '@/types/editor';
+import { parseMarkdownToBlocks, convertBlocksToMarkdown, createEmptyBlock, generateId, extractYouTubeId } from '@/lib/block-utils';
 import BlockMenu, { useBlockMenuPosition } from './BlockMenu';
 import ConfirmModal from '@/components/modals/ConfirmModal';
 import FileUploader from '@/components/admin/FileUploader';
 import { normalizeFileUrl, isImageFile } from '@/lib/file-utils';
-
-export interface Block {
-  id: string;
-  type: string;
-  content: string;
-  metadata?: {
-    alignment?: 'left' | 'center' | 'right';
-    color?: string;
-    backgroundColor?: string;
-    url?: string;
-    alt?: string;
-    caption?: string;
-    language?: string;
-    fontSize?: 'small' | 'normal' | 'large' | 'xlarge';
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    strikethrough?: boolean;
-    highlight?: boolean;
-    highlightColor?: string;
-    linkUrl?: string;
-    linkTitle?: string;
-    internalPageId?: string;
-    youtubeId?: string;
-    videoUrl?: string;
-    isCallout?: boolean;
-    calloutType?: 'info' | 'warning' | 'error' | 'success';
-    name?: string;     // Для файлов
-    size?: number;     // Размер файла в байтах
-    type?: string;     // MIME тип файла
-  };
-}
 
 interface AdvancedContentEditorProps {
   selectedPage: DocumentationPage | null;
@@ -142,241 +112,8 @@ export default function AdvancedContentEditor({
 
 
 
-  const createEmptyBlock = (): Block => ({
-    id: generateId(),
-    type: 'paragraph',
-    content: '',
-    metadata: {}
-  });
 
-  const generateId = () => `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Улучшенный парсинг Markdown в блоки с сохранением структуры
-  const parseMarkdownToBlocks = (markdown: string): Block[] => {
-    if (!markdown.trim()) {
-      return [createEmptyBlock()];
-    }
-
-    // Разделяем по двойным переносам строк (markdown параграфы)
-    const sections = markdown.split(/\n\s*\n/);
-    const blocks: Block[] = [];
-
-    for (const section of sections) {
-      const trimmedSection = section.trim();
-      if (!trimmedSection) continue;
-
-      const lines = trimmedSection.split('\n');
-      const firstLine = lines[0];
-
-      // YouTube ссылки
-      const youtubeMatch = firstLine.match(/^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-      if (youtubeMatch && lines.length === 1) {
-        blocks.push({
-          id: generateId(),
-          type: 'youtube',
-          content: firstLine,
-          metadata: { youtubeId: youtubeMatch[1] }
-        });
-        continue;
-      }
-
-      // Заголовки (только если одна строка)
-      if (lines.length === 1) {
-        if (firstLine.startsWith('# ')) {
-          blocks.push({
-            id: generateId(),
-            type: 'heading1',
-            content: firstLine.substring(2),
-            metadata: {}
-          });
-          continue;
-        }
-
-        if (firstLine.startsWith('## ')) {
-          blocks.push({
-            id: generateId(),
-            type: 'heading2',
-            content: firstLine.substring(3),
-            metadata: {}
-          });
-          continue;
-        }
-
-        if (firstLine.startsWith('### ')) {
-          blocks.push({
-            id: generateId(),
-            type: 'heading3',
-            content: firstLine.substring(4),
-            metadata: {}
-          });
-          continue;
-        }
-
-        // Изображения
-        const imageMatch = firstLine.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-        if (imageMatch) {
-          blocks.push({
-            id: generateId(),
-            type: 'image',
-            content: imageMatch[2],
-            metadata: { url: imageMatch[2], alt: imageMatch[1], caption: imageMatch[1] }
-          });
-          continue;
-        }
-
-        // Файлы (ссылки на файлы)
-        const fileMatch = firstLine.match(/\[📎\s*([^\]]+)\]\(([^)]+)\)/);
-        if (fileMatch) {
-          blocks.push({
-            id: generateId(),
-            type: 'file',
-            content: fileMatch[2],
-            metadata: { url: fileMatch[2], name: fileMatch[1] }
-          });
-          continue;
-        }
-
-        // Разделитель
-        if (firstLine.trim() === '---') {
-          blocks.push({
-            id: generateId(),
-            type: 'divider',
-            content: '',
-            metadata: {}
-          });
-          continue;
-        }
-      }
-
-      // Код блоки
-      if (firstLine.startsWith('```')) {
-        const language = firstLine.substring(3).trim() || 'text';
-        const codeLines = lines.slice(1); // Убираем первую строку с ```
-        
-        // Убираем последнюю строку если она содержит только ```
-        if (codeLines.length > 0 && codeLines[codeLines.length - 1].trim() === '```') {
-          codeLines.pop();
-        }
-        
-        blocks.push({
-          id: generateId(),
-          type: 'code',
-          content: codeLines.join('\n'),
-          metadata: { language }
-        });
-        continue;
-      }
-
-      // Цитаты (многострочные)
-      if (firstLine.startsWith('> ')) {
-        const quoteLines = lines.map(line => 
-          line.startsWith('> ') ? line.substring(2) : line
-        );
-        blocks.push({
-          id: generateId(),
-          type: 'quote',
-          content: quoteLines.join('\n'),
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Callout блоки
-      const calloutMatch = firstLine.match(/^>\s*\*\*(INFO|WARNING|ERROR|SUCCESS)\*\*:\s*(.+)$/i);
-      if (calloutMatch) {
-        const calloutType = calloutMatch[1].toLowerCase() as 'info' | 'warning' | 'error' | 'success';
-        const content = lines.length > 1 
-          ? [calloutMatch[2], ...lines.slice(1)].join('\n')
-          : calloutMatch[2];
-        
-        blocks.push({
-          id: generateId(),
-          type: 'callout',
-          content: content,
-          metadata: { calloutType }
-        });
-        continue;
-      }
-
-      // Списки (многострочные)
-      if (firstLine.match(/^[-*] /) || firstLine.match(/^\d+\. /)) {
-        const isNumbered = firstLine.match(/^\d+\. /);
-        const listContent = lines.map(line => {
-          if (isNumbered) {
-            return line.replace(/^\d+\. /, '');
-          } else {
-            return line.replace(/^[-*] /, '');
-          }
-        }).join('\n');
-
-        blocks.push({
-          id: generateId(),
-          type: isNumbered ? 'numbered-list' : 'list',
-          content: listContent,
-          metadata: {}
-        });
-        continue;
-      }
-
-      // Обычный текст (многострочный параграф)
-      blocks.push({
-        id: generateId(),
-        type: 'paragraph',
-        content: trimmedSection,
-        metadata: {}
-      });
-    }
-
-    return blocks.length > 0 ? blocks : [createEmptyBlock()];
-  };
-
-  // Улучшенная конвертация блоков в Markdown с сохранением структуры
-  const convertBlocksToMarkdown = (blocks: Block[]): string => {
-    return blocks.map(block => {
-      switch (block.type) {
-        case 'heading1':
-          return `# ${block.content}`;
-        case 'heading2':
-          return `## ${block.content}`;
-        case 'heading3':
-          return `### ${block.content}`;
-        case 'quote':
-          // Обрабатываем многострочные цитаты
-          return block.content.split('\n').map(line => `> ${line}`).join('\n');
-        case 'code':
-          return `\`\`\`${block.metadata?.language || 'text'}\n${block.content}\n\`\`\``;
-        case 'list':
-          // Обрабатываем многострочные списки
-          return block.content.split('\n').map(line => `- ${line}`).join('\n');
-        case 'numbered-list':
-          // Обрабатываем многострочные нумерованные списки
-          return block.content.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
-        case 'image':
-          return `![${block.metadata?.alt || ''}](${block.metadata?.url || block.content})`;
-        case 'file':
-          return `[📎 ${block.metadata?.name || 'Файл'}](${block.metadata?.url || block.content})`;
-        case 'youtube':
-          return block.content;
-        case 'internal-link':
-          return `[${block.content}](/docs/${block.metadata?.internalPageId})`;
-        case 'external-link':
-          return `[${block.content}](${block.metadata?.linkUrl})`;
-        case 'callout':
-          const calloutType = block.metadata?.calloutType || 'info';
-          const lines = block.content.split('\n');
-          if (lines.length === 1) {
-            return `> **${calloutType.toUpperCase()}**: ${block.content}`;
-          } else {
-            return `> **${calloutType.toUpperCase()}**: ${lines[0]}\n${lines.slice(1).map(line => `> ${line}`).join('\n')}`;
-          }
-        case 'divider':
-          return '---';
-        default:
-          // Параграфы сохраняют свою структуру как есть
-          return block.content;
-      }
-    }).join('\n\n');
-  };
 
   // Сохранение состояния для undo
   const saveStateForUndo = () => {
@@ -1143,7 +880,7 @@ export default function AdvancedContentEditor({
           <div className="absolute -left-12 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => addBlock('paragraph', block.id)}
-              className="w-8 h-8 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded flex items-center justify-center text-xs"
+              className="w-8 h-8 bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-600 rounded flex items-center justify-center text-xs"
               title="Добавить блок"
             >
               +
@@ -1224,7 +961,7 @@ export default function AdvancedContentEditor({
                   onUpdateTitle(e.target.value);
                 }
               }}
-              className="text-lg font-semibold text-gray-900 dark:text-white bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-gray-800 rounded px-1 py-0.5 transition-colors"
+              className="text-lg font-semibold text-gray-900 dark:text-white bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-[#0a0a0a] rounded px-1 py-0.5 transition-colors"
               placeholder="Заголовок страницы..."
             />
             {/* Редактируемое описание */}
@@ -1236,7 +973,7 @@ export default function AdvancedContentEditor({
                   onUpdateDescription(e.target.value);
                 }
               }}
-              className="text-xs text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-gray-800 rounded px-1 py-0.5 transition-colors"
+              className="text-xs text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-[#0a0a0a] rounded px-1 py-0.5 transition-colors"
               placeholder="Описание страницы..."
             />
           </div>
@@ -1245,7 +982,7 @@ export default function AdvancedContentEditor({
         {/* Строка с кнопками управления */}
         <div className="flex items-center justify-between gap-2">
           {/* Индикатор статуса */}
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-[#0a0a0a] rounded text-xs">
             <div className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-orange-500' : 'bg-green-500'}`}></div>
             <span className={`font-medium ${hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
               {hasUnsavedChanges ? 'Изменения' : 'Сохранено'}
@@ -1261,7 +998,7 @@ export default function AdvancedContentEditor({
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                 hasUnsavedChanges && !isManualSaving
                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-100 dark:bg-[#0a0a0a] text-gray-400 cursor-not-allowed'
               }`}
               title={hasUnsavedChanges ? "Сохранить изменения" : "Нет изменений для сохранения"}
             >
@@ -1719,7 +1456,7 @@ function BlockRenderer({
 
     case 'code':
       return (
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg border">
+        <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border">
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
             <select
               value={block.metadata?.language || 'text'}
@@ -1836,7 +1573,7 @@ function BlockRenderer({
       return (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           {block.metadata?.url ? (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#0a0a0a] rounded-lg">
               <div className="text-2xl">
                 {getFileIcon(block.metadata.name || '', block.metadata.type)}
               </div>
@@ -2013,7 +1750,7 @@ function BlockRenderer({
 
           {!block.content && isActive && (
             <div className="absolute top-full left-0 mt-1 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
-              Нажмите <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">/</kbd> для выбора типа блока
+              Нажмите <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-[#0a0a0a] rounded text-xs">/</kbd> для выбора типа блока
             </div>
           )}
         </div>
@@ -2058,7 +1795,7 @@ function LinkModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
               placeholder="Введите текст ссылки"
             />
           </div>
@@ -2071,7 +1808,7 @@ function LinkModal({
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
               placeholder="https://example.com"
             />
           </div>
@@ -2142,7 +1879,7 @@ function InternalLinkModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
               placeholder="Введите текст ссылки"
             />
           </div>
@@ -2155,7 +1892,7 @@ function InternalLinkModal({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white mb-2"
               placeholder="Найти страницу..."
             />
             

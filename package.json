@@ -17,7 +17,6 @@
     "migrate:deploy": "prisma migrate deploy",
     "migrate:prod": "node scripts/migrate-production.js",
     "create:admin": "node scripts/create-admin.js",
-    "test:security": "node scripts/security-test.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

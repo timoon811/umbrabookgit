@@ -2,24 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { Block } from '@/types/editor';
 // Все быстрые действия и хоткеи отключены
-
-export interface Block {
-  id: string;
-  type: string;
-  content: string;
-  metadata?: {
-    alignment?: 'left' | 'center' | 'right';
-    color?: string;
-    backgroundColor?: string;
-    url?: string;
-    alt?: string;
-    caption?: string;
-    language?: string;
-    rows?: number;
-    columns?: number;
-  };
-}
 
 interface BlockEditorProps {
   block: Block;
@@ -117,7 +101,7 @@ export default function BlockEditor({
 
       case 'code':
         return (
-          <div className="bg-gray-100 dark:bg-gray-800 rounded-md border">
+          <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-md border">
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
               <select
                 value={block.metadata?.language || 'text'}

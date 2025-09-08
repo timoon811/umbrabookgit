@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { 
-  getCurrentUTCTime, 
-  getCurrentDayStartUTC, 
+import {
+  getCurrentUTC3Time,
+  getCurrentDayStartUTC3,
+  getShiftType,
   validate24HourReset
 } from "@/lib/time-utils";
 import { requireProcessorAuth } from "@/lib/api-auth";
@@ -138,14 +139,17 @@ export async function POST(request: NextRequest) {
     let bonusRate = bonusSettings?.baseBonusRate || 5.0;
 
     // Проверяем дневную сумму для применения сетки бонусов
-    // Используем UTC время для корректного расчета 24-часового периода
-    const utcNow = getCurrentUTCTime();
-    const todayStart = getCurrentDayStartUTC();
-    
+    // Используем UTC+3 время для корректного расчета 24-часового периода
+    const utc3Now = getCurrentUTC3Time();
+    const todayStart = getCurrentDayStartUTC3();
+
+    // Определяем тип смены для текущего времени
+    const currentShiftType = getShiftType(utc3Now);
+
     // Проверяем корректность 24-часового сброса
     const isResetValid = validate24HourReset();
-    
-    // Получаем все депозиты за текущий день (UTC)
+
+    // Получаем все депозиты за текущий день (UTC+3)
     const todayDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
@@ -162,16 +166,18 @@ export async function POST(request: NextRequest) {
     const todaySum = existingTodaySum + data.amount;
     
     console.log(`💰 Расчет бонусов для депозита $${data.amount}:`);
-    console.log(`   - Время UTC: ${utcNow.toISOString()}`);
-    console.log(`   - Начало дня UTC: ${todayStart.toISOString()}`);
+    console.log(`   - Время UTC+3: ${utc3Now.toISOString()}`);
+    console.log(`   - Начало дня UTC+3: ${todayStart.toISOString()}`);
+    console.log(`   - Тип смены: ${currentShiftType}`);
     console.log(`   - Существующие депозиты за день: $${existingTodaySum}`);
     console.log(`   - Общая сумма за день: $${todaySum}`);
     console.log(`   - 24-часовой сброс: ${isResetValid ? '✅ Корректно' : '❌ Некорректно'}`);
-    
-    // Применяем сетку бонусов из базы данных
+
+    // Применяем сетку бонусов из базы данных с учетом типа смены
     const bonusGrid = await prisma.bonus_grid.findFirst({
       where: {
         isActive: true,
+        shiftType: currentShiftType.toUpperCase() as any, // MORNING, DAY, NIGHT
         minAmount: { lte: todaySum },
         OR: [
           { maxAmount: { gte: todaySum } },
@@ -190,6 +196,12 @@ export async function POST(request: NextRequest) {
 
     // Рассчитываем базовый бонус
     let bonusAmount = (data.amount * bonusRate) / 100;
+
+    // Проверяем фиксированные бонусы за достижения
+    if (bonusGrid && bonusGrid.fixedBonus && bonusGrid.fixedBonusMin && todaySum >= bonusGrid.fixedBonusMin) {
+      bonusAmount += bonusGrid.fixedBonus;
+      console.log(`   - Фиксированный бонус: +$${bonusGrid.fixedBonus} (порог: $${bonusGrid.fixedBonusMin})`);
+    }
 
     // Проверяем дополнительные мотивации
     const activeMotivations = await prisma.bonus_motivations.findMany({
@@ -250,6 +262,28 @@ export async function POST(request: NextRequest) {
         bonusAmount,
       },
     });
+
+    // Создаем запись о бонусе в холде (до следующего дня)
+    if (bonusAmount > 0) {
+      const holdUntil = new Date(todayStart);
+      holdUntil.setUTCDate(holdUntil.getUTCDate() + 1); // Холд до следующего дня
+
+      await prisma.bonus_payments.create({
+        data: {
+          processorId,
+          type: 'DEPOSIT_BONUS',
+          description: `Бонус за депозит $${data.amount} (${currentShiftType})`,
+          amount: bonusAmount,
+          depositId: deposit.id,
+          period: todayStart,
+          shiftType: currentShiftType.toUpperCase() as any,
+          holdUntil,
+          status: 'HELD', // Бонус в холде
+        },
+      });
+
+      console.log(`   - Бонус $${bonusAmount} помещен в холд до ${holdUntil.toISOString()}`);
+    }
 
     return NextResponse.json(deposit, { status: 201 });
   } catch (error) {

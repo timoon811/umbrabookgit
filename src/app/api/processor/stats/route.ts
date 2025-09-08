@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProcessorAuth } from "@/lib/api-auth";
+import {
+  getCurrentUTC3Time,
+  getCurrentDayStartUTC3,
+  getCurrentWeekPeriod,
+  getCurrentMonthPeriod
+} from "@/lib/time-utils";
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
@@ -15,28 +21,23 @@ export async function GET(request: NextRequest) {
     // Для админов показываем общую статистику, для процессоров - их личную
     const processorId = user.role === "ADMIN" ? null : user.userId;
 
-    // Получаем текущую дату
-    const now = new Date();
-    
-    // Используем UTC время для корректного расчета 24-часового периода
-    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    
-    // Сбрасываем на начало дня по UTC (00:00:00)
-    const todayStart = new Date(utcNow);
-    todayStart.setUTCHours(0, 0, 0, 0);
-    
-    // Начало недели (7 дней назад от начала текущего дня)
-    const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    // Начало месяца (1-е число текущего месяца по UTC)
-    const monthStart = new Date(utcNow.getFullYear(), utcNow.getMonth(), 1);
-    monthStart.setUTCHours(0, 0, 0, 0);
+    // Получаем текущую дату по UTC+3
+    const utc3Now = getCurrentUTC3Time();
+    const todayStart = getCurrentDayStartUTC3();
+
+    // Получаем периоды по UTC+3
+    const weekPeriod = getCurrentWeekPeriod();
+    const monthPeriod = getCurrentMonthPeriod();
+
+    // Для обратной совместимости сохраняем старые переменные
+    const weekStart = weekPeriod.start;
+    const monthStart = monthPeriod.start;
 
     console.log(`📊 Расчет статистики процессора:`);
-    console.log(`   - Текущее время UTC: ${utcNow.toISOString()}`);
-    console.log(`   - Начало дня UTC: ${todayStart.toISOString()}`);
-    console.log(`   - Начало недели UTC: ${weekStart.toISOString()}`);
-    console.log(`   - Начало месяца UTC: ${monthStart.toISOString()}`);
+    console.log(`   - Текущее время UTC+3: ${utc3Now.toISOString()}`);
+    console.log(`   - Начало дня UTC+3: ${todayStart.toISOString()}`);
+    console.log(`   - Начало недели UTC+3: ${weekStart.toISOString()}`);
+    console.log(`   - Начало месяца UTC+3: ${monthStart.toISOString()}`);
 
     // Статистика за сегодня
     const todayDeposits = await prisma.processor_deposits.findMany({

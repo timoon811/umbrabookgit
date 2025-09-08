@@ -35,7 +35,7 @@ export default function ConditionalNavigation() {
             {mounted && user && (
               <Link
                 href="/docs"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Документация
               </Link>
@@ -45,7 +45,7 @@ export default function ConditionalNavigation() {
             {mounted && user && user?.role !== "PROCESSOR" && (
               <Link
                 href="/courses"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Курсы
               </Link>
@@ -55,7 +55,7 @@ export default function ConditionalNavigation() {
             {mounted && user && (
               <Link
                 href="/processing"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Обработка
               </Link>
@@ -65,7 +65,7 @@ export default function ConditionalNavigation() {
             {mounted && user?.role !== "PROCESSOR" && (
               <Link
                 href="/connections"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Связки
               </Link>
@@ -75,7 +75,7 @@ export default function ConditionalNavigation() {
             {mounted && user?.role !== "PROCESSOR" && (
               <Link
                 href="/buyer"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Buyer
               </Link>
@@ -85,7 +85,7 @@ export default function ConditionalNavigation() {
             {mounted && user?.role !== "PROCESSOR" && (
               <Link
                 href="/finance"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Финансы
               </Link>

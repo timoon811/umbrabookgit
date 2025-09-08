@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 // import { useRouter } from "next/navigation"; // Не используется
 import Link from "next/link";
-import { Block } from "@/components/editor/BlockEditor";
-import ModernArticleEditor from "@/components/editor/ModernArticleEditor";
+import { Block } from "@/types/editor";
+import CourseContentEditor from "@/components/admin/courses/CourseContentEditor";
 
 interface Course {
   id: string;
@@ -530,7 +530,7 @@ export default function CourseEditorPage({ params }: { params: { id: string } })
                 </div>
                 <div className="flex items-center space-x-3">
                   {/* Переключатель режима редактора */}
-                  <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                  <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-1">
                     <button
                       onClick={() => setUseBlockEditor(false)}
                       className={`px-3 py-1 text-sm rounded-md transition-colors ${
@@ -587,18 +587,25 @@ export default function CourseEditorPage({ params }: { params: { id: string } })
             <div className="flex-1">
               {useBlockEditor ? (
                 // Блочный редактор
-                <ModernArticleEditor
-                  initialData={{
-                    id: editorData.id,
-                    title: editorData.title,
-                    description: editorData.description,
-                    blocks: editorData.blocks,
-                    category: editorData.category,
-                    tags: editorData.tags,
-                    status: editorData.status
+                <CourseContentEditor
+                  selectedPage={currentPage}
+                  onUpdateContent={(content) => handlePageSave()}
+                  onUpdateTitle={(title) => setCurrentPage(prev => prev ? { ...prev, title } : null)}
+                  onUpdateDescription={(description) => setCurrentPage(prev => prev ? { ...prev, description } : null)}
+                  onDeletePage={(pageId) => {
+                    // Логика удаления страницы
+                    console.log('Удалить страницу:', pageId);
                   }}
-                  onSave={handleBlockEditorSave}
-                  isNew={false}
+                  onTogglePublication={(pageId) => {
+                    if (currentPage) {
+                      setCurrentPage(prev => prev ? { ...prev, isPublished: !prev.isPublished } : null);
+                    }
+                  }}
+                  onForceSave={async (page) => {
+                    await handlePageSave();
+                    return true;
+                  }}
+                  saving={saving}
                 />
               ) : (
                 // Обычный Markdown редактор
@@ -636,7 +643,7 @@ export default function CourseEditorPage({ params }: { params: { id: string } })
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>

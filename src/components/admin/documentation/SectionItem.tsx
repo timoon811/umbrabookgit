@@ -102,7 +102,7 @@ export default function SectionItem({
               {section.name}
             </h3>
           )}
-          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">
+          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#0a0a0a] px-1.5 py-0.5 rounded text-xs">
             {section.pages.length}
           </span>
         </div>
@@ -170,9 +170,9 @@ export default function SectionItem({
                 page={page}
                 onClick={() => onPageSelect(page)}
               >
-                <div className={`px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
-                  selectedPage?.id === page.id 
-                    ? 'bg-gray-100 dark:bg-gray-700 border-l-2 border-gray-500' 
+                <div className={`px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-[#0a0a0a] cursor-pointer transition-colors ${
+                  selectedPage?.id === page.id
+                    ? 'bg-gray-100 dark:bg-[#0a0a0a] border-l-2 border-gray-500'
                     : ''
                 }`}>
                   <div className="flex items-center gap-2">

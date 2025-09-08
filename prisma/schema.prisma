@@ -23,6 +23,8 @@ model users {
   bonusPayments      bonus_payments[]
   processorDeposits  processor_deposits[]
   salaryRequests     salary_requests[]
+  shiftPenalties     shift_penalties[]
+  shifts             processor_shifts[]
   wallets            user_wallets[]
   assignedBuyer      users?               @relation("BuyerProcessors", fields: [assignedBuyerId], references: [id])
   assignedProcessors users[]              @relation("BuyerProcessors")
@@ -383,25 +385,30 @@ model salary_requests {
 }
 
 model bonus_payments {
-  id          String      @id @default(uuid())
-  processorId String
-  type        BonusType   @default(DEPOSIT_BONUS)
-  description String?
-  amount      Float
-  depositId   String?
-  period      DateTime?
-  conditions  String?
-  status      BonusStatus @default(PENDING)
-  processedAt DateTime?
-  paidAt      DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  processor   users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
+  id            String      @id @default(uuid())
+  processorId   String
+  type          BonusType   @default(DEPOSIT_BONUS)
+  description   String?
+  amount        Float
+  depositId     String?
+  period        DateTime?
+  shiftType     ShiftType?  // Тип смены для которой начислен бонус
+  holdUntil     DateTime?   // Дата до которой бонус в холде
+  burnReason    String?     // Причина сгорания бонуса
+  burnedAt      DateTime?   // Дата сгорания бонуса
+  conditions    String?
+  status        BonusStatus @default(PENDING)
+  processedAt   DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  processor     users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
 
   @@index([processorId])
   @@index([type])
   @@index([status])
   @@index([period])
+  @@index([shiftType])
   @@map("bonus_payments")
 }
 
@@ -420,14 +427,17 @@ model bonus_settings {
 }
 
 model bonus_grid {
-  id              String   @id @default(uuid())
-  minAmount       Float
-  maxAmount       Float?
-  bonusPercentage Float
-  description     String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String      @id @default(uuid())
+  shiftType         ShiftType   @default(MORNING)
+  minAmount         Float
+  maxAmount         Float?
+  bonusPercentage   Float
+  fixedBonus        Float?      // Фиксированный бонус за достижение порога
+  fixedBonusMin     Float?      // Минимальный объем для фиксированного бонуса
+  description       String?
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   @@map("bonus_grid")
 }
@@ -444,6 +454,65 @@ model bonus_motivations {
   updatedAt   DateTime    @updatedAt
 
   @@map("bonus_motivations")
+}
+
+model shift_penalties {
+  id            String        @id @default(uuid())
+  processorId   String
+  type          PenaltyType   @default(SHIFT_MISS)
+  shiftType     ShiftType?    // Тип смены которая была пропущена
+  shiftDate     DateTime      // Дата смены
+  amount        Float         @default(-50.0) // Сумма штрафа (отрицательная)
+  reason        String?       // Причина штрафа
+  adminComment  String?       // Комментарий администратора
+  status        PenaltyStatus @default(APPLIED)
+  appliedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  processor     users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([type])
+  @@index([shiftDate])
+  @@index([status])
+  @@map("shift_penalties")
+}
+
+enum PenaltyStatus {
+  PENDING   // Ожидает применения
+  APPLIED   // Применен
+  CANCELLED // Отменен
+  APPEALED  // Оспорен
+}
+
+enum ShiftStatus {
+  SCHEDULED // Запланирована
+  ACTIVE    // Активна
+  COMPLETED // Завершена
+  MISSED    // Пропущена
+}
+
+model processor_shifts {
+  id            String        @id @default(uuid())
+  processorId   String
+  shiftType     ShiftType     @default(MORNING)
+  shiftDate     DateTime      // Дата смены
+  scheduledStart DateTime     // Запланированное время начала
+  scheduledEnd  DateTime      // Запланированное время окончания
+  actualStart   DateTime?     // Фактическое время начала
+  actualEnd     DateTime?     // Фактическое время окончания
+  status        ShiftStatus   @default(SCHEDULED)
+  notes         String?       // Заметки обработчика
+  adminNotes    String?       // Заметки администратора
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  processor     users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([shiftType])
+  @@index([shiftDate])
+  @@index([status])
+  @@map("processor_shifts")
 }
 
 // Новые модели для инструкций и скриптов обработки
@@ -576,9 +645,24 @@ enum BonusStatus {
   APPROVED
   REJECTED
   PAID
+  BURNED    // Бонус сгорел
+  HELD      // Бонус в холде
+}
+
+enum PenaltyType {
+  SHIFT_MISS       // Пропуск смены
+  LATE_ARRIVAL     // Опоздание
+  EARLY_DEPARTURE  // Ранний уход
+  OTHER            // Другое
 }
 
 enum MotivationType {
   PERCENTAGE
   FIXED_AMOUNT
+}
+
+enum ShiftType {
+  MORNING     // 06:00 - 14:00 UTC+3
+  DAY         // 14:00 - 22:00 UTC+3
+  NIGHT       // 22:00 - 06:00 UTC+3
 }

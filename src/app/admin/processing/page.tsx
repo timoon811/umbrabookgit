@@ -64,9 +64,12 @@ interface BonusSettings {
 
 interface BonusGrid {
   id: string;
+  shiftType: 'MORNING' | 'DAY' | 'NIGHT';
   minAmount: number;
   maxAmount?: number;
   bonusPercentage: number;
+  fixedBonus?: number;
+  fixedBonusMin?: number;
   description?: string;
   isActive: boolean;
   createdAt: string;
@@ -920,6 +923,16 @@ export default function AdminProcessingPage() {
               >
                 ЗП
               </button>
+              <button
+                onClick={() => setActiveTab("shiftLogs")}
+                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                  activeTab === "shiftLogs"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                Смены
+              </button>
             </nav>
           </div>
 
@@ -1252,10 +1265,25 @@ export default function AdminProcessingPage() {
                     {bonusGrids.map((grid) => (
                       <div key={grid.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
                         <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              grid.shiftType === 'MORNING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              grid.shiftType === 'DAY' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                              'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                            }`}>
+                              {grid.shiftType === 'MORNING' ? '🌅 Утро' :
+                               grid.shiftType === 'DAY' ? '☀️ День' : '🌙 Ночь'}
+                            </span>
+                          </div>
                           <div className="font-medium">
                             ${grid.minAmount.toLocaleString()} - {grid.maxAmount ? `$${grid.maxAmount.toLocaleString()}` : '∞'}
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">{grid.description}</div>
+                          {grid.fixedBonus && (
+                            <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                              +${grid.fixedBonus} при ${grid.fixedBonusMin}$+
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-lg font-bold text-green-600">{grid.bonusPercentage}%</span>
@@ -1504,7 +1532,7 @@ export default function AdminProcessingPage() {
 
                   {managers.length === 0 && (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                         </svg>
@@ -2075,6 +2103,107 @@ export default function AdminProcessingPage() {
             {activeTab === "salaryRequests" && (
               <SalaryRequestsTab />
             )}
+
+            {activeTab === "shiftLogs" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                    Логи смен обработчиков
+                  </h3>
+                  <div className="flex gap-4">
+                    <select className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <option value="">Все смены</option>
+                      <option value="MORNING">🌅 Утренние</option>
+                      <option value="DAY">☀️ Дневные</option>
+                      <option value="NIGHT">🌙 Ночные</option>
+                    </select>
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      placeholder="Дата"
+                    />
+                  </div>
+                </div>
+
+                {/* Статистика смен */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-600 dark:text-blue-400">Запланировано</p>
+                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
+                      </div>
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-600 dark:text-green-400">Активных</p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">0</p>
+                      </div>
+                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-purple-600 dark:text-purple-400">Завершено</p>
+                        <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">0</p>
+                      </div>
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-red-600 dark:text-red-400">Пропущено</p>
+                        <p className="text-2xl font-bold text-red-700 dark:text-red-300">0</p>
+                      </div>
+                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Таблица логов смен */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h4 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">История смен</h4>
+                  </div>
+                  <div className="p-6">
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                        Логи смен пока недоступны
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Обработчики еще не начали использовать систему смен
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2200,9 +2329,12 @@ export default function AdminProcessingPage() {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               const data = {
+                shiftType: formData.get('shiftType') as string || 'MORNING',
                 minAmount: parseFloat(formData.get('minAmount') as string),
                 maxAmount: formData.get('maxAmount') ? parseFloat(formData.get('maxAmount') as string) : null,
                 bonusPercentage: parseFloat(formData.get('bonusPercentage') as string),
+                fixedBonus: formData.get('fixedBonus') ? parseFloat(formData.get('fixedBonus') as string) : null,
+                fixedBonusMin: formData.get('fixedBonusMin') ? parseFloat(formData.get('fixedBonusMin') as string) : null,
                 description: formData.get('description') as string,
               };
 
@@ -2255,6 +2387,19 @@ export default function AdminProcessingPage() {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Тип смены</label>
+                  <select
+                    name="shiftType"
+                    defaultValue={editingBonusGrid?.shiftType || 'MORNING'}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    required
+                  >
+                    <option value="MORNING">🌅 Утренняя смена (06:00-14:00 UTC+3)</option>
+                    <option value="DAY">☀️ Дневная смена (14:00-22:00 UTC+3)</option>
+                    <option value="NIGHT">🌙 Ночная смена (22:00-06:00 UTC+3)</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Процент бонуса (%)</label>
                   <input
                     type="number"
@@ -2263,6 +2408,28 @@ export default function AdminProcessingPage() {
                     defaultValue={editingBonusGrid?.bonusPercentage || 0}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Фиксированный бонус ($) - необязательно</label>
+                  <input
+                    type="number"
+                    name="fixedBonus"
+                    step="0.01"
+                    defaultValue={editingBonusGrid?.fixedBonus || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Например: 25"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Мин. сумма для фикс. бонуса ($) - необязательно</label>
+                  <input
+                    type="number"
+                    name="fixedBonusMin"
+                    step="0.01"
+                    defaultValue={editingBonusGrid?.fixedBonusMin || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Например: 800"
                   />
                 </div>
                 <div>

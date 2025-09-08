@@ -60,11 +60,11 @@ export default function AdminHeader() {
         <div className="mx-auto max-w-screen-2xl px-6">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="w-32 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 dark:bg-[#0a0a0a] rounded animate-pulse"></div>
+              <div className="w-32 h-6 bg-gray-200 dark:bg-[#0a0a0a] rounded animate-pulse"></div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 dark:bg-[#0a0a0a] rounded animate-pulse"></div>
             </div>
           </div>
         </div>
