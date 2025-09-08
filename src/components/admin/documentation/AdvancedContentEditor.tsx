@@ -694,13 +694,15 @@ export default function AdvancedContentEditor({
     if (!showToolbar || !activeBlockId) return null;
 
     return (
-      <div 
-        className="absolute z-50 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
-        style={{ 
-          top: toolbarPosition.top, 
+      <div
+        className="absolute z-50 shadow-xl rounded-lg px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
+        style={{
+          top: toolbarPosition.top,
           left: toolbarPosition.left,
           width: toolbarPosition.width,
-          transform: 'translateZ(0)' // Включаем аппаратное ускорение
+          transform: 'translateZ(0)', // Включаем аппаратное ускорение
+          backgroundColor: 'var(--editor-bg)',
+          border: '1px solid var(--editor-border)'
         }}
       >
         {/* Компактная однострочная панель инструментов */}
@@ -709,45 +711,46 @@ export default function AdvancedContentEditor({
           <div className="flex items-center gap-1">
             <button
               onClick={() => applyTextFormatting(null, '**', '**')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 rounded transition-colors editor-button-hover"
+              style={{ color: 'var(--editor-text)' }}
               title="Жирный"
             >
               <strong className="text-sm">B</strong>
             </button>
             <button
               onClick={() => applyTextFormatting(null, '*', '*')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded italic transition-colors"
+              className="p-1.5 editor-button-hover rounded italic transition-colors"
               title="Курсив"
             >
               <span className="text-sm">I</span>
             </button>
             <button
               onClick={() => applyTextFormatting(null, '__', '__')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded underline transition-colors"
+              className="p-1.5 editor-button-hover rounded underline transition-colors"
               title="Подчеркивание"
             >
               <span className="text-sm">U</span>
             </button>
             <button
               onClick={() => applyTextFormatting(null, '~~', '~~')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded line-through transition-colors"
+              className="p-1.5 editor-button-hover rounded line-through transition-colors"
               title="Зачеркивание"
             >
               <span className="text-sm">S</span>
             </button>
             
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--editor-border)' }}></div>
             
             <button
               onClick={() => applyTextFormatting(null, '`', '`')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded font-mono text-xs transition-colors"
+              className="p-1.5 editor-button-hover rounded font-mono text-xs transition-colors"
               title="Код"
             >
               &lt;/&gt;
             </button>
             <button
               onClick={() => applyTextFormatting(null, '==', '==')}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 editor-button-hover rounded transition-colors"
               title="Выделить текст"
             >
               <div className="w-3 h-3 bg-yellow-300 rounded"></div>
@@ -763,7 +766,7 @@ export default function AdvancedContentEditor({
                   setShowToolbar(false);
                 }
               }}
-              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold transition-colors"
+              className="px-2 py-1 editor-button-hover rounded text-xs font-bold transition-colors"
               title="Заголовок 1"
             >
               H1
@@ -775,7 +778,7 @@ export default function AdvancedContentEditor({
                   setShowToolbar(false);
                 }
               }}
-              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-semibold transition-colors"
+              className="px-2 py-1 editor-button-hover rounded text-xs font-semibold transition-colors"
               title="Заголовок 2"
             >
               H2
@@ -787,17 +790,17 @@ export default function AdvancedContentEditor({
                   setShowToolbar(false);
                 }
               }}
-              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-medium transition-colors"
+              className="px-2 py-1 editor-button-hover rounded text-xs font-medium transition-colors"
               title="Заголовок 3"
             >
               H3
             </button>
             
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--editor-border)' }}></div>
             
             <button
               onClick={() => setShowLinkModal(true)}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 editor-button-hover rounded transition-colors"
               title="Добавить ссылку"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -806,7 +809,7 @@ export default function AdvancedContentEditor({
             </button>
             <button
               onClick={() => setShowInternalLinkModal(true)}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 editor-button-hover rounded transition-colors"
               title="Внутренняя ссылка"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -820,7 +823,7 @@ export default function AdvancedContentEditor({
             <button
               onClick={() => performUndo()}
               disabled={undoStack.length === 0}
-              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`p-1.5 editor-button-hover rounded transition-colors ${undoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Отменить"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -830,7 +833,7 @@ export default function AdvancedContentEditor({
             <button
               onClick={() => performRedo()}
               disabled={redoStack.length === 0}
-              className={`p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`p-1.5 editor-button-hover rounded transition-colors ${redoStack.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Повторить"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -838,11 +841,11 @@ export default function AdvancedContentEditor({
               </svg>
             </button>
             
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--editor-border)' }}></div>
             
             <button
               onClick={() => setShowToolbar(false)}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="p-1.5 editor-button-hover rounded transition-colors"
               title="Закрыть панель"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -880,7 +883,13 @@ export default function AdvancedContentEditor({
           <div className="absolute -left-12 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => addBlock('paragraph', block.id)}
-              className="w-8 h-8 bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-600 rounded flex items-center justify-center text-xs"
+              className="w-8 h-8 rounded flex items-center justify-center text-xs"
+              style={{
+                backgroundColor: 'var(--editor-accent)',
+                color: 'var(--editor-text)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-accent)'}
               title="Добавить блок"
             >
               +
@@ -888,7 +897,10 @@ export default function AdvancedContentEditor({
             {blocks.length > 1 && (
               <button
                 onClick={() => deleteBlock(block.id)}
-                className="w-8 h-8 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 rounded flex items-center justify-center text-xs text-red-600 dark:text-red-400"
+                className="w-8 h-8 rounded flex items-center justify-center text-xs"
+                style={{ color: '#dc2626' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 title="Удалить блок"
               >
                 ×
@@ -907,10 +919,14 @@ export default function AdvancedContentEditor({
                 setPendingBlockId(block.id);
                 setShowBlockMenu(true);
               }}
-              className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105"
+              className="shadow-lg rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105"
+              style={{
+                backgroundColor: 'var(--editor-bg)',
+                border: '1px solid var(--editor-border)'
+              }}
               title="Изменить тип блока (или нажмите /)"
             >
-              <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" style={{ color: 'var(--editor-text)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
               </svg>
             </button>
@@ -924,17 +940,17 @@ export default function AdvancedContentEditor({
 
   if (!selectedPage) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--editor-bg)' }}>
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-neutral-700 rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--editor-accent)' }}>
+            <svg className="w-8 h-8" style={{ color: 'var(--editor-secondary-text)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-xl font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
             Выберите страницу
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p style={{ color: 'var(--editor-secondary-text)' }}>
             Кликните на страницу в левом меню, чтобы начать редактирование
           </p>
         </div>
@@ -943,9 +959,9 @@ export default function AdvancedContentEditor({
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900" data-documentation-editor="true">
+    <div className="flex-1 flex flex-col" style={{ backgroundColor: 'var(--editor-bg)' }} data-documentation-editor="true">
       {/* Шапка редактора */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-3 py-3">
+      <div className="border-b px-3 py-3" style={{ borderColor: 'var(--editor-border)' }}>
         {/* Строка с полями ввода */}
         <div className="flex items-start gap-2 mb-3">
           <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
@@ -961,7 +977,11 @@ export default function AdvancedContentEditor({
                   onUpdateTitle(e.target.value);
                 }
               }}
-              className="text-lg font-semibold text-gray-900 dark:text-white bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-[#0a0a0a] rounded px-1 py-0.5 transition-colors"
+              className="text-lg font-semibold bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 rounded px-1 py-0.5 transition-colors"
+              style={{
+                color: 'var(--editor-text)',
+                backgroundColor: 'transparent'
+              }}
               placeholder="Заголовок страницы..."
             />
             {/* Редактируемое описание */}
@@ -973,7 +993,11 @@ export default function AdvancedContentEditor({
                   onUpdateDescription(e.target.value);
                 }
               }}
-              className="text-xs text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 focus:bg-gray-50 dark:focus:bg-[#0a0a0a] rounded px-1 py-0.5 transition-colors"
+              className="text-xs bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 rounded px-1 py-0.5 transition-colors"
+              style={{
+                color: 'var(--editor-secondary-text)',
+                backgroundColor: 'transparent'
+              }}
               placeholder="Описание страницы..."
             />
           </div>
@@ -982,7 +1006,7 @@ export default function AdvancedContentEditor({
         {/* Строка с кнопками управления */}
         <div className="flex items-center justify-between gap-2">
           {/* Индикатор статуса */}
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-[#0a0a0a] rounded text-xs">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs" style={{ backgroundColor: 'var(--editor-accent)' }}>
             <div className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-orange-500' : 'bg-green-500'}`}></div>
             <span className={`font-medium ${hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
               {hasUnsavedChanges ? 'Изменения' : 'Сохранено'}
@@ -998,7 +1022,10 @@ export default function AdvancedContentEditor({
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                 hasUnsavedChanges && !isManualSaving
                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-100 dark:bg-[#0a0a0a] text-gray-400 cursor-not-allowed'
+                  : 'cursor-not-allowed'
+                }} disabled className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all" style={{
+                  backgroundColor: 'var(--editor-accent)',
+                  color: 'var(--editor-secondary-text)'
               }`}
               title={hasUnsavedChanges ? "Сохранить изменения" : "Нет изменений для сохранения"}
             >
@@ -1075,7 +1102,19 @@ export default function AdvancedContentEditor({
           {/* Кнопка добавления нового блока */}
           <button
             onClick={() => addBlock('paragraph')}
-            className="w-full mt-4 p-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="w-full mt-4 p-3 border-2 border-dashed rounded-lg transition-colors"
+            style={{
+              borderColor: 'var(--editor-border)',
+              color: 'var(--editor-secondary-text)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--editor-text)';
+              e.currentTarget.style.color = 'var(--editor-text)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--editor-border)';
+              e.currentTarget.style.color = 'var(--editor-secondary-text)';
+            }}
           >
             + Добавить блок
           </button>
@@ -1088,10 +1127,12 @@ export default function AdvancedContentEditor({
       {/* Контекстное меню */}
       {showContextMenu && (
         <div
-          className="fixed z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 py-2 min-w-[200px]"
+          className="fixed z-50 shadow-lg rounded-lg py-2 min-w-[200px]"
           style={{
             top: Math.min(contextMenuPosition.top, window.innerHeight - 200),
-            left: Math.min(contextMenuPosition.left, window.innerWidth - 220)
+            left: Math.min(contextMenuPosition.left, window.innerWidth - 220),
+            backgroundColor: 'var(--editor-bg)',
+            border: '1px solid var(--editor-border)'
           }}
           onMouseLeave={() => setShowContextMenu(false)}
         >
@@ -1100,7 +1141,10 @@ export default function AdvancedContentEditor({
               applyTextFormatting(null, '**', '**');
               setShowContextMenu(false);
             }}
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+            className="w-full px-4 py-2 text-left flex items-center gap-3"
+            style={{ color: 'var(--editor-text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <strong className="text-sm">B</strong>
             <span className="text-sm">Сделать жирным</span>
@@ -1110,7 +1154,10 @@ export default function AdvancedContentEditor({
               applyTextFormatting(null, '*', '*');
               setShowContextMenu(false);
             }}
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+            className="w-full px-4 py-2 text-left flex items-center gap-3"
+            style={{ color: 'var(--editor-text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <span className="text-sm italic">I</span>
             <span className="text-sm">Курсив</span>
@@ -1120,18 +1167,24 @@ export default function AdvancedContentEditor({
               applyTextFormatting(null, '__', '__');
               setShowContextMenu(false);
             }}
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+            className="w-full px-4 py-2 text-left flex items-center gap-3"
+            style={{ color: 'var(--editor-text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <span className="text-sm underline">U</span>
             <span className="text-sm">Подчеркнутый</span>
           </button>
-          <hr className="my-1 border-gray-200 dark:border-gray-600" />
+          <hr className="my-1" style={{ borderColor: 'var(--editor-border)' }} />
           <button
             onClick={() => {
               setShowLinkModal(true);
               setShowContextMenu(false);
             }}
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+            className="w-full px-4 py-2 text-left flex items-center gap-3"
+            style={{ color: 'var(--editor-text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -1143,7 +1196,10 @@ export default function AdvancedContentEditor({
               applyTextFormatting(null, '`', '`');
               setShowContextMenu(false);
             }}
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+            className="w-full px-4 py-2 text-left flex items-center gap-3"
+            style={{ color: 'var(--editor-text)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--editor-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           >
             <span className="text-xs font-mono">&lt;/&gt;</span>
             <span className="text-sm">Код</span>
@@ -1391,7 +1447,8 @@ function BlockRenderer({
         <input 
           {...baseInputProps}
           placeholder="Заголовок 1"
-          className={`${baseInputProps.className} text-3xl font-bold text-gray-900 dark:text-white py-2`}
+          className={`${baseInputProps.className} text-3xl font-bold py-2`}
+          style={{ color: 'var(--editor-text)' }}
         />
       );
 
@@ -1400,7 +1457,8 @@ function BlockRenderer({
         <input 
           {...baseInputProps}
           placeholder="Заголовок 2"
-          className={`${baseInputProps.className} text-2xl font-semibold text-gray-900 dark:text-white py-2`}
+          className={`${baseInputProps.className} text-2xl font-semibold py-2`}
+          style={{ color: 'var(--editor-text)' }}
         />
       );
 
@@ -1409,19 +1467,26 @@ function BlockRenderer({
         <input 
           {...baseInputProps}
           placeholder="Заголовок 3"
-          className={`${baseInputProps.className} text-xl font-medium text-gray-900 dark:text-white py-1`}
+          className={`${baseInputProps.className} text-xl font-medium py-1`}
+          style={{ color: 'var(--editor-text)' }}
         />
       );
 
     case 'quote':
       return (
-        <div className="border-l-4 border-gray-400 dark:border-gray-500 pl-4 bg-gray-50 dark:bg-gray-800/50 rounded-r-lg">
-          <textarea 
+        <div className="border-l-4 pl-4 rounded-r-lg" style={{
+          borderColor: 'var(--editor-border)',
+          backgroundColor: 'var(--editor-accent)'
+        }}>
+          <textarea
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Цитата..."
-            className={`${baseInputProps.className} text-gray-700 dark:text-gray-300 italic py-3`}
-            style={{ overflow: 'hidden' }}
+            className={`${baseInputProps.className} italic py-3`}
+            style={{
+              color: 'var(--editor-text)',
+              overflow: 'hidden'
+            }}
           />
         </div>
       );
@@ -1429,13 +1494,16 @@ function BlockRenderer({
     case 'list':
       return (
         <div className="flex items-start gap-3">
-          <span className="text-gray-400 mt-1">•</span>
-          <textarea 
+          <span className="mt-1" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
+          <textarea
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1`}
-            style={{ overflow: 'hidden' }}
+            className={`${baseInputProps.className} flex-1`}
+            style={{
+              color: 'var(--editor-text)',
+              overflow: 'hidden'
+            }}
           />
         </div>
       );
@@ -1443,25 +1511,32 @@ function BlockRenderer({
     case 'numbered-list':
       return (
         <div className="flex items-start gap-3">
-          <span className="text-gray-400 mt-1">1.</span>
-          <textarea 
+          <span className="mt-1" style={{ color: 'var(--editor-secondary-text)' }}>1.</span>
+          <textarea
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Элемент списка..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white flex-1`}
-            style={{ overflow: 'hidden' }}
+            className={`${baseInputProps.className} flex-1`}
+            style={{
+              color: 'var(--editor-text)',
+              overflow: 'hidden'
+            }}
           />
         </div>
       );
 
     case 'code':
       return (
-        <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="rounded-lg border" style={{
+          backgroundColor: 'var(--editor-code-bg)',
+          borderColor: 'var(--editor-border)'
+        }}>
+          <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: 'var(--editor-border)' }}>
             <select
               value={block.metadata?.language || 'text'}
               onChange={(e) => updateMetadata({ language: e.target.value })}
-              className="text-sm bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
+              className="text-sm bg-transparent border-none outline-none"
+              style={{ color: 'var(--editor-secondary-text)' }}
             >
               <option value="text">Обычный текст</option>
               <option value="javascript">JavaScript</option>
@@ -1479,15 +1554,18 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Код..."
-            className={`${baseInputProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4`}
-            style={{ overflow: 'hidden' }}
+            className={`${baseInputProps.className} font-mono text-sm p-4`}
+            style={{
+              color: 'var(--editor-text)',
+              overflow: 'hidden'
+            }}
           />
         </div>
       );
 
     case 'image':
       return (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="border rounded-lg p-4" style={{ borderColor: 'var(--editor-border)' }}>
           {block.metadata?.url ? (
             <div>
               <Image 
@@ -1503,7 +1581,8 @@ function BlockRenderer({
                 value={block.metadata.caption || ''}
                 onChange={(e) => updateMetadata({ caption: e.target.value })}
                 placeholder="Подпись к изображению (необязательно)"
-                className="w-full mt-3 text-sm text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none"
+                className="w-full mt-3 text-sm bg-transparent border-none outline-none"
+                style={{ color: 'var(--editor-secondary-text)' }}
               />
               <button
                 onClick={() => updateMetadata({ url: '' })}
@@ -1531,9 +1610,9 @@ function BlockRenderer({
               
               {/* Разделитель */}
               <div className="flex items-center gap-3">
-                <hr className="flex-1 border-gray-300 dark:border-gray-600" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">или</span>
-                <hr className="flex-1 border-gray-300 dark:border-gray-600" />
+                <hr className="flex-1" style={{ borderColor: 'var(--editor-border)' }} />
+                <span className="text-xs" style={{ color: 'var(--editor-secondary-text)' }}>или</span>
+                <hr className="flex-1" style={{ borderColor: 'var(--editor-border)' }} />
               </div>
               
               {/* Поле для URL */}
@@ -1546,7 +1625,11 @@ function BlockRenderer({
                     updateMetadata({ url: e.target.value });
                   }}
                   placeholder="Или вставьте URL изображения..."
-                  className="w-full text-center bg-transparent border border-gray-300 dark:border-gray-600 rounded px-3 py-2 outline-none focus:border-gray-900 dark:focus:border-gray-300 text-gray-600 dark:text-gray-400"
+                  className="w-full text-center bg-transparent border rounded px-3 py-2 outline-none focus:border-gray-900 dark:focus:border-gray-300"
+                  style={{
+                    borderColor: 'var(--editor-border)',
+                    color: 'var(--editor-secondary-text)'
+                  }}
                 />
               </div>
             </div>
@@ -1571,9 +1654,9 @@ function BlockRenderer({
       };
 
       return (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="border rounded-lg p-4" style={{ borderColor: 'var(--editor-border)' }}>
           {block.metadata?.url ? (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#0a0a0a] rounded-lg">
+            <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--editor-accent)' }}>
               <div className="text-2xl">
                 {getFileIcon(block.metadata.name || '', block.metadata.type)}
               </div>
@@ -1583,10 +1666,11 @@ function BlockRenderer({
                   value={block.metadata.name || ''}
                   onChange={(e) => updateMetadata({ name: e.target.value })}
                   placeholder="Название файла"
-                  className="w-full font-medium text-gray-900 dark:text-white bg-transparent border-none outline-none"
+                  className="w-full font-medium bg-transparent border-none outline-none"
+                  style={{ color: 'var(--editor-text)' }}
                 />
                 {block.metadata.size && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs mt-1" style={{ color: 'var(--editor-secondary-text)' }}>
                     Размер: {(block.metadata.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 )}
@@ -1596,7 +1680,8 @@ function BlockRenderer({
                   href={block.metadata.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-200"
+                  className="hover:text-gray-900 dark:hover:text-gray-200"
+                  style={{ color: 'var(--editor-text)' }}
                   title="Открыть файл"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1605,7 +1690,8 @@ function BlockRenderer({
                 </a>
                 <button
                   onClick={() => updateMetadata({ url: '', name: '', size: undefined, type: undefined })}
-                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                  className="hover:text-red-700 dark:hover:text-red-300"
+                  style={{ color: '#dc2626' }}
                   title="Удалить файл"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1632,9 +1718,9 @@ function BlockRenderer({
               
               {/* Разделитель */}
               <div className="flex items-center gap-3">
-                <hr className="flex-1 border-gray-300 dark:border-gray-600" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">или</span>
-                <hr className="flex-1 border-gray-300 dark:border-gray-600" />
+                <hr className="flex-1" style={{ borderColor: 'var(--editor-border)' }} />
+                <span className="text-xs" style={{ color: 'var(--editor-secondary-text)' }}>или</span>
+                <hr className="flex-1" style={{ borderColor: 'var(--editor-border)' }} />
               </div>
               
               {/* Поле для URL */}
@@ -1744,13 +1830,16 @@ function BlockRenderer({
             {...baseTextareaProps}
             ref={textareaRef}
             placeholder="Начните писать или введите / для команд..."
-            className={`${baseInputProps.className} text-gray-900 dark:text-white leading-relaxed py-1`}
-            style={{ overflow: 'hidden' }}
+            className={`${baseInputProps.className} leading-relaxed py-1`}
+            style={{
+              color: 'var(--editor-text)',
+              overflow: 'hidden'
+            }}
           />
 
           {!block.content && isActive && (
-            <div className="absolute top-full left-0 mt-1 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
-              Нажмите <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-[#0a0a0a] rounded text-xs">/</kbd> для выбора типа блока
+            <div className="absolute top-full left-0 mt-1 text-xs pointer-events-none" style={{ color: 'var(--editor-secondary-text)' }}>
+              Нажмите <kbd className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: 'var(--editor-accent)' }}>/</kbd> для выбора типа блока
             </div>
           )}
         </div>
@@ -1783,32 +1872,42 @@ function LinkModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Добавить ссылку</h3>
+      <div className="rounded-lg p-6 w-96" style={{ backgroundColor: 'var(--editor-bg)' }}>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--editor-text)' }}>Добавить ссылку</h3>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
               Текст ссылки
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border rounded-md"
+              style={{
+                borderColor: 'var(--editor-border)',
+                backgroundColor: 'var(--editor-bg)',
+                color: 'var(--editor-text)'
+              }}
               placeholder="Введите текст ссылки"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
               URL
             </label>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border rounded-md"
+              style={{
+                borderColor: 'var(--editor-border)',
+                backgroundColor: 'var(--editor-bg)',
+                color: 'var(--editor-text)'
+              }}
               placeholder="https://example.com"
             />
           </div>
@@ -1817,14 +1916,28 @@ function LinkModal({
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            className="px-4 py-2 hover:text-gray-900 dark:hover:text-gray-200" style={{ color: 'var(--editor-secondary-text)' }}
           >
             Отмена
           </button>
           <button
             onClick={() => onApply(url, title)}
             disabled={!url || !title}
-            className="px-4 py-2 bg-gray-900 dark:bg-gray-200 text-white dark:text-gray-900 rounded-md hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: 'var(--editor-text)',
+              color: 'var(--editor-bg)'
+            }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.hasAttribute('disabled')) {
+                e.currentTarget.style.backgroundColor = 'var(--editor-secondary-text)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.hasAttribute('disabled')) {
+                e.currentTarget.style.backgroundColor = 'var(--editor-text)';
+              }
+            }}
           >
             Применить
           </button>
@@ -1867,38 +1980,48 @@ function InternalLinkModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-h-96">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Ссылка на страницу</h3>
+      <div className="rounded-lg p-6 w-96 max-h-96" style={{ backgroundColor: 'var(--editor-bg)' }}>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--editor-text)' }}>Ссылка на страницу</h3>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
               Текст ссылки
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border rounded-md"
+              style={{
+                borderColor: 'var(--editor-border)',
+                backgroundColor: 'var(--editor-bg)',
+                color: 'var(--editor-text)'
+              }}
               placeholder="Введите текст ссылки"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
               Поиск страниц
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white mb-2"
+              className="w-full px-3 py-2 border rounded-md mb-2"
+              style={{
+                borderColor: 'var(--editor-border)',
+                backgroundColor: 'var(--editor-bg)',
+                color: 'var(--editor-text)'
+              }}
               placeholder="Найти страницу..."
             />
             
-            <div className="max-h-32 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md">
+            <div className="max-h-32 overflow-y-auto border rounded-md" style={{ borderColor: 'var(--editor-border)' }}>
               {filteredPages.map(page => (
-                <label key={page.id} className="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                <label key={page.id} className="flex items-center p-2 cursor-pointer editor-button-hover">
                   <input
                     type="radio"
                     value={page.id}
@@ -1907,8 +2030,8 @@ function InternalLinkModal({
                     className="mr-3"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{page.title}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{page.sectionName}</div>
+                    <div className="text-sm font-medium" style={{ color: 'var(--editor-text)' }}>{page.title}</div>
+                    <div className="text-xs" style={{ color: 'var(--editor-secondary-text)' }}>{page.sectionName}</div>
                   </div>
                 </label>
               ))}
@@ -1919,14 +2042,28 @@ function InternalLinkModal({
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            className="px-4 py-2 hover:text-gray-900 dark:hover:text-gray-200" style={{ color: 'var(--editor-secondary-text)' }}
           >
             Отмена
           </button>
           <button
             onClick={() => onApply(selectedPageId, title)}
             disabled={!selectedPageId || !title}
-            className="px-4 py-2 bg-gray-900 dark:bg-gray-200 text-white dark:text-gray-900 rounded-md hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: 'var(--editor-text)',
+              color: 'var(--editor-bg)'
+            }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.hasAttribute('disabled')) {
+                e.currentTarget.style.backgroundColor = 'var(--editor-secondary-text)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.hasAttribute('disabled')) {
+                e.currentTarget.style.backgroundColor = 'var(--editor-text)';
+              }
+            }}
           >
             Применить
           </button>

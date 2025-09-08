@@ -109,14 +109,16 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-white dark:bg-gray-800 shadow-2xl rounded-lg border border-gray-200 dark:border-gray-700 w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="fixed z-50 shadow-2xl rounded-lg w-80 sm:w-96 max-h-96 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
       style={{
         top: position.top,
-        left: position.left
+        left: position.left,
+        backgroundColor: 'var(--editor-bg)',
+        border: '1px solid var(--editor-border)'
       }}
     >
       {/* Поиск */}
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-3 border-b" style={{ borderColor: 'var(--editor-border)' }}>
         <div className="relative">
           <input
             ref={searchInputRef}
@@ -127,9 +129,14 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
               setSelectedIndex(0);
             }}
             placeholder="Поиск блоков..."
-            className="w-full px-3 py-2 pl-8 text-sm bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-300 focus:border-transparent outline-none"
+            className="w-full px-3 py-2 pl-8 text-sm border rounded-md focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-300 focus:border-transparent outline-none"
+            style={{
+              backgroundColor: 'var(--editor-accent)',
+              borderColor: 'var(--editor-border)',
+              color: 'var(--editor-text)'
+            }}
           />
-          <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-2.5 top-2.5 w-4 h-4" style={{ color: 'var(--editor-secondary-text)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
@@ -138,13 +145,13 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
       {/* Список блоков */}
       <div className="max-h-80 overflow-y-auto">
         {filteredBlocks.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+          <div className="p-4 text-center" style={{ color: 'var(--editor-secondary-text)' }}>
             Блоки не найдены
           </div>
         ) : (
           Object.entries(groupedBlocks).map(([category, blocks]) => (
             <div key={category} className="py-2">
-              <div className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--editor-secondary-text)' }}>
                 {categoryNames[category as keyof typeof categoryNames]}
               </div>
               {blocks.map((block, blockIndex) => {
@@ -160,27 +167,37 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
                       onClose();
                     }}
                     onMouseEnter={() => setSelectedIndex(globalIndex)}
-                    className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-[#0a0a0a] transition-colors ${
-                      isSelected ? 'bg-gray-100 dark:bg-[#0a0a0a]' : ''
+                    className={`w-full px-3 py-2 text-left transition-colors ${
+                      isSelected ? '' : ''
                     } ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : ''}`}
+                    style={{
+                      color: 'var(--editor-text)',
+                      backgroundColor: isSelected ? 'var(--editor-accent)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--editor-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-[#0a0a0a] rounded text-sm">
+                      <div className="w-8 h-8 flex items-center justify-center rounded text-sm" style={{ backgroundColor: 'var(--editor-accent)' }}>
                         {block.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900 dark:text-white text-sm">
+                          <span className="font-medium text-sm" style={{ color: 'var(--editor-text)' }}>
                             {block.title}
                             {isCurrent && <span className="ml-2 text-xs text-green-600 dark:text-green-400">• Текущий</span>}
                           </span>
                           {block.shortcut && (
-                            <span className="text-xs text-gray-400 font-mono">
+                            <span className="text-xs font-mono" style={{ color: 'var(--editor-secondary-text)' }}>
                               {block.shortcut}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-xs truncate" style={{ color: 'var(--editor-secondary-text)' }}>
                           {block.description}
                         </p>
                       </div>
@@ -194,8 +211,12 @@ export default function BlockMenu({ isOpen, onClose, onSelectType, position, cur
       </div>
 
       {/* Подсказки */}
-      <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a]">
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+      <div className="p-2 border-t" style={{
+        borderColor: 'var(--editor-border)',
+        backgroundColor: 'var(--editor-accent)',
+        color: 'var(--editor-secondary-text)'
+      }}>
+        <div className="flex items-center justify-between text-xs">
           <span>↑↓ навигация • Enter выбор</span>
           <span>Esc закрыть</span>
         </div>

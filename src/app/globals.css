@@ -47,6 +47,16 @@
   --text-primary: #171717;
   --text-secondary: #525252;
   --text-muted: #737373;
+
+  /* Цвета редактора */
+  --editor-bg: #ffffff;
+  --editor-text: #171717;
+  --editor-border: rgba(0, 0, 0, 0.1);
+  --editor-accent: rgba(0, 0, 0, 0.05);
+  --editor-hover: rgba(0, 0, 0, 0.02);
+  --editor-code-bg: rgba(0, 0, 0, 0.05);
+  --editor-secondary-text: #737373;
+  --editor-placeholder: #a3a3a3;
   
   /* Header */
   --header-height: 56px;
@@ -71,6 +81,16 @@
   --input-bg: transparent;
   --input-border: rgba(255, 255, 255, 0.1);
   --input-focus: #ffffff;
+
+  /* Цвета редактора для темной темы */
+  --editor-bg: #0a0a0a;
+  --editor-text: #ededed;
+  --editor-border: rgba(255, 255, 255, 0.1);
+  --editor-accent: rgba(255, 255, 255, 0.1);
+  --editor-hover: rgba(255, 255, 255, 0.05);
+  --editor-code-bg: rgba(255, 255, 255, 0.1);
+  --editor-secondary-text: #a3a3a3;
+  --editor-placeholder: #737373;
 }
 
 body {
@@ -733,6 +753,11 @@ input[type="text"], input[type="url"], input[type="email"], input[type="password
   .prose td {
     padding: 0.5rem 0.25rem;
   }
+}
+
+/* Единые стили редактора */
+.editor-button-hover:hover {
+  background-color: var(--editor-hover) !important;
 }
 
 /* Документация - улучшенное выравнивание */

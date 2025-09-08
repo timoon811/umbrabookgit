@@ -68,7 +68,8 @@ export default function BlockEditor({
         return (
           <input 
             {...commonProps}
-            className={`${commonProps.className} text-3xl font-bold text-gray-900 dark:text-gray-100`}
+            className={`${commonProps.className} text-3xl font-bold`}
+            style={{ color: 'var(--editor-text)' }}
           />
         );
       
@@ -76,7 +77,8 @@ export default function BlockEditor({
         return (
           <input 
             {...commonProps}
-            className={`${commonProps.className} text-2xl font-semibold text-gray-900 dark:text-gray-100`}
+            className={`${commonProps.className} text-2xl font-semibold`}
+            style={{ color: 'var(--editor-text)' }}
           />
         );
       
@@ -84,16 +86,21 @@ export default function BlockEditor({
         return (
           <input 
             {...commonProps}
-            className={`${commonProps.className} text-xl font-medium text-gray-900 dark:text-gray-100`}
+            className={`${commonProps.className} text-xl font-medium`}
+            style={{ color: 'var(--editor-text)' }}
           />
         );
 
       case 'quote':
         return (
-          <div className="border-l-4 border-gray-400 dark:border-gray-600 pl-4 bg-gray-100/50 dark:bg-white/5 rounded-r-md">
-            <textarea 
+          <div className="border-l-4 pl-4 rounded-r-md" style={{
+            borderColor: 'var(--editor-border)',
+            backgroundColor: 'var(--editor-accent)'
+          }}>
+            <textarea
               {...commonProps}
-              className={`${commonProps.className} text-gray-700 dark:text-gray-300 italic min-h-[80px]`}
+              className={`${commonProps.className} italic min-h-[80px]`}
+              style={{ color: 'var(--editor-text)' }}
               rows={3}
             />
           </div>
@@ -101,12 +108,16 @@ export default function BlockEditor({
 
       case 'code':
         return (
-          <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-md border">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="rounded-md border" style={{
+            backgroundColor: 'var(--editor-code-bg)',
+            borderColor: 'var(--editor-border)'
+          }}>
+            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--editor-border)' }}>
               <select
                 value={block.metadata?.language || 'text'}
                 onChange={(e) => updateMetadata({ language: e.target.value })}
-                className="text-xs bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
+                className="text-xs bg-transparent border-none outline-none"
+                style={{ color: 'var(--editor-secondary-text)' }}
               >
                 <option value="text">Plain Text</option>
                 <option value="javascript">JavaScript</option>
@@ -120,7 +131,8 @@ export default function BlockEditor({
             </div>
             <textarea 
               {...commonProps}
-              className={`${commonProps.className} font-mono text-sm text-gray-900 dark:text-gray-100 p-4 min-h-[120px]`}
+              className={`${commonProps.className} font-mono text-sm p-4 min-h-[120px]`}
+              style={{ color: 'var(--editor-text)' }}
               rows={6}
             />
           </div>
@@ -129,10 +141,11 @@ export default function BlockEditor({
       case 'list':
         return (
           <div className="flex items-start">
-            <span className="text-gray-400 mr-3 mt-1">•</span>
-            <textarea 
+            <span className="mr-3 mt-1" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
+            <textarea
               {...commonProps}
-              className={`${commonProps.className} text-gray-900 dark:text-gray-100 flex-1 min-h-[24px]`}
+              className={`${commonProps.className} flex-1 min-h-[24px]`}
+              style={{ color: 'var(--editor-text)' }}
               rows={1}
             />
           </div>
@@ -141,10 +154,11 @@ export default function BlockEditor({
       case 'numbered-list':
         return (
           <div className="flex items-start">
-            <span className="text-gray-400 mr-3 mt-1">1.</span>
-            <textarea 
+            <span className="mr-3 mt-1" style={{ color: 'var(--editor-secondary-text)' }}>1.</span>
+            <textarea
               {...commonProps}
-              className={`${commonProps.className} text-gray-900 dark:text-gray-100 flex-1 min-h-[24px]`}
+              className={`${commonProps.className} flex-1 min-h-[24px]`}
+              style={{ color: 'var(--editor-text)' }}
               rows={1}
             />
           </div>
@@ -173,7 +187,7 @@ export default function BlockEditor({
 
       case 'image':
         return (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4">
+          <div className="border rounded-md p-4" style={{ borderColor: 'var(--editor-border)' }}>
             {block.metadata?.url ? (
               <div>
                 <Image 
@@ -189,12 +203,13 @@ export default function BlockEditor({
                   value={block.metadata.caption || ''}
                   onChange={(e) => updateMetadata({ caption: e.target.value })}
                   placeholder="Image caption (optional)"
-                  className="w-full mt-2 text-sm text-gray-600 dark:text-gray-400 bg-transparent border-none outline-none"
+                  className="w-full mt-2 text-sm bg-transparent border-none outline-none"
+                  style={{ color: 'var(--editor-secondary-text)' }}
                 />
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">📷</div>
+                <div className="mb-2" style={{ color: 'var(--editor-secondary-text)' }}>📷</div>
                 <input
                   type="url"
                   value={block.content}
@@ -203,7 +218,8 @@ export default function BlockEditor({
                     updateMetadata({ url: e.target.value });
                   }}
                   placeholder="Paste image URL..."
-                  className="w-full text-center bg-transparent border-none outline-none text-gray-600 dark:text-gray-400"
+                  className="w-full text-center bg-transparent border-none outline-none"
+                  style={{ color: 'var(--editor-secondary-text)' }}
                 />
               </div>
             )}
@@ -213,7 +229,7 @@ export default function BlockEditor({
       case 'divider':
         return (
           <div className="py-4">
-            <hr className="border-gray-300 dark:border-gray-600" />
+            <hr style={{ borderColor: 'var(--editor-border)' }} />
           </div>
         );
 
@@ -221,7 +237,8 @@ export default function BlockEditor({
         return (
           <textarea 
             {...commonProps}
-            className={`${commonProps.className} text-gray-900 dark:text-gray-100 min-h-[24px] leading-relaxed`}
+            className={`${commonProps.className} min-h-[24px] leading-relaxed`}
+            style={{ color: 'var(--editor-text)' }}
             rows={1}
           />
         );
@@ -251,7 +268,7 @@ export default function BlockEditor({
       right: 'text-right'
     }[alignment];
 
-    return `placeholder-gray-400 ${alignmentClass}`;
+    return `${alignmentClass}`;
   };
 
   return (

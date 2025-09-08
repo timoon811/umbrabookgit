@@ -114,17 +114,17 @@ export default function CourseContentEditor({
 
   if (!documentationPage) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--editor-bg)' }}>
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--editor-accent)' }}>
+            <svg className="w-8 h-8" style={{ color: 'var(--editor-secondary-text)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
-          <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-xl font-medium mb-2" style={{ color: 'var(--editor-text)' }}>
             Выберите страницу курса
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p style={{ color: 'var(--editor-secondary-text)' }}>
             Кликните на страницу в левой панели, чтобы начать редактирование
           </p>
         </div>
