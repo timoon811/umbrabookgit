@@ -101,6 +101,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/seed") || // Добавляем для инициализации БД
     pathname.startsWith("/api/admin/import-db") || // Добавляем для импорта БД
     pathname.startsWith("/api/migrate-users") || // Добавляем для миграции пользователей
+    pathname.startsWith("/api/migrate-all-users") || // Добавляем для полной миграции всех пользователей
     pathname.startsWith("/api/migrate-docs") || // Добавляем для миграции документации
     pathname.startsWith("/api/verify-migration") || // Добавляем для проверки миграции
     pathname.startsWith("/uploads") ||
