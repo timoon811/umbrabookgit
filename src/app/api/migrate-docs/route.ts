@@ -9,10 +9,10 @@ export async function GET() {
 
     // Очищаем существующую документацию
     await prisma.documentation.deleteMany({});
-    await prisma.documentationSections.deleteMany({});
+    await prisma.documentation_sections.deleteMany({});
     
     // Сначала создаем проект
-    const project = await prisma.contentProjects.upsert({
+    const project = await prisma.content_projects.upsert({
       where: { id: 'e0c3c4d9-01fa-48b3-bc2f-f2046e64085e' },
       update: {},
       create: {
@@ -97,7 +97,7 @@ export async function GET() {
     ];
 
     for (const section of sections) {
-      await prisma.documentationSections.create({
+      await prisma.documentation_sections.create({
         data: section
       });
       console.log(`✅ Создан раздел: ${section.name}`);
