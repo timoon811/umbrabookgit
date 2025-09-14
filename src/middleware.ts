@@ -102,6 +102,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/admin/import-db") || // Добавляем для импорта БД
     pathname.startsWith("/api/migrate-users") || // Добавляем для миграции пользователей
     pathname.startsWith("/api/migrate-docs") || // Добавляем для миграции документации
+    pathname.startsWith("/api/verify-migration") || // Добавляем для проверки миграции
     pathname.startsWith("/uploads") ||
     pathname.startsWith("/api/uploads") ||
     pathname.includes(".") // файлы со статическими расширениями
