@@ -9,7 +9,7 @@
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
-    "start": "node scripts/create-admin.js && next start",
+    "start": "prisma migrate deploy && node scripts/create-admin.js && npx prisma db seed && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
