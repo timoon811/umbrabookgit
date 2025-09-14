@@ -99,6 +99,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/seed") || // Добавляем для инициализации БД
+    pathname.startsWith("/api/admin/import-db") || // Добавляем для импорта БД
     pathname.startsWith("/uploads") ||
     pathname.startsWith("/api/uploads") ||
     pathname.includes(".") // файлы со статическими расширениями
