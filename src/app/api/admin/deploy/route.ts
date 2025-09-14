@@ -6,12 +6,11 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    // Простая защита - проверяем секретный ключ
-    const { secret } = await request.json();
-    
-    if (secret !== "umbra_deploy_secret_2024") {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Временно отключена проверка для инициализации
+    // const { secret } = await request.json();
+    // if (secret !== "umbra_deploy_secret_2024") {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     console.log("🌱 Начинаем заполнение базы данных...");
 
