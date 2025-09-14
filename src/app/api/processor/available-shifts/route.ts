@@ -1,0 +1,91 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireProcessorAuth } from "@/lib/api-auth";
+import { getShiftType, getShiftStartTime, getShiftEndTime, getCurrentUTC3Time } from "@/lib/time-utils";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(request: NextRequest) {
+  // Проверяем авторизацию
+  const authResult = await requireProcessorAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  try {
+    const now = getCurrentUTC3Time();
+    
+    // Получаем активные настройки смен из базы данных
+    const shiftSettings = await prisma.shift_settings.findMany({
+      where: { isActive: true },
+      orderBy: { startHour: 'asc' }
+    });
+
+    if (shiftSettings.length === 0) {
+      return NextResponse.json({
+        availableShifts: [],
+        currentShiftType: null,
+        currentTime: now.toISOString(),
+        message: "Нет доступных смен. Обратитесь к администратору."
+      });
+    }
+    
+    const availableShifts = shiftSettings.map(setting => {
+      const { shiftType, startHour, startMinute, endHour, endMinute, name, description } = setting;
+      
+      // Формируем время начала и окончания для отображения
+      const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+      const endTimeStr = `${(endHour >= 24 ? endHour - 24 : endHour).toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      
+      let timeDisplay = `${startTimeStr} - ${endTimeStr}`;
+      if (endHour >= 24) {
+        timeDisplay += ' (+1 день)';
+      }
+      
+      // Определяем, является ли данная смена текущей по времени
+      const currentHour = now.getUTCHours();
+      const currentMinute = now.getUTCMinutes();
+      const currentTotalMinutes = currentHour * 60 + currentMinute;
+      const shiftStartMinutes = startHour * 60 + startMinute;
+      const shiftEndMinutes = endHour * 60 + endMinute;
+      
+      let isCurrent = false;
+      if (endHour < 24) {
+        // Смена в пределах одного дня
+        isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
+      } else {
+        // Смена переходит на следующий день
+        isCurrent = currentTotalMinutes >= shiftStartMinutes || currentTotalMinutes < (shiftEndMinutes - 24 * 60);
+      }
+      
+      return {
+        type: shiftType,
+        name: name || (shiftType === 'MORNING' ? 'Утренняя смена' : 
+                      shiftType === 'DAY' ? 'Дневная смена' : 'Ночная смена'),
+        timeDisplay,
+        startTime: { hour: startHour, minute: startMinute },
+        endTime: { hour: endHour, minute: endMinute },
+        description: description || (shiftType === 'MORNING' ? 'Утренняя смена для ранних пташек' :
+                    shiftType === 'DAY' ? 'Дневная смена - основное рабочее время' :
+                    'Ночная смена для работы в темное время суток'),
+        isCurrent,
+        icon: shiftType === 'MORNING' ? 'sunrise' : 
+              shiftType === 'DAY' ? 'sun' : 'moon'
+      };
+    });
+
+    // Определяем текущую смену из доступных
+    const currentShift = availableShifts.find(shift => shift.isCurrent);
+    const currentShiftType = currentShift?.type || null;
+    
+    return NextResponse.json({
+      availableShifts,
+      currentShiftType,
+      currentTime: now.toISOString()
+    });
+  } catch (error) {
+    console.error('Ошибка получения доступных смен:', error);
+    return NextResponse.json(
+      { error: "Внутренняя ошибка сервера" },
+      { status: 500 }
+    );
+  }
+}

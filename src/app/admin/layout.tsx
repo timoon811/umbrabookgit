@@ -3,8 +3,11 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { hasAdminAccess } from "@/lib/permissions";
 import AdminHeader from "@/components/AdminHeader";
 import AdminSidebar from "@/components/AdminSidebar";
+import NotificationProvider from "@/providers/NotificationProvider";
+import { UserRole } from "@/types/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -27,7 +30,8 @@ export default async function AdminLayout({
       role: string;
     };
 
-    if (decoded.role !== "ADMIN") {
+    // Проверяем доступ к админ панели
+    if (!hasAdminAccess(decoded.role as UserRole)) {
       redirect("/");
     }
 
@@ -42,7 +46,7 @@ export default async function AdminLayout({
       },
     });
 
-    if (!user || user.role !== "ADMIN") {
+    if (!user || !hasAdminAccess(user.role as UserRole)) {
       redirect("/");
     }
   } catch (error) {
@@ -50,24 +54,26 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
-      {/* Админ хедер */}
-      <AdminHeader />
-      
-      {/* Основная область с сайдбаром и контентом */}
-      <div className="mx-auto max-w-screen-2xl px-6 lg:px-6 md:px-4 sm:px-3 pt-6">
-        <div className="grid layout-root admin-layout">
-          {/* Админ сайдбар */}
-          <AdminSidebar />
-          
-          {/* Основной контент */}
-          <main className="p-6">
-            <div className="mx-auto max-w-7xl">
-              {children}
-            </div>
-          </main>
+    <NotificationProvider>
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
+        {/* Админ хедер */}
+        <AdminHeader />
+        
+        {/* Основная область с сайдбаром и контентом */}
+        <div className="mx-auto max-w-screen-2xl px-6 lg:px-6 md:px-4 sm:px-3 pt-6">
+          <div className="grid layout-root admin-layout">
+            {/* Админ сайдбар */}
+            <AdminSidebar />
+            
+            {/* Основной контент */}
+            <main className="p-6">
+              <div className="mx-auto max-w-7xl">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </NotificationProvider>
   );
 }

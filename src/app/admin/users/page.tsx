@@ -26,12 +26,6 @@ interface PendingUser {
   createdAt: string;
 }
 
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
 
 interface UserModalData {
   id: string;
@@ -59,6 +53,16 @@ export default function UsersPage() {
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter states
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
+  // Sort state
+  const [sortBy, setSortBy] = useState<string>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Bulk selection state
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -148,6 +152,26 @@ export default function UsersPage() {
   const clearSelection = () => {
     setSelectedUsers(new Set());
     setSelectedPendingUsers(new Set());
+  };
+
+  // Filter and sort functions
+  const clearFilters = () => {
+    setSearchTerm('');
+    setRoleFilter('all');
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setSortBy('createdAt');
+    setSortOrder('desc');
+  };
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
   };
 
   // Actions
@@ -465,12 +489,14 @@ export default function UsersPage() {
   // Helper functions
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      ADMIN: { label: 'Админ', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
-      MODERATOR: { label: 'Модератор', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300' },
-      MEDIA_BUYER: { label: 'Медиа байер', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
-      SUPPORT: { label: 'Поддержка', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-      PROCESSOR: { label: 'Обработчик', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
       USER: { label: 'Пользователь', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+      PROCESSOR: { label: 'Обработчик', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+      MEDIA_BUYER: { label: 'Медиа байер', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
+      ROP_PROCESSOR: { label: 'РОП обработки', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+      ROP_BUYER: { label: 'РОП байер', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300' },
+      MODERATOR: { label: 'Модератор', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300' },
+      SUPPORT: { label: 'Поддержка', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+      ADMIN: { label: 'Админ', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
     };
     
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.USER;
@@ -504,48 +530,223 @@ export default function UsersPage() {
     );
   };
 
-  // Filter functions
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.telegram.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort functions
+  const filteredUsers = users
+    .filter(user => {
+      // Text search
+      const matchesSearch = !searchTerm ||
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const filteredPendingUsers = pendingUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.telegram.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      // Role filter
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+
+      // Status filter
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'BLOCKED' && user.isBlocked) ||
+        (statusFilter !== 'BLOCKED' && !user.isBlocked && user.status === statusFilter);
+
+      // Date range filter
+      const userDate = new Date(user.createdAt);
+      const matchesDateFrom = !dateFrom || userDate >= new Date(dateFrom);
+      const matchesDateTo = !dateTo || userDate <= new Date(dateTo + 'T23:59:59');
+
+      return matchesSearch && matchesRole && matchesStatus && matchesDateFrom && matchesDateTo;
+    })
+    .sort((a, b) => {
+      let aValue: string | Date;
+      let bValue: string | Date;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'email':
+          aValue = a.email.toLowerCase();
+          bValue = b.email.toLowerCase();
+          break;
+        case 'role':
+          aValue = a.role;
+          bValue = b.role;
+          break;
+        case 'status':
+          aValue = a.isBlocked ? 'BLOCKED' : a.status;
+          bValue = b.isBlocked ? 'BLOCKED' : b.status;
+          break;
+        case 'createdAt':
+        default:
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+  const filteredPendingUsers = pendingUsers
+    .filter(user => {
+      // Text search
+      const matchesSearch = !searchTerm ||
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Role filter
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+
+      // Status filter (pending users are always PENDING status)
+      const matchesStatus = statusFilter === 'all' || statusFilter === 'PENDING';
+
+      // Date range filter
+      const userDate = new Date(user.createdAt);
+      const matchesDateFrom = !dateFrom || userDate >= new Date(dateFrom);
+      const matchesDateTo = !dateTo || userDate <= new Date(dateTo + 'T23:59:59');
+
+      return matchesSearch && matchesRole && matchesStatus && matchesDateFrom && matchesDateTo;
+    })
+    .sort((a, b) => {
+      let aValue: string | Date;
+      let bValue: string | Date;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'email':
+          aValue = a.email.toLowerCase();
+          bValue = b.email.toLowerCase();
+          break;
+        case 'role':
+          aValue = a.role;
+          bValue = b.role;
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case 'createdAt':
+        default:
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-          <h1 className="text-2xl font-bold text-[#171717] dark:text-[#ededed]">
-            Управление пользователями
-          </h1>
-          <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 mt-1">
-            Всего пользователей: {users.length} • Заявок: {pendingUsers.length}
-        </p>
-      </div>
 
-        {/* Search */}
-        <div className="w-full sm:w-auto sm:min-w-[300px]">
+      {/* Filters Panel */}
+      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-6">
+        {/* Первая строка - Поиск */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
+            Поиск
+          </label>
           <div className="relative">
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#171717]/40 dark:text-[#ededed]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="Поиск по имени или email..."
+              placeholder="Поиск по имени, email или telegram..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm placeholder-[#171717]/40 dark:placeholder-[#ededed]/40 focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
             />
           </div>
         </div>
+
+        {/* Вторая строка - Фильтры */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+          {/* Role Filter */}
+          <div>
+            <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
+              Роль
+            </label>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
+            >
+              <option value="all">Все роли</option>
+              <option value="USER">Пользователь</option>
+              <option value="PROCESSOR">Обработчик</option>
+              <option value="MEDIA_BUYER">Медиа байер</option>
+              <option value="ROP_PROCESSOR">РОП обработки</option>
+              <option value="ROP_BUYER">РОП байер</option>
+              <option value="MODERATOR">Модератор</option>
+              <option value="SUPPORT">Поддержка</option>
+              <option value="ADMIN">Администратор</option>
+            </select>
           </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
+              Статус
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
+            >
+              <option value="all">Все статусы</option>
+              <option value="APPROVED">Активный</option>
+              <option value="PENDING">Ожидает</option>
+              <option value="REJECTED">Отклонен</option>
+              <option value="BLOCKED">Заблокирован</option>
+            </select>
+          </div>
+
+          {/* Date From */}
+          <div>
+            <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
+              Дата с
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
+            />
+          </div>
+
+          {/* Date To */}
+          <div>
+            <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
+              Дата по
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
+            />
+          </div>
+
+          {/* Clear Filters */}
+          <div>
+            <button
+              onClick={clearFilters}
+              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Сбросить
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="border-b border-[#171717]/10 dark:border-[#ededed]/10">
@@ -558,7 +759,7 @@ export default function UsersPage() {
                 : 'border-transparent text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed] hover:border-[#171717]/20 dark:hover:border-[#ededed]/20'
             }`}
           >
-            Все пользователи ({filteredUsers.length})
+            Пользователи ({filteredUsers.length})
           </button>
           <button
             onClick={() => setActiveTab('pending')}
@@ -606,6 +807,9 @@ export default function UsersPage() {
           onDelete={handleDeleteUser}
           getRoleBadge={getRoleBadge}
           getStatusBadge={getStatusBadge}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
       ) : (
         <PendingUsersTable
@@ -618,6 +822,9 @@ export default function UsersPage() {
           onApprove={(id) => handlePendingAction(id, 'approve')}
           onReject={(id) => handlePendingAction(id, 'reject')}
           getRoleBadge={getRoleBadge}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
         />
       )}
 
@@ -665,6 +872,48 @@ export default function UsersPage() {
   );
 }
 
+// Sortable Header Component
+function SortableHeader({
+  title,
+  field,
+  sortBy,
+  sortOrder,
+  onSort
+}: {
+  title: string;
+  field: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  onSort: (field: string) => void;
+}) {
+  const isActive = sortBy === field;
+
+  return (
+    <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+      <button
+        onClick={() => onSort(field)}
+        className="flex items-center gap-1 hover:text-[#171717] dark:hover:text-[#ededed] transition-colors"
+      >
+        {title}
+        {isActive && (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {sortOrder === 'asc' ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            )}
+          </svg>
+        )}
+        {!isActive && (
+          <svg className="w-4 h-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+          </svg>
+        )}
+      </button>
+    </th>
+  );
+}
+
 // Users Table Component
 function UsersTable({
   users,
@@ -677,7 +926,10 @@ function UsersTable({
   onBlock,
   onDelete,
   getRoleBadge,
-  getStatusBadge
+  getStatusBadge,
+  sortBy,
+  sortOrder,
+  onSort
 }: {
   users: User[];
   loading: boolean;
@@ -690,6 +942,9 @@ function UsersTable({
   onDelete: (id: string) => void;
   getRoleBadge: (role: string) => React.ReactElement;
   getStatusBadge: (status: string, isBlocked?: boolean) => React.ReactElement;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }) {
   if (loading) {
     return (
@@ -731,26 +986,42 @@ function UsersTable({
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                  Пользователь
-                </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Email
-                </th>
+              <SortableHeader
+                title="Пользователь"
+                field="name"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
+              <SortableHeader
+                title="Email"
+                field="email"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Telegram
-                </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Роль
-                </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Дата регистрации
-                </th>
+              </th>
+              <SortableHeader
+                title="Роль"
+                field="role"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
+              <SortableHeader
+                title="Дата регистрации"
+                field="createdAt"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
               <th className="px-6 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                  Действия
-                </th>
-              </tr>
-            </thead>
+                Действия
+              </th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
               {users.map((user) => (
               <tr key={user.id} className="hover:bg-[#171717]/[0.01] dark:hover:bg-[#ededed]/[0.01]">
@@ -958,7 +1229,10 @@ function PendingUsersTable({
   onView,
   onApprove,
   onReject,
-  getRoleBadge
+  getRoleBadge,
+  sortBy,
+  sortOrder,
+  onSort
 }: {
   users: PendingUser[];
   loading: boolean;
@@ -969,6 +1243,9 @@ function PendingUsersTable({
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   getRoleBadge: (role: string) => React.ReactElement;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }) {
   if (loading) {
     return (
@@ -1010,21 +1287,37 @@ function PendingUsersTable({
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Пользователь
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Email
-              </th>
+              <SortableHeader
+                title="Пользователь"
+                field="name"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
+              <SortableHeader
+                title="Email"
+                field="email"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
               <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Telegram
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Роль
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                Дата подачи
-              </th>
+              <SortableHeader
+                title="Роль"
+                field="role"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
+              <SortableHeader
+                title="Дата подачи"
+                field="createdAt"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              />
               <th className="px-6 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Действия
               </th>
@@ -1315,25 +1608,37 @@ function BulkActionsPanel({
   onClear: () => void;
 }) {
   return (
-    <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 p-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Левая часть - информация о выборе */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              Выбрано: {selectedCount}
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                Выбрано: {selectedCount}
+              </span>
+              <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
+                {selectedCount === 1 ? 'пользователь' : selectedCount < 5 ? 'пользователя' : 'пользователей'}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Правая часть - действия */}
+        <div className="flex flex-wrap items-center gap-2">
           {onApprove && (
             <button
               onClick={onApprove}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-lg transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
               Одобрить
             </button>
           )}
@@ -1341,8 +1646,11 @@ function BulkActionsPanel({
           {onReject && (
             <button
               onClick={onReject}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-lg transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Отклонить
             </button>
           )}
@@ -1351,14 +1659,20 @@ function BulkActionsPanel({
             <>
               <button
                 onClick={() => onBlock(true)}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50 rounded-lg transition-colors"
               >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
                 Заблокировать
               </button>
               <button
                 onClick={() => onBlock(false)}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-lg transition-colors"
               >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
                 Разблокировать
               </button>
             </>
@@ -1367,17 +1681,23 @@ function BulkActionsPanel({
           {onDelete && (
             <button
               onClick={onDelete}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-lg transition-colors"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
               Удалить
             </button>
           )}
 
           <button
             onClick={onClear}
-            className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 transition-colors"
           >
-            Очистить
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Очистить выбор
           </button>
         </div>
       </div>
@@ -1402,17 +1722,102 @@ function EditUserModal({
     password: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [shiftsData, setShiftsData] = useState<{
+    shifts: Array<{
+      id: string;
+      shiftType: string;
+      name: string;
+      timeDisplay: string;
+      isActive: boolean;
+      isAssigned: boolean;
+      description?: string;
+    }>;
+    assignedCount: number;
+  } | null>(null);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+
+  // Загружаем смены при открытии модального окна
+  useEffect(() => {
+    if (formData.role === 'PROCESSOR') {
+      loadUserShifts();
+    } else {
+      // Сброс данных смен если роль изменилась на не-PROCESSOR
+      setShiftsData(null);
+    }
+  }, [user.id, formData.role]);
+
+  const loadUserShifts = async () => {
+    setShiftsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/shifts`);
+      if (response.ok) {
+        const data = await response.json();
+        setShiftsData(data);
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка API загрузки смен:', errorData);
+        setShiftsData({ shifts: [], assignedCount: 0 });
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки смен:', error);
+      setShiftsData({ shifts: [], assignedCount: 0 });
+    } finally {
+      setShiftsLoading(false);
+    }
+  };
+
+  const handleShiftToggle = (shiftId: string) => {
+    if (!shiftsData) return;
+    
+    setShiftsData({
+      ...shiftsData,
+      shifts: shiftsData.shifts.map(shift => 
+        shift.id === shiftId 
+          ? { ...shift, isAssigned: !shift.isAssigned }
+          : shift
+      )
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Сохраняем основные данные пользователя
     onSave({
       ...user,
       ...formData,
     });
+
+    // Сохраняем назначения смен для процессоров
+    if (formData.role === 'PROCESSOR' && shiftsData) {
+      try {
+        const assignedShiftIds = shiftsData.shifts
+          .filter(shift => shift.isAssigned)
+          .map(shift => shift.id);
+
+        const shiftResponse = await fetch(`/api/admin/users/${user.id}/shifts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            shiftIds: assignedShiftIds
+          })
+        });
+
+        if (!shiftResponse.ok) {
+          const errorData = await shiftResponse.json();
+          console.error('Ошибка сохранения назначений смен:', errorData);
+        }
+      } catch (error) {
+        console.error('Ошибка сохранения назначений смен:', error);
+      }
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 w-full max-w-md">
+      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-[#171717]/10 dark:border-[#ededed]/10">
           <h2 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
             Редактировать пользователя
@@ -1465,9 +1870,11 @@ function EditUserModal({
                 className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
               >
                 <option value="USER">Пользователь</option>
-                <option value="MODERATOR">Модератор</option>
-                <option value="MEDIA_BUYER">Медиа байер</option>
                 <option value="PROCESSOR">Обработчик</option>
+                <option value="MEDIA_BUYER">Медиа байер</option>
+                <option value="ROP_PROCESSOR">РОП обработки</option>
+                <option value="ROP_BUYER">РОП байер</option>
+                <option value="MODERATOR">Модератор</option>
                 <option value="SUPPORT">Поддержка</option>
                 <option value="ADMIN">Администратор</option>
               </select>
@@ -1485,6 +1892,63 @@ function EditUserModal({
                 placeholder="Оставьте пустым для сохранения текущего"
               />
             </div>
+
+            {/* Назначение смен для обработчиков */}
+            {formData.role === 'PROCESSOR' && (
+              <div>
+                <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-3">
+                  Назначенные смены
+                </label>
+                {shiftsLoading ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                    <span className="ml-2 text-sm text-gray-500">Загрузка смен...</span>
+                  </div>
+                ) : shiftsData ? (
+                  shiftsData.shifts.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg p-3">
+                      {shiftsData.shifts.map((shift) => (
+                        <label key={shift.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={shift.isAssigned}
+                            onChange={() => handleShiftToggle(shift.id)}
+                            disabled={!shift.isActive}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-medium ${shift.isActive ? 'text-[#171717] dark:text-[#ededed]' : 'text-gray-400'}`}>
+                                {shift.name}
+                              </span>
+                              {!shift.isActive && (
+                                <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded">
+                                  Отключена
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {shift.timeDisplay}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-amber-500 dark:text-amber-400 text-sm">
+                      {(shiftsData as any).message || "Нет доступных смен для назначения"}
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center py-4 text-red-500 dark:text-red-400 text-sm">
+                    Ошибка загрузки смен
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Выберите смены, которые может начинать обработчик
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-[#171717]/10 dark:border-[#ededed]/10">

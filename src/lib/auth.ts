@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
+import { hasAdminAccess } from "./permissions";
+import { UserRole } from "@/types/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -61,7 +63,7 @@ export async function requireAdmin(requestOrToken: NextRequest | string) {
       role: string;
     };
 
-    if (decoded.role !== "ADMIN") {
+    if (!hasAdminAccess(decoded.role as UserRole)) {
       throw new Error("Недостаточно прав");
     }
 

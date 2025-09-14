@@ -16,18 +16,24 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-import { DocumentationPage } from '@/types/documentation';
+import { DocumentationPage, ContentProject } from '@/types/documentation';
 import { useDocumentationData } from '@/hooks/useDocumentationData';
 import { useDocumentationActions } from '@/hooks/useDocumentationActions';
 import SortableSection from '@/components/admin/documentation/SortableSection';
 import SectionItem from '@/components/admin/documentation/SectionItem';
 import AdvancedContentEditor from '@/components/admin/documentation/AdvancedContentEditor';
+import ProjectSelector from '@/components/admin/ProjectSelector';
+import CreateProjectModal from '@/components/modals/CreateProjectModal';
+import ProjectManagementModal from '@/components/modals/ProjectManagementModal';
 import ToastContainer from '@/components/Toast';
 
 export default function DocumentationAdminPage() {
   const [selectedPage, setSelectedPage] = useState<DocumentationPage | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ContentProject | null>(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showProjectManagement, setShowProjectManagement] = useState(false);
   
-  const { sections, setSections, loading, loadDocumentation } = useDocumentationData();
+  const { sections, setSections, loading, loadDocumentation } = useDocumentationData(selectedProject?.id);
   const {
     saving,
     forceSave,
@@ -42,7 +48,43 @@ export default function DocumentationAdminPage() {
     handleUpdatePageName,
     handleToggleSectionVisibility,
     handleDeleteSection
-  } = useDocumentationActions({ sections, setSections, loadDocumentation });
+  } = useDocumentationActions({ sections, setSections, loadDocumentation, projectId: selectedProject?.id });
+
+  // Обработчики для проектов
+  const handleProjectSelect = (project: ContentProject) => {
+    console.log('🔄 Выбран проект:', project);
+    setSelectedProject(project);
+    setSelectedPage(null); // Сбрасываем выбранную страницу при смене проекта
+  };
+
+  const handleCreateProject = async (projectData: { name: string; description?: string; type: string }) => {
+    try {
+      const response = await fetch('/api/admin/content-projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      if (response.ok) {
+        const newProject = await response.json();
+        setSelectedProject(newProject);
+        // Перезагружаем данные если нужно
+        loadDocumentation();
+      } else {
+        console.error('Ошибка создания проекта');
+      }
+    } catch (error) {
+      console.error('Ошибка создания проекта:', error);
+    }
+  };
+
+  const handleProjectDelete = (projectId: string) => {
+    console.log('🗑️ Проект удален:', projectId);
+    // Перезагружаем данные после удаления
+    loadDocumentation();
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -320,40 +362,73 @@ export default function DocumentationAdminPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="flex h-screen">
           {/* Боковая панель */}
-          <div className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-            {/* Заголовок */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gray-100 dark:bg-[#0a0a0a] rounded flex items-center justify-center">
-                    <svg className="w-4 h-4 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h1 className="text-base font-semibold text-gray-900 dark:text-white">
-                      Документация
-                    </h1>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {sections.length} разделов
-                    </p>
-                  </div>
+          <div className="w-full sm:w-80 lg:w-72 xl:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            {/* Заголовок с селектором проектов */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+              {/* Селектор проектов с кнопкой настроек */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex-1 min-w-0">
+                  <ProjectSelector
+                    selectedProject={selectedProject}
+                    onProjectSelect={handleProjectSelect}
+                    onCreateProject={() => setShowCreateProject(true)}
+                    onProjectDelete={handleProjectDelete}
+                  />
                 </div>
+                {/* Кнопка управления проектами */}
                 <button
-                  onClick={handleCreateSection}
-                  className="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 p-1.5 rounded transition-colors"
-                  title="Создать раздел"
+                  onClick={() => setShowProjectManagement(true)}
+                  className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-600 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-700/50 rounded-lg transition-colors flex-shrink-0 border border-gray-200 dark:border-gray-700"
+                  title="Управление проектами"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
               </div>
+              
+              {/* Информация о разделах и кнопка создания */}
+              {selectedProject && (
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    {sections.length} разделов в проекте "{selectedProject.name}"
+                  </div>
+                  <button
+                    onClick={handleCreateSection}
+                    className="flex items-center justify-center w-8 h-8 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors"
+                    title="Создать раздел"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              
+              {/* Сообщение если проект не выбран */}
+              {!selectedProject && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Выберите проект для работы с документацией
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Список разделов */}
             <div className="flex-1 overflow-y-auto p-3">
-              {sections.length === 0 ? (
+              {!selectedProject ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v1H8V5z" />
+                  </svg>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Выберите или создайте проект
+                  </p>
+                </div>
+              ) : sections.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-10 h-10 mx-auto mb-3 bg-gray-100 dark:bg-[#0a0a0a] rounded-full flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,11 +436,11 @@ export default function DocumentationAdminPage() {
                     </svg>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
-                    Нет разделов
+                    Нет разделов в проекте
                   </p>
                   <button
                     onClick={handleCreateSection}
-                    className="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 px-3 py-1.5 rounded transition-colors text-sm"
+                    className="bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium"
                   >
                     Создать раздел
                   </button>
@@ -407,6 +482,21 @@ export default function DocumentationAdminPage() {
           />
         </div>
       </div>
+      
+      {/* Модальное окно создания проекта */}
+      <CreateProjectModal
+        isOpen={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+        onSubmit={handleCreateProject}
+      />
+
+      {/* Модальное окно управления проектами */}
+      <ProjectManagementModal
+        isOpen={showProjectManagement}
+        onClose={() => setShowProjectManagement(false)}
+        onProjectsUpdate={loadDocumentation}
+      />
+      
       <ToastContainer />
     </DndContext>
   );

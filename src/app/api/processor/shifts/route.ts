@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireProcessorAuth } from "@/lib/api-auth";
 import { getCurrentUTC3Time, getShiftType, getShiftStartTime, getShiftEndTime } from "@/lib/time-utils";
+import { ProcessorLogger } from "@/lib/processor-logger";
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
@@ -26,42 +27,46 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Если нет текущей смены, создаем новую
+    // Если нет текущей смены, возвращаем null - пользователь должен создать смену через доступные смены
     if (!currentShift) {
-      const shiftType = getShiftType(now);
-      const startTime = getShiftStartTime(shiftType);
-      const endTime = getShiftEndTime(shiftType);
+      return NextResponse.json({ shift: null, isActive: false, timeRemaining: null });
+    }
 
-      const scheduledStart = new Date(now);
-      scheduledStart.setUTCHours(startTime.hour, startTime.minute, 0, 0);
+    // Проверяем автозавершение смены (если прошло больше 30 минут после запланированного окончания)
+    if (currentShift.status === 'ACTIVE' && currentShift.scheduledEnd) {
+      const thirtyMinutesAfterEnd = new Date(currentShift.scheduledEnd.getTime() + 30 * 60 * 1000);
+      if (now > thirtyMinutesAfterEnd) {
+        // Автоматически завершаем смену
+        const autoEndedShift = await prisma.processor_shifts.update({
+          where: { id: currentShift.id },
+          data: {
+            actualEnd: thirtyMinutesAfterEnd,
+            status: 'COMPLETED',
+            notes: (currentShift.notes || '') + ' [Автозавершена системой через 30 мин после окончания]'
+          }
+        });
 
-      const scheduledEnd = new Date(now);
-      if (endTime.hour >= 24) {
-        scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-        scheduledEnd.setUTCHours(endTime.hour - 24, endTime.minute, 0, 0);
-      } else {
-        scheduledEnd.setUTCHours(endTime.hour, endTime.minute, 0, 0);
+        // Логируем автозавершение
+        await ProcessorLogger.logShiftEnd(user.userId, currentShift.shiftType, 
+          thirtyMinutesAfterEnd.getTime() - new Date(currentShift.actualStart!).getTime(), 
+          request, true // автозавершение
+        );
+
+        return NextResponse.json({ 
+          shift: autoEndedShift, 
+          isActive: false, 
+          timeRemaining: null,
+          autoEnded: true,
+          message: "Смена была автоматически завершена системой" 
+        });
       }
-
-      const newShift = await prisma.processor_shifts.create({
-        data: {
-          processorId: user.userId,
-          shiftType,
-          shiftDate: todayStart,
-          scheduledStart,
-          scheduledEnd,
-          status: 'SCHEDULED'
-        }
-      });
-
-      return NextResponse.json({ shift: newShift, isActive: false, timeRemaining: null });
     }
 
     // Вычисляем оставшееся время если смена активна
     let timeRemaining = null;
-    if (currentShift.status === 'ACTIVE' && currentShift.actualStart) {
-      const endTime = new Date(currentShift.actualStart.getTime() + (8 * 60 * 60 * 1000)); // 8 часов
-      timeRemaining = Math.max(0, endTime.getTime() - now.getTime());
+    if (currentShift.status === 'ACTIVE' && currentShift.scheduledEnd) {
+      // Используем запланированное время окончания смены, а не 8 часов от начала
+      timeRemaining = Math.max(0, currentShift.scheduledEnd.getTime() - now.getTime());
     }
 
     return NextResponse.json({
@@ -89,11 +94,80 @@ export async function POST(request: NextRequest) {
 
   try {
     const data = await request.json();
-    const { action } = data; // 'start' или 'end'
+    const { action, shiftType } = data; // 'start', 'end' или 'create'
 
     const now = getCurrentUTC3Time();
     const todayStart = new Date(now);
     todayStart.setUTCHours(6, 0, 0, 0);
+
+    if (action === 'create') {
+      // Создаем новую смену с проверкой доступности
+      if (!shiftType) {
+        return NextResponse.json(
+          { error: "Тип смены обязателен" },
+          { status: 400 }
+        );
+      }
+
+      // Проверяем, что смена разрешена администратором
+      const shiftSetting = await prisma.shift_settings.findFirst({
+        where: { 
+          shiftType: shiftType,
+          isActive: true 
+        }
+      });
+
+      if (!shiftSetting) {
+        return NextResponse.json(
+          { error: "Данный тип смены недоступен. Обратитесь к администратору." },
+          { status: 403 }
+        );
+      }
+
+      // Проверяем, нет ли уже смены на сегодня
+      const existingShift = await prisma.processor_shifts.findFirst({
+        where: {
+          processorId: user.userId,
+          shiftDate: todayStart,
+        }
+      });
+
+      if (existingShift) {
+        return NextResponse.json(
+          { error: "Смена на сегодня уже создана" },
+          { status: 400 }
+        );
+      }
+
+      // Создаем смену на основе настроек
+      const scheduledStart = new Date(todayStart);
+      scheduledStart.setUTCHours(shiftSetting.startHour, shiftSetting.startMinute, 0, 0);
+
+      const scheduledEnd = new Date(todayStart);
+      if (shiftSetting.endHour >= 24) {
+        scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
+        scheduledEnd.setUTCHours(shiftSetting.endHour - 24, shiftSetting.endMinute, 0, 0);
+      } else {
+        scheduledEnd.setUTCHours(shiftSetting.endHour, shiftSetting.endMinute, 0, 0);
+      }
+
+      const newShift = await prisma.processor_shifts.create({
+        data: {
+          processorId: user.userId,
+          shiftType: shiftType,
+          shiftDate: todayStart,
+          scheduledStart,
+          scheduledEnd,
+          status: 'SCHEDULED'
+        }
+      });
+
+      return NextResponse.json({
+        shift: newShift,
+        isActive: false,
+        message: "Смена успешно создана"
+      });
+    }
 
     if (action === 'start') {
       // Начинаем смену
@@ -126,6 +200,9 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      // Логируем начало смены
+      await ProcessorLogger.logShiftStart(user.userId, shift.shiftType, request);
+
       return NextResponse.json({
         shift: updatedShift,
         isActive: true,
@@ -157,6 +234,12 @@ export async function POST(request: NextRequest) {
           status: 'COMPLETED'
         }
       });
+
+      // Рассчитываем продолжительность смены
+      const duration = shift.actualStart ? now.getTime() - new Date(shift.actualStart).getTime() : 0;
+      
+      // Логируем завершение смены
+      await ProcessorLogger.logShiftEnd(user.userId, shift.shiftType, duration, request);
 
       return NextResponse.json({
         shift: updatedShift,

@@ -6,9 +6,10 @@ interface UseDocumentationActionsProps {
   sections: DocumentationSection[];
   setSections: (sections: DocumentationSection[]) => void;
   loadDocumentation: () => Promise<void>;
+  projectId?: string;
 }
 
-export function useDocumentationActions({ sections, setSections, loadDocumentation }: UseDocumentationActionsProps) {
+export function useDocumentationActions({ sections, setSections, loadDocumentation, projectId }: UseDocumentationActionsProps) {
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { showSuccess, showError, showWarning } = useToast();
@@ -236,6 +237,11 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
 
   // Создание нового раздела
   const handleCreateSection = async () => {
+    if (!projectId) {
+      showError('Выберите проект для создания раздела');
+      return;
+    }
+
     try {
       const systemName = generateSystemSectionName();
       const systemKey = generateSystemSectionKey();
@@ -249,7 +255,8 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
           name: systemName,
           key: systemKey,
           description: `Автоматически созданный раздел ${systemName}`,
-          order: sections.length
+          order: sections.length,
+          projectId: projectId
         })
       });
 

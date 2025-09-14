@@ -98,7 +98,7 @@ const options = {
             },
             role: {
               type: 'string',
-              enum: ['ADMIN', 'USER', 'PROCESSOR', 'MODERATOR', 'MEDIA_BUYER', 'SUPPORT'],
+              enum: ['USER', 'ADMIN', 'PROCESSOR', 'MEDIA_BUYER', 'ROP_PROCESSOR', 'ROP_BUYER', 'MODERATOR', 'SUPPORT'],
               description: 'Роль пользователя',
             },
             status: {

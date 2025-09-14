@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import UmbraLogo from "./UmbraLogo";
+import NotificationIcon from "./admin/NotificationIcon";
+import { getCurrentUTC3Time } from "@/lib/time-utils";
 
 interface User {
   id: string;
@@ -17,10 +19,20 @@ interface User {
 export default function AdminHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const router = useRouter();
 
   useEffect(() => {
     fetchUser();
+  }, []);
+
+  // Обновляем время каждую секунду
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(getCurrentUTC3Time());
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchUser = async () => {
@@ -93,6 +105,24 @@ export default function AdminHeader() {
 
           {/* Правая часть с действиями пользователя */}
           <div className="flex items-center gap-3">
+            {/* Текущее время UTC+3 */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                {currentTime.toLocaleTimeString('ru-RU', {
+                  timeZone: 'Europe/Moscow',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                UTC+3
+              </div>
+            </div>
+
             {/* Возврат в пользовательский интерфейс */}
             <Link
               href="/"
@@ -114,6 +144,9 @@ export default function AdminHeader() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </Link>
+
+            {/* Уведомления */}
+            <NotificationIcon />
 
             {/* Выход */}
             <button

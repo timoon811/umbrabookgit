@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { hasAdminAccess } from "./permissions";
+import { UserRole } from "@/types/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -26,12 +28,14 @@ export interface ApiAuthError {
 /**
  * Centralized API authentication middleware
  * @param request - NextRequest object
- * @param requiredRoles - Array of roles that are allowed to access this endpoint
+ * @param requiredRoles - Array of roles that are allowed to access this endpoint (legacy)
+ * @param adminOnly - Whether this endpoint requires admin access (uses new permission system)
  * @returns Promise with user data or error response
  */
 export async function authenticateApiRequest(
   request: NextRequest,
-  requiredRoles?: string[]
+  requiredRoles?: string[],
+  adminOnly: boolean = false
 ): Promise<ApiAuthResult | ApiAuthError> {
   try {
     const cookieStore = await cookies();
@@ -104,8 +108,19 @@ export async function authenticateApiRequest(
       };
     }
 
-    // Check role permissions if specified
-    if (requiredRoles && requiredRoles.length > 0) {
+    // Check role permissions
+    if (adminOnly) {
+      // Use new permission system for admin access
+      if (!hasAdminAccess(user.role as UserRole)) {
+        return {
+          error: NextResponse.json(
+            { message: "Недостаточно прав доступа" },
+            { status: 403 }
+          )
+        };
+      }
+    } else if (requiredRoles && requiredRoles.length > 0) {
+      // Legacy role checking
       if (!requiredRoles.includes(user.role)) {
         return {
           error: NextResponse.json(
@@ -151,6 +166,13 @@ export async function authenticateApiRequest(
       )
     };
   }
+}
+
+/**
+ * Simplified authentication for admin-only endpoints
+ */
+export async function authenticateAdmin(request: NextRequest): Promise<ApiAuthResult | ApiAuthError> {
+  return authenticateApiRequest(request, undefined, true);
 }
 
 /**

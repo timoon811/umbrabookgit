@@ -12,13 +12,6 @@ interface DocumentationResult {
   content: string | null;
 }
 
-interface CourseResult {
-  id: string;
-  title: string;
-  description: string | null;
-  slug: string;
-  category: string | null;
-}
 
 
 
@@ -74,7 +67,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
-    const type = searchParams.get('type'); // 'all', 'docs', 'courses'
+    const type = searchParams.get('type'); // 'all', 'docs'
     const limit = parseInt(searchParams.get('limit') || '10');
 
     if (!query || query.trim().length < 2) {
@@ -96,7 +89,7 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     // Поиск в документации
-    if (type !== 'courses') {
+    if (type !== 'none') {
       const docsResults = await prisma.documentation.findMany({
         where: {
           OR: [
@@ -131,39 +124,7 @@ export async function GET(request: NextRequest) {
       results.push(...docsWithRelevance);
     }
 
-    // Поиск в курсах
-    if (type !== 'docs') {
-      const coursesResults = await prisma.courses.findMany({
-        where: {
-          OR: [
-            { title: { contains: searchTerm } },
-            { description: { contains: searchTerm } },
-            { slug: { contains: searchTerm } },
-          ],
-          isPublished: true,
-        },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          slug: true,
-          category: true,
-        },
-        take: limit * 2, // Берем больше для сортировки по релевантности
-      });
-
-      // Вычисляем релевантность и сортируем
-      const coursesWithRelevance = coursesResults.map((course: CourseResult) => ({
-        ...course,
-        relevance: calculateRelevance(course.title, course.description, searchTerm),
-        type: 'course' as const,
-        url: `/courses/${course.slug}`,
-        displayTitle: `🎓 ${course.title}`,
-        section: course.category,
-      }));
-
-      results.push(...coursesWithRelevance);
-    }
+    // Поиск в курсах удален - теперь все через проекты контента
 
     // Сортируем по релевантности и берем топ результаты
     const sortedResults = results

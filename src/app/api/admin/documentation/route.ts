@@ -50,15 +50,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const section = searchParams.get('section');
+    const projectId = searchParams.get('projectId');
 
     // Принудительно обновляем кэш для получения актуальных данных
     await prisma.$queryRaw`SELECT 1`;
     
-    // Получаем все разделы
+    // Получаем разделы с фильтрацией по проекту
+    const sectionsWhere: Record<string, unknown> = {
+      isVisible: true
+    };
+    
+    if (projectId) {
+      sectionsWhere.projectId = projectId;
+    }
+    
     const sections = await prisma.documentation_sections.findMany({
-      where: {
-        isVisible: true
-      },
+      where: sectionsWhere,
       orderBy: [
         { order: 'asc' },
         { createdAt: 'asc' }

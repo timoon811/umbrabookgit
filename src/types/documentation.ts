@@ -1,3 +1,14 @@
+export interface ContentProject {
+  id: string;
+  name: string;
+  description?: string;
+  type: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  documentationSections?: DocumentationSection[];
+}
+
 export interface DocumentationPage {
   id: string;
   title: string;
@@ -19,7 +30,9 @@ export interface DocumentationSection {
   description: string;
   order: number;
   isVisible: boolean;
+  projectId?: string;
   pages: DocumentationPage[];
+  project?: ContentProject;
 }
 
 import React from 'react';

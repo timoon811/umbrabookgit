@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  // Проверяем авторизацию администратора
+  const authResult = await requireAdminAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -51,10 +58,10 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        orderBy: {
-          shiftDate: 'desc',
-          createdAt: 'desc'
-        },
+        orderBy: [
+          { shiftDate: 'desc' },
+          { createdAt: 'desc' }
+        ],
         skip,
         take: limit,
       }),
@@ -97,6 +104,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  // Проверяем авторизацию администратора
+  const authResult = await requireAdminAuth(request);
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
   try {
     const data = await request.json();
     const { id, updates } = data;

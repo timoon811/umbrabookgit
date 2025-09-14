@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/ThemeToggle";
+import AuthRedirect from "@/components/AuthRedirect";
 
 export const metadata: Metadata = {
   title: "Umbra Platform - Вход",
@@ -13,14 +14,16 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] relative">
-      {/* Переключатель темы в правом верхнем углу */}
-      <div className="absolute top-4 right-4 z-10">
-        <ThemeToggle />
+    <AuthRedirect>
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] relative">
+        {/* Переключатель темы в правом верхнем углу */}
+        <div className="absolute top-4 right-4 z-10">
+          <ThemeToggle />
+        </div>
+        
+        {/* Основной контент страницы аутентификации */}
+        {children}
       </div>
-      
-      {/* Основной контент страницы аутентификации */}
-      {children}
-    </div>
+    </AuthRedirect>
   );
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { hasAdminAccess } from "@/lib/permissions";
+import { UserRole } from "@/types/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -18,7 +20,6 @@ const adminRoutes = ["/admin"];
 
 // Маршруты, запрещенные для PROCESSOR (они могут видеть только /processing, /docs, /profile)
 const processorRestrictedRoutes = [
-  "/courses",
   "/connections", 
   "/buyer",
   "/finance",
@@ -28,7 +29,6 @@ const processorRestrictedRoutes = [
 const protectedRoutes = [
   "/", // Главная страница (требует авторизации)
   "/docs", // Документация (теперь требует авторизации)
-  "/courses", // Курсы
   "/profile", // Профиль
   "/processing", // Кабинет обработчика
   "/connections", // Связки
@@ -47,7 +47,7 @@ async function checkAdminRole(token: string): Promise<boolean> {
         exp: number;
       };
 
-      return decoded.role === "ADMIN";
+      return hasAdminAccess(decoded.role as UserRole);
     } catch (verifyError) {
       // Fallback: декодируем без верификации
       const decoded = jwt.decode(token) as any;
@@ -56,7 +56,7 @@ async function checkAdminRole(token: string): Promise<boolean> {
         return false;
       }
 
-      return decoded.role === "ADMIN";
+      return hasAdminAccess(decoded.role as UserRole);
     }
   } catch (error) {
     return false;

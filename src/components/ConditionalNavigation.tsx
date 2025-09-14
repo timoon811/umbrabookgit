@@ -7,6 +7,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import UmbraLogo from "@/components/UmbraLogo";
 import UserActions from "@/components/UserActions";
 import NoSSR from "@/components/NoSSR";
+import MaterialsDropdown from "@/components/MaterialsDropdown";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ConditionalNavigation() {
@@ -31,24 +32,9 @@ export default function ConditionalNavigation() {
           
           {/* Навигационные кнопки - только для авторизованных */}
           <div className="flex items-center gap-2">
-            {/* Документация - доступна только авторизованным */}
+            {/* Материалы - выпадающее меню с проектами */}
             {mounted && user && (
-              <Link
-                href="/docs"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-              >
-                Документация
-              </Link>
-            )}
-            
-            {/* Курсы - скрыты для процессоров и неавторизованных */}
-            {mounted && user && user?.role !== "PROCESSOR" && (
-              <Link
-                href="/courses"
-                className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-              >
-                Курсы
-              </Link>
+              <MaterialsDropdown />
             )}
             
             {/* Обработка - доступна всем авторизованным */}

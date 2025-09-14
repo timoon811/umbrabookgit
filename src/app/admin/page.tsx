@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import NotificationDemo from "@/components/admin/NotificationDemo";
 
 interface StatsData {
   overview: {
@@ -74,12 +75,14 @@ export default function AdminPage() {
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
-      'ADMIN': 'Администратор',
-      'MODERATOR': 'Модератор',
-      'MEDIA_BUYER': 'Медиа байер',
-      'PROCESSOR': 'Обработчик',
-      'SUPPORT': 'Поддержка',
       'USER': 'Пользователь',
+      'PROCESSOR': 'Обработчик',
+      'MEDIA_BUYER': 'Медиа байер',
+      'ROP_PROCESSOR': 'РОП обработки',
+      'ROP_BUYER': 'РОП байер',
+      'MODERATOR': 'Модератор',
+      'SUPPORT': 'Поддержка',
+      'ADMIN': 'Администратор',
     };
     return labels[role] || role;
   };
@@ -291,6 +294,10 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Демонстрация системы уведомлений */}
+      <div className="mt-8">
+        <NotificationDemo />
+      </div>
 
     </div>
   );

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAdminAccess } from "@/lib/auth";
+import { getRoleDisplayName } from "@/types/roles";
+import type { UserRole } from "@/types/roles";
 import WalletsTab from "@/components/WalletsTab";
 
 interface User {
@@ -117,15 +119,7 @@ export default function ProfilePage() {
   };
 
   const getRoleName = (role: string) => {
-    const roleMap: Record<string, string> = {
-      ADMIN: "Администратор",
-      MODERATOR: "Модератор",
-      MEDIA_BUYER: "Медиа байер",
-      PROCESSOR: "Обработчик",
-      SUPPORT: "Поддержка",
-      USER: "Пользователь",
-    };
-    return roleMap[role] || role;
+    return getRoleDisplayName(role as UserRole);
   };
 
   // Функция getStatusName удалена (поле status больше не используется)
@@ -136,7 +130,12 @@ export default function ProfilePage() {
     const colorMap: Record<string, string> = {
       ADMIN: "bg-purple-500/15 text-purple-700 dark:bg-purple-500/30 dark:text-purple-300",
       USER: "bg-gray-500/15 text-gray-800 dark:bg-white/10 dark:text-white",
+      PROCESSOR: "bg-blue-500/15 text-blue-700 dark:bg-blue-500/30 dark:text-blue-300",
+      MEDIA_BUYER: "bg-orange-500/15 text-orange-700 dark:bg-orange-500/30 dark:text-orange-300",
+      ROP_PROCESSOR: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-300",
+      ROP_BUYER: "bg-pink-500/15 text-pink-700 dark:bg-pink-500/30 dark:text-pink-300",
       MODERATOR: "bg-gray-500/15 text-gray-700 dark:bg-gray-500/30 dark:text-gray-300",
+      SUPPORT: "bg-green-500/15 text-green-700 dark:bg-green-500/30 dark:text-green-300",
     };
     return colorMap[role] || "bg-black/10 dark:bg-white/20 text-black/70 dark:text-white/70";
   };

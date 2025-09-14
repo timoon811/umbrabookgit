@@ -29,11 +29,11 @@ async function checkAdminAuth(request: NextRequest) {
 // GET /api/admin/managers/[id]/stats - Получение статистики менеджера
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkAdminAuth(request);
-    const managerId = params.id;
+    const { id: managerId } = await params;
 
     // Получаем все депозиты менеджера
     const allDeposits = await prisma.processor_deposits.findMany({

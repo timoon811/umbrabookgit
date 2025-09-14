@@ -9,12 +9,9 @@ const navigationSections = [
     title: "",
     items: [
       { name: "Дашборд", href: "/admin" },
-      { name: "Все пользователи", href: "/admin/users" },
-      { name: "Документация", href: "/admin/documentation" },
-      { name: "Курсы", href: "/admin/courses" },
+      { name: "Пользователи", href: "/admin/users" },
+      { name: "Редактор", href: "/admin/documentation" },
       { name: "Обработка", href: "/admin/processing" },
-      { name: "Депозиты", href: "/admin/deposits" },
-      { name: "🧪 Тест загрузки", href: "/admin/uploads-test" },
     ],
   },
   {
@@ -24,6 +21,12 @@ const navigationSections = [
       { name: "Счета", href: "/admin/finance/accounts" },
       { name: "Операции", href: "/admin/finance/transactions" },
       { name: "Настройки", href: "/admin/finance/settings" },
+    ],
+  },
+  {
+    title: "СИСТЕМА",
+    items: [
+      { name: "Настройки", href: "/admin/settings" },
     ],
   },
 ];

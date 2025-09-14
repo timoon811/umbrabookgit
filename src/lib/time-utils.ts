@@ -8,7 +8,7 @@ export interface TimePeriod {
   isCurrentPeriod: boolean;
 }
 
-export type ShiftType = 'morning' | 'day' | 'night';
+export type ShiftType = 'MORNING' | 'DAY' | 'NIGHT';
 
 /**
  * Получает текущее время в UTC+3
@@ -129,11 +129,11 @@ export function getShiftType(date: Date): ShiftType {
   const hour = utc3Time.getUTCHours();
 
   if (hour >= 6 && hour < 14) {
-    return 'morning'; // 06:00 - 14:00 UTC+3
+    return 'MORNING'; // 06:00 - 14:00 UTC+3
   } else if (hour >= 14 && hour < 22) {
-    return 'day'; // 14:00 - 22:00 UTC+3
+    return 'DAY'; // 14:00 - 22:00 UTC+3
   } else {
-    return 'night'; // 22:00 - 06:00 UTC+3
+    return 'NIGHT'; // 22:00 - 06:00 UTC+3
   }
 }
 
@@ -142,11 +142,11 @@ export function getShiftType(date: Date): ShiftType {
  */
 export function getShiftStartTime(shiftType: ShiftType): { hour: number; minute: number } {
   switch (shiftType) {
-    case 'morning':
+    case 'MORNING':
       return { hour: 6, minute: 0 }; // 06:00 UTC+3
-    case 'day':
+    case 'DAY':
       return { hour: 14, minute: 0 }; // 14:00 UTC+3
-    case 'night':
+    case 'NIGHT':
       return { hour: 22, minute: 0 }; // 22:00 UTC+3
     default:
       return { hour: 6, minute: 0 };
@@ -158,11 +158,11 @@ export function getShiftStartTime(shiftType: ShiftType): { hour: number; minute:
  */
 export function getShiftEndTime(shiftType: ShiftType): { hour: number; minute: number } {
   switch (shiftType) {
-    case 'morning':
+    case 'MORNING':
       return { hour: 14, minute: 0 }; // 14:00 UTC+3
-    case 'day':
+    case 'DAY':
       return { hour: 22, minute: 0 }; // 22:00 UTC+3
-    case 'night':
+    case 'NIGHT':
       return { hour: 30, minute: 0 }; // 06:00 UTC+3 следующего дня (30 часов)
     default:
       return { hour: 14, minute: 0 };

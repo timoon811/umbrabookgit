@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     await checkAdminAuth();
     
     const body = await request.json();
-    const { name, key, description, order = 0 } = body;
+    const { name, key, description, order = 0, projectId } = body;
     
     if (!name) {
       return NextResponse.json({ error: "Название раздела обязательно" }, { status: 400 });
@@ -94,10 +94,10 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         key,
-
         description,
         order,
-        isVisible: true
+        isVisible: true,
+        projectId: projectId || null
       }
     });
     

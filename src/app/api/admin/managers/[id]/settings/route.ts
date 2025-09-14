@@ -33,11 +33,11 @@ async function checkAdminAuth(request: NextRequest) {
 // GET /api/admin/managers/[id]/settings - Получение настроек менеджера
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkAdminAuth(request);
-    const managerId = params.id;
+    const { id: managerId } = await params;
 
     // Получаем настройки менеджера (пока используем значения по умолчанию)
     // В будущем можно создать отдельную таблицу для персональных настроек
@@ -62,11 +62,11 @@ export async function GET(
 // PUT /api/admin/managers/[id]/settings - Обновление настроек менеджера
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await checkAdminAuth(request);
-    const managerId = params.id;
+    const { id: managerId } = await params;
     const data = await request.json();
 
     // Здесь можно сохранить настройки в базу данных

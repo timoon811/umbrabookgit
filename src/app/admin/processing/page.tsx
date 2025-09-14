@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react";
 import SalaryRequestsTab from "@/components/admin/SalaryRequestsTab";
+import SalarySettingsTab from "@/components/admin/SalarySettingsTab";
+import ShiftScheduleTab from "@/components/admin/ShiftScheduleTab";
+import ShiftLogsTab from "@/components/admin/ShiftLogsTab";
 
-interface ProcessorStats {
-  totalDeposits: number;
-  totalAmount: number;
-  totalBonuses: number;
-  pendingSalaryRequests: number;
-}
 
 interface DepositData {
   id: string;
@@ -50,43 +47,6 @@ interface DepositsAnalytics {
   }>;
 }
 
-interface BonusSettings {
-  id: string;
-  name: string;
-  description?: string;
-  baseCommissionRate: number;
-  baseBonusRate: number;
-  tiers: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BonusGrid {
-  id: string;
-  shiftType: 'MORNING' | 'DAY' | 'NIGHT';
-  minAmount: number;
-  maxAmount?: number;
-  bonusPercentage: number;
-  fixedBonus?: number;
-  fixedBonusMin?: number;
-  description?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BonusMotivation {
-  id: string;
-  type: 'PERCENTAGE' | 'FIXED_AMOUNT';
-  name: string;
-  description?: string;
-  value: number;
-  conditions?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface Manager {
   id: string;
@@ -124,73 +84,18 @@ interface ManagerFilters {
   search: string;
   status: string;
   sortBy: string;
+  sortOrder: 'asc' | 'desc';
 }
 
-// Типы для материалов обработки
-interface ProcessingInstruction {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-  priority: number;
-  isActive: boolean;
-  isPublic: boolean;
-  targetRoles?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProcessingScript {
-  id: string;
-  title: string;
-  content: string;
-  description?: string;
-  category: string;
-  language: string;
-  isActive: boolean;
-  isPublic: boolean;
-  targetRoles?: string;
-  usageCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProcessingResource {
-  id: string;
-  title: string;
-  description?: string;
-  type: string;
-  category: string;
-  url?: string;
-  filePath?: string;
-  order: number;
-  isActive: boolean;
-  isPublic: boolean;
-  targetRoles?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProcessingTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  content: string;
-  type: string;
-  variables?: string;
-  isActive: boolean;
-  isPublic: boolean;
-  targetRoles?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function AdminProcessingPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState<ProcessorStats | null>(null);
+  const [activeShiftSubTab, setActiveShiftSubTab] = useState("logs"); // logs или settings
+  const [activeSalarySubTab, setActiveSalarySubTab] = useState("requests"); // requests или settings
   const [deposits, setDeposits] = useState<DepositData[]>([]);
   const [analytics, setAnalytics] = useState<DepositsAnalytics | null>(null);
+  const [platformCommission, setPlatformCommission] = useState(5.0); // Процент комиссии платформы
   const [filters, setFilters] = useState({
     currency: "all",
     currencyType: "all",
@@ -215,21 +120,14 @@ export default function AdminProcessingPage() {
   const [selectedDeposit, setSelectedDeposit] = useState<DepositData | null>(null);
   const [processors, setProcessors] = useState<Array<{id: string, name: string, email: string}>>([]);
 
-  // Состояния для бонусной системы
-  const [bonusSettings, setBonusSettings] = useState<BonusSettings | null>(null);
-  const [bonusGrids, setBonusGrids] = useState<BonusGrid[]>([]);
-  const [bonusMotivations, setBonusMotivations] = useState<BonusMotivation[]>([]);
-  const [showBonusGridModal, setShowBonusGridModal] = useState(false);
-  const [showMotivationModal, setShowMotivationModal] = useState(false);
-  const [editingBonusGrid, setEditingBonusGrid] = useState<BonusGrid | null>(null);
-  const [editingMotivation, setEditingMotivation] = useState<BonusMotivation | null>(null);
 
   // Состояния для управления менеджерами
   const [managers, setManagers] = useState<Manager[]>([]);
   const [managerFilters, setManagerFilters] = useState<ManagerFilters>({
     search: '',
     status: 'all',
-    sortBy: 'name'
+    sortBy: 'name',
+    sortOrder: 'asc'
   });
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
@@ -238,54 +136,40 @@ export default function AdminProcessingPage() {
   const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
   const [editingManager, setEditingManager] = useState<Manager | null>(null);
 
-  // Новые состояния для инструкций и скриптов
-  const [instructions, setInstructions] = useState<ProcessingInstruction[]>([]);
-  const [scripts, setScripts] = useState<ProcessingScript[]>([]);
-  const [resources, setResources] = useState<ProcessingResource[]>([]);
-  const [templates, setTemplates] = useState<ProcessingTemplate[]>([]);
-  const [showInstructionModal, setShowInstructionModal] = useState(false);
-  const [showScriptModal, setShowScriptModal] = useState(false);
-  const [showResourceModal, setShowResourceModal] = useState(false);
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [editingInstruction, setEditingInstruction] = useState<ProcessingInstruction | null>(null);
-  const [editingScript, setEditingScript] = useState<ProcessingScript | null>(null);
-  const [editingResource, setEditingResource] = useState<ProcessingResource | null>(null);
-  const [editingTemplate, setEditingTemplate] = useState<ProcessingTemplate | null>(null);
 
   useEffect(() => {
     loadData();
     loadProcessors();
-    loadBonusSettings();
     loadManagers();
-    loadProcessingMaterials();
   }, []);
 
   useEffect(() => {
     if (activeTab === "deposits") {
       loadDeposits();
+      loadPlatformCommission();
     }
   }, [activeTab, filters, pagination.page, sortBy, sortOrder]);
+
+  const loadPlatformCommission = async () => {
+    try {
+      const response = await fetch('/api/admin/platform-commission', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.commission) {
+          setPlatformCommission(data.commission.commissionPercent);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки настроек комиссии:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Загружаем статистику по заявкам на ЗП
-      const salaryResponse = await fetch('/api/admin/salary-requests?limit=1');
-      let pendingSalaryRequests = 0;
-      
-      if (salaryResponse.ok) {
-        const salaryData = await salaryResponse.json();
-        pendingSalaryRequests = salaryData.salaryRequests.filter((r: { status: string }) => r.status === 'PENDING').length;
-      }
-      
-      // Заглушка для остальной статистики
-      setStats({
-        totalDeposits: 0,
-        totalAmount: 0,
-        totalBonuses: 0,
-        pendingSalaryRequests,
-      });
+      // Здесь может быть дополнительная логика загрузки при необходимости
     } catch (error) {
       console.error("Ошибка загрузки данных:", error);
     } finally {
@@ -411,98 +295,6 @@ export default function AdminProcessingPage() {
     }
   };
 
-  // Функции для управления бонусной системой
-  const loadBonusSettings = async () => {
-    try {
-      const response = await fetch('/api/admin/bonus-settings');
-      if (response.ok) {
-        const data = await response.json();
-        setBonusSettings(data.bonusSettings[0] || null);
-        setBonusGrids(data.bonusGrids || []);
-        setBonusMotivations(data.bonusMotivations || []);
-      }
-    } catch (error) {
-      console.error("Ошибка загрузки настроек бонусов:", error);
-    }
-  };
-
-  const saveBaseSettings = async () => {
-    if (!bonusSettings) return;
-    
-    try {
-      const response = await fetch('/api/admin/bonus-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'baseSettings',
-          settings: bonusSettings,
-        }),
-      });
-      
-      if (response.ok) {
-        await loadBonusSettings();
-        alert('Базовые настройки сохранены');
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка сохранения базовых настроек:", error);
-      alert("Ошибка при сохранении настроек");
-    }
-  };
-
-  const handleEditBonusGrid = (grid: BonusGrid) => {
-    setEditingBonusGrid(grid);
-    setShowBonusGridModal(true);
-  };
-
-  const handleDeleteBonusGrid = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту ступень бонусной сетки?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/bonus-settings?type=bonusGrid&id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadBonusSettings();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления ступени сетки:", error);
-      alert("Ошибка при удалении ступени");
-    }
-  };
-
-  const handleEditMotivation = (motivation: BonusMotivation) => {
-    setEditingMotivation(motivation);
-    setShowMotivationModal(true);
-  };
-
-  const handleDeleteMotivation = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту мотивацию?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/bonus-settings?type=bonusMotivation&id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadBonusSettings();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления мотивации:", error);
-      alert("Ошибка при удалении мотивации");
-    }
-  };
 
   // Функции для управления менеджерами
   const loadManagers = async () => {
@@ -650,144 +442,6 @@ export default function AdminProcessingPage() {
     }
   };
 
-  // Функция загрузки материалов обработки
-  const loadProcessingMaterials = async () => {
-    try {
-      // Загружаем инструкции
-      const instructionsResponse = await fetch('/api/admin/processing-instructions');
-      if (instructionsResponse.ok) {
-        const data = await instructionsResponse.json();
-        setInstructions(data.instructions || []);
-      }
-
-      // Загружаем скрипты
-      const scriptsResponse = await fetch('/api/admin/processing-scripts');
-      if (scriptsResponse.ok) {
-        const data = await scriptsResponse.json();
-        setScripts(data.scripts || []);
-      }
-
-      // Загружаем ресурсы
-      const resourcesResponse = await fetch('/api/admin/processing-resources');
-      if (resourcesResponse.ok) {
-        const data = await resourcesResponse.json();
-        setResources(data.resources || []);
-      }
-
-      // Загружаем шаблоны
-      const templatesResponse = await fetch('/api/admin/processing-templates');
-      if (templatesResponse.ok) {
-        const data = await templatesResponse.json();
-        setTemplates(data.templates || []);
-      }
-    } catch (error) {
-      console.error("Ошибка загрузки материалов:", error);
-    }
-  };
-
-  // Функции для управления инструкциями
-  const handleEditInstruction = (instruction: ProcessingInstruction) => {
-    setEditingInstruction(instruction);
-    setShowInstructionModal(true);
-  };
-
-  const handleDeleteInstruction = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту инструкцию?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/processing-instructions?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadProcessingMaterials();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления инструкции:", error);
-      alert("Ошибка при удалении инструкции");
-    }
-  };
-
-  // Функции для управления скриптами
-  const handleEditScript = (script: ProcessingScript) => {
-    setEditingScript(script);
-    setShowScriptModal(true);
-  };
-
-  const handleDeleteScript = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот скрипт?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/processing-scripts?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadProcessingMaterials();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления скрипта:", error);
-      alert("Ошибка при удалении скрипта");
-    }
-  };
-
-  // Функции для управления ресурсами
-  const handleEditResource = (resource: ProcessingResource) => {
-    setEditingResource(resource);
-    setShowResourceModal(true);
-  };
-
-  const handleDeleteResource = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот ресурс?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/processing-resources?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadProcessingMaterials();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления ресурса:", error);
-      alert("Ошибка при удалении ресурса");
-    }
-  };
-
-  // Функции для управления шаблонами
-  const handleEditTemplate = (template: ProcessingTemplate) => {
-    setEditingTemplate(template);
-    setShowTemplateModal(true);
-  };
-
-  const handleDeleteTemplate = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот шаблон?')) return;
-    
-    try {
-      const response = await fetch(`/api/admin/processing-templates?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        await loadProcessingMaterials();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка удаления шаблона:", error);
-      alert("Ошибка при удалении шаблона");
-    }
-  };
 
   if (loading) {
     return (
@@ -802,141 +456,66 @@ export default function AdminProcessingPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
-      <div className="p-4 lg:p-6">
-        <div className="mb-4 lg:mb-6">
-          <h1 className="text-xl lg:text-2xl font-bold text-[#171717] dark:text-[#ededed] mb-1 lg:mb-2">
-            Управление обработкой
-          </h1>
-          <p className="text-sm lg:text-base text-[#171717]/60 dark:text-[#ededed]/60">
-            Настройки системы обработки депозитов и управление процессорами
-          </p>
-        </div>
-
-        {/* Общая статистика - адаптивная версия */}
-        {stats && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
-              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Всего депозитов</h3>
-              <div className="text-xl lg:text-2xl font-bold text-[#171717] dark:text-[#ededed]">{stats.totalDeposits}</div>
-              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">${stats.totalAmount.toLocaleString()}</div>
-            </div>
-
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
-              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Система</h3>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs lg:text-sm">
-                  <span className="text-green-600">Автоодобрение:</span>
-                  <span className="text-[#171717] dark:text-[#ededed]">Включено</span>
-                </div>
-                <div className="flex justify-between text-xs lg:text-sm">
-                  <span className="text-blue-600">Бонусы:</span>
-                  <span className="text-[#171717] dark:text-[#ededed]">Сразу</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
-              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Бонусы</h3>
-              <div className="text-xl lg:text-2xl font-bold text-green-600">${stats.totalBonuses.toLocaleString()}</div>
-              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">Начислено всего</div>
-            </div>
-
-            <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10 p-4 lg:p-6">
-              <h3 className="text-xs lg:text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">Заявки на ЗП</h3>
-              <div className="text-xl lg:text-2xl font-bold text-yellow-600">{stats.pendingSalaryRequests}</div>
-              <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">В ожидании</div>
-            </div>
-          </div>
-        )}
-
-        {/* Табы - адаптивная версия с горизонтальным скроллом */}
-        <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/5 dark:border-[#ededed]/10">
-          <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
-            <nav className="flex space-x-4 lg:space-x-8 px-4 lg:px-6 min-w-max" aria-label="Tabs">
+      {/* Закрепленные табы как второй header */}
+      <div className="sticky top-0 z-40 bg-white dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="overflow-x-auto">
+          <nav className="flex space-x-2 lg:space-x-3 px-4 lg:px-6 min-w-max py-3 lg:py-4" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                className={`flex-shrink-0 py-2 px-3 lg:px-4 font-medium text-xs lg:text-sm whitespace-nowrap rounded-lg transition-colors ${
                   activeTab === "overview"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 Обзор
               </button>
               <button
                 onClick={() => setActiveTab("deposits")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                className={`flex-shrink-0 py-2 px-3 lg:px-4 font-medium text-xs lg:text-sm whitespace-nowrap rounded-lg transition-colors ${
                   activeTab === "deposits"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 Депозиты
               </button>
               <button
-                onClick={() => setActiveTab("settings")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
-                  activeTab === "settings"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-              >
-                Бонусы
-              </button>
-              <button
                 onClick={() => setActiveTab("managers")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                className={`flex-shrink-0 py-2 px-3 lg:px-4 font-medium text-xs lg:text-sm whitespace-nowrap rounded-lg transition-colors ${
                   activeTab === "managers"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 Менеджеры
               </button>
               <button
-                onClick={() => setActiveTab("materials")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
-                  activeTab === "materials"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-              >
-                Материалы
-              </button>
-              <button
-                onClick={() => setActiveTab("bonusGrid")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
-                  activeTab === "bonusGrid"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-              >
-                Сетка
-              </button>
-              <button
                 onClick={() => setActiveTab("salaryRequests")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                className={`flex-shrink-0 py-2 px-3 lg:px-4 font-medium text-xs lg:text-sm whitespace-nowrap rounded-lg transition-colors ${
                   activeTab === "salaryRequests"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 ЗП
               </button>
               <button
-                onClick={() => setActiveTab("shiftLogs")}
-                className={`flex-shrink-0 py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
-                  activeTab === "shiftLogs"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                onClick={() => setActiveTab("shifts")}
+                className={`flex-shrink-0 py-2 px-3 lg:px-4 font-medium text-xs lg:text-sm whitespace-nowrap rounded-lg transition-colors ${
+                  activeTab === "shifts"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
                 Смены
               </button>
-            </nav>
-          </div>
+          </nav>
+        </div>
+      </div>
 
-          <div className="p-4 lg:p-6">
+      {/* Основной контент с отступом от закрепленного header */}
+      <div className="p-4 lg:p-6">
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
@@ -1090,6 +669,9 @@ export default function AdminProcessingPage() {
                           Сумма {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Чистая сумма
+                        </th>
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Валюта
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -1120,6 +702,16 @@ export default function AdminProcessingPage() {
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                             {deposit.amount.toLocaleString()} {deposit.currency}
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-green-600 dark:text-green-400">
+                                {(deposit.amount * (1 - platformCommission / 100)).toLocaleString()} {deposit.currency}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                -{platformCommission}% комиссия
+                              </span>
+                            </div>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1201,194 +793,29 @@ export default function AdminProcessingPage() {
               </div>
             )}
 
-            {activeTab === "settings" && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    Настройки бонусов и комиссий
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      onClick={() => setShowBonusGridModal(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Добавить ступень сетки
-                    </button>
-                    <button 
-                      onClick={() => setShowMotivationModal(true)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      Добавить мотивацию
-                    </button>
-                  </div>
-                </div>
-
-                {/* Базовые настройки */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Базовые настройки</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Базовая комиссия (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        defaultValue={bonusSettings?.baseCommissionRate || 30.0}
-                        className="w-full px-3 py-2 border border-blue-200 rounded-md bg-white dark:bg-gray-800 dark:border-blue-700 dark:text-white"
-                        onChange={(e) => setBonusSettings(prev => prev ? { ...prev, baseCommissionRate: parseFloat(e.target.value) || 0 } : null)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Базовый бонус (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        defaultValue={bonusSettings?.baseBonusRate || 5.0}
-                        className="w-full px-3 py-2 border border-blue-200 rounded-md bg-white dark:bg-gray-800 dark:border-blue-700 dark:text-white"
-                        onChange={(e) => setBonusSettings(prev => prev ? { ...prev, baseBonusRate: parseFloat(e.target.value) || 0 } : null)}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={saveBaseSettings}
-                        className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
-                      >
-                        Сохранить
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Бонусная сетка */}
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-4">Бонусная сетка</h4>
-                  <div className="space-y-3">
-                    {bonusGrids.map((grid) => (
-                      <div key={grid.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              grid.shiftType === 'MORNING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              grid.shiftType === 'DAY' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                              'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                            }`}>
-                              {grid.shiftType === 'MORNING' ? '🌅 Утро' :
-                               grid.shiftType === 'DAY' ? '☀️ День' : '🌙 Ночь'}
-                            </span>
-                          </div>
-                          <div className="font-medium">
-                            ${grid.minAmount.toLocaleString()} - {grid.maxAmount ? `$${grid.maxAmount.toLocaleString()}` : '∞'}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{grid.description}</div>
-                          {grid.fixedBonus && (
-                            <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                              +${grid.fixedBonus} при ${grid.fixedBonusMin}$+
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-bold text-green-600">{grid.bonusPercentage}%</span>
-                          <button
-                            onClick={() => handleEditBonusGrid(grid)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBonusGrid(grid.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {bonusGrids.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Бонусная сетка не настроена
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Мотивации */}
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-4">Дополнительные мотивации</h4>
-                  <div className="space-y-3">
-                    {bonusMotivations.map((motivation) => (
-                      <div key={motivation.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{motivation.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{motivation.description}</div>
-                          <div className="text-xs text-purple-600 dark:text-purple-400">
-                            {motivation.type === 'PERCENTAGE' ? `${motivation.value}%` : `$${motivation.value}`}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            motivation.isActive 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {motivation.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditMotivation(motivation)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMotivation(motivation.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {bonusMotivations.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Мотивации не настроены
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {activeTab === "managers" && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    Управление менеджерами
-                  </h3>
-                  <button 
-                    onClick={() => setShowManagerModal(true)}
-                    className="bg-blue-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm lg:text-base"
-                  >
-                    Добавить менеджера
-                  </button>
-                </div>
+              <div className="space-y-4">{/* Убран заголовок и кнопка добавления менеджера */}
 
                 {/* Фильтры и поиск */}
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Поиск</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Поиск</label>
                       <input
                         type="text"
                         placeholder="Имя, email..."
                         value={managerFilters.search}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, search: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
                       <select
                         value={managerFilters.status}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="all">Все</option>
                         <option value="active">Активные</option>
@@ -1396,816 +823,416 @@ export default function AdminProcessingPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Сортировка</label>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Сортировка</label>
                       <select
                         value={managerFilters.sortBy}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="name">По имени</option>
-                        <option value="performance">По эффективности</option>
-                        <option value="earnings">По заработку</option>
-                        <option value="createdAt">По дате регистрации</option>
+                        <option value="totalDeposits">По депозитам</option>
+                        <option value="totalAmount">По объему</option>
+                        <option value="totalBonuses">По бонусам</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
-                {/* Список менеджеров */}
-                <div className="space-y-4">
-                  {managers.map((manager) => (
-                    <div key={manager.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                              <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                                {manager.name.charAt(0).toUpperCase()}
+                {/* Таблица менеджеров */}
+                <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/5 dark:border-[#ededed]/10 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/5 border-b border-[#171717]/5 dark:border-[#ededed]/10">
+                        <tr>
+                          <th 
+                            className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider cursor-pointer hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/10 transition-colors"
+                            onClick={() => {
+                              const newSortBy = 'name';
+                              setManagerFilters(prev => ({ 
+                                ...prev, 
+                                sortBy: newSortBy,
+                                sortOrder: prev.sortBy === newSortBy && prev.sortOrder === 'asc' ? 'desc' : 'asc'
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              Менеджер
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                              </svg>
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider cursor-pointer hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/10 transition-colors"
+                            onClick={() => {
+                              const newSortBy = 'totalDeposits';
+                              setManagerFilters(prev => ({ 
+                                ...prev, 
+                                sortBy: newSortBy,
+                                sortOrder: prev.sortBy === newSortBy && prev.sortOrder === 'desc' ? 'asc' : 'desc'
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              Депозиты
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                              </svg>
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider cursor-pointer hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/10 transition-colors"
+                            onClick={() => {
+                              const newSortBy = 'totalAmount';
+                              setManagerFilters(prev => ({ 
+                                ...prev, 
+                                sortBy: newSortBy,
+                                sortOrder: prev.sortBy === newSortBy && prev.sortOrder === 'desc' ? 'asc' : 'desc'
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              Объем
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                              </svg>
+                            </div>
+                          </th>
+                          <th 
+                            className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider cursor-pointer hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/10 transition-colors"
+                            onClick={() => {
+                              const newSortBy = 'totalBonuses';
+                              setManagerFilters(prev => ({ 
+                                ...prev, 
+                                sortBy: newSortBy,
+                                sortOrder: prev.sortBy === newSortBy && prev.sortOrder === 'desc' ? 'asc' : 'desc'
+                              }));
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              Заработано
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                              </svg>
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                            Настройки
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                            Статус
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+                            Действия
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
+                        {(() => {
+                          // Фильтрация и сортировка менеджеров
+                          const filteredManagers = managers.filter(manager => {
+                            // Поиск по имени и email
+                            const searchMatch = !managerFilters.search || 
+                              manager.name.toLowerCase().includes(managerFilters.search.toLowerCase()) ||
+                              manager.email.toLowerCase().includes(managerFilters.search.toLowerCase());
+                            
+                            // Фильтр по статусу
+                            const statusMatch = managerFilters.status === 'all' ||
+                              (managerFilters.status === 'active' && !manager.isBlocked) ||
+                              (managerFilters.status === 'blocked' && manager.isBlocked);
+                            
+                            return searchMatch && statusMatch;
+                          });
+                          
+                          // Сортировка
+                          filteredManagers.sort((a, b) => {
+                            let valueA: string | number, valueB: string | number;
+                            
+                            switch (managerFilters.sortBy) {
+                              case 'name':
+                                valueA = a.name.toLowerCase();
+                                valueB = b.name.toLowerCase();
+                                break;
+                              case 'totalDeposits':
+                                valueA = a.stats.totalDeposits;
+                                valueB = b.stats.totalDeposits;
+                                break;
+                              case 'totalAmount':
+                                valueA = a.stats.totalAmount;
+                                valueB = b.stats.totalAmount;
+                                break;
+                              case 'totalBonuses':
+                                valueA = a.stats.totalBonuses;
+                                valueB = b.stats.totalBonuses;
+                                break;
+                              default:
+                                valueA = a.name.toLowerCase();
+                                valueB = b.name.toLowerCase();
+                            }
+                            
+                            if (typeof valueA === 'string' && typeof valueB === 'string') {
+                              const comparison = valueA.localeCompare(valueB);
+                              return managerFilters.sortOrder === 'asc' ? comparison : -comparison;
+                            } else {
+                              const comparison = (valueA as number) - (valueB as number);
+                              return managerFilters.sortOrder === 'asc' ? comparison : -comparison;
+                            }
+                          });
+                          
+                          return filteredManagers;
+                        })().map((manager) => (
+                          <tr key={manager.id} className="hover:bg-[#171717]/[0.02] dark:hover:bg-[#ededed]/5 transition-colors">
+                            {/* Менеджер */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                    {manager.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                                    {manager.name}
+                                  </div>
+                                  <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
+                                    {manager.email}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Депозиты */}
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-semibold text-[#171717] dark:text-[#ededed]">
+                                {manager.stats.totalDeposits}
+                              </div>
+                              <div className="text-xs text-green-600 dark:text-green-400">
+                                +{manager.stats.thisMonthDeposits} за месяц
+                              </div>
+                            </td>
+                            
+                            {/* Объем */}
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-semibold text-[#171717] dark:text-[#ededed]">
+                                ${manager.stats.totalAmount.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-blue-600 dark:text-blue-400">
+                                +${manager.stats.thisMonthAmount.toLocaleString()} за месяц
+                              </div>
+                            </td>
+                            
+                            {/* Заработано */}
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                                ${manager.stats.totalBonuses.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-purple-600 dark:text-purple-400">
+                                {manager.stats.avgBonusRate}% средний
+                              </div>
+                            </td>
+                            
+                            {/* Настройки */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                <div className="text-xs">
+                                  <span className="text-[#171717]/60 dark:text-[#ededed]/60">База:</span>
+                                  <span className="ml-1 font-medium text-[#171717] dark:text-[#ededed]">{manager.settings.baseRate}%</span>
+                                </div>
+                                <div className="text-xs">
+                                  <span className="text-[#171717]/60 dark:text-[#ededed]/60">Бонус:</span>
+                                  <span className="ml-1 font-medium text-[#171717] dark:text-[#ededed]">{manager.settings.bonusPercentage}%</span>
+                                </div>
+                                {manager.settings.fixedBonus > 0 && (
+                                  <div className="text-xs">
+                                    <span className="text-[#171717]/60 dark:text-[#ededed]/60">Фикс:</span>
+                                    <span className="ml-1 font-medium text-[#171717] dark:text-[#ededed]">${manager.settings.fixedBonus}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            
+                            {/* Статус */}
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                                manager.isBlocked 
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              }`}>
+                                {manager.isBlocked ? 'Заблокирован' : 'Активен'}
                               </span>
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {manager.name}
-                              </h4>
-                              <p className="text-gray-600 dark:text-gray-400">{manager.email}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-500">
-                                Зарегистрирован: {new Date(manager.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Статистика менеджера */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-green-600">{manager.stats.totalDeposits}</div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">Депозитов</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-blue-600">${manager.stats.totalAmount.toLocaleString()}</div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">Общий объем</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-purple-600">${manager.stats.totalBonuses.toLocaleString()}</div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">Заработано</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-orange-600">{manager.stats.avgBonusRate}%</div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">Средний бонус</div>
-                            </div>
-                          </div>
-
-                          {/* Текущие настройки */}
-                          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-4">
-                            <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Текущие настройки</h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">Базовая ставка:</span>
-                                <span className="ml-2 font-medium">{manager.settings.baseRate}%</span>
+                            </td>
+                            
+                            {/* Действия */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleEditManager(manager)}
+                                  className="p-1.5 text-[#171717]/60 dark:text-[#ededed]/60 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                                  title="Редактировать"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleManagerSalary(manager)}
+                                  className="p-1.5 text-[#171717]/60 dark:text-[#ededed]/60 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-lg transition-colors"
+                                  title="Управление ЗП"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleManagerBonuses(manager)}
+                                  className="p-1.5 text-[#171717]/60 dark:text-[#ededed]/60 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-colors"
+                                  title="Управление бонусами"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleManagerStats(manager)}
+                                  className="p-1.5 text-[#171717]/60 dark:text-[#ededed]/60 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition-colors"
+                                  title="Детальная статистика"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                  </svg>
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleToggleManagerStatus(manager)}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    manager.isBlocked
+                                      ? 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10'
+                                      : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
+                                  }`}
+                                  title={manager.isBlocked ? 'Разблокировать' : 'Заблокировать'}
+                                >
+                                  {manager.isBlocked ? (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                                    </svg>
+                                  )}
+                                </button>
                               </div>
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">Доп. процент:</span>
-                                <span className="ml-2 font-medium">{manager.settings.bonusPercentage}%</span>
+                            </td>
+                          </tr>
+                        ))}
+                        
+                        {(() => {
+                          // Проверка на пустой список
+                          const filteredManagers = managers.filter(manager => {
+                            const searchMatch = !managerFilters.search || 
+                              manager.name.toLowerCase().includes(managerFilters.search.toLowerCase()) ||
+                              manager.email.toLowerCase().includes(managerFilters.search.toLowerCase());
+                            
+                            const statusMatch = managerFilters.status === 'all' ||
+                              (managerFilters.status === 'active' && !manager.isBlocked) ||
+                              (managerFilters.status === 'blocked' && manager.isBlocked);
+                            
+                            return searchMatch && statusMatch;
+                          });
+                          
+                          return filteredManagers.length === 0;
+                        })() && (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-8 text-center">
+                              <div className="text-[#171717]/40 dark:text-[#ededed]/40">
+                                <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                </svg>
+                                <p className="text-sm">Менеджеры не найдены</p>
                               </div>
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">Фикс. бонус:</span>
-                                <span className="ml-2 font-medium">${manager.settings.fixedBonus}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">Статус:</span>
-                                <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                                  manager.isBlocked 
-                                    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                                    : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                }`}>
-                                  {manager.isBlocked ? 'Заблокирован' : 'Активен'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Действия */}
-                        <div className="flex flex-col gap-2 ml-4">
-                          <button
-                            onClick={() => handleEditManager(manager)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            title="Редактировать"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleManagerSalary(manager)}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 p-2 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
-                            title="Управление ЗП"
-                          >
-                            💰
-                          </button>
-                          <button
-                            onClick={() => handleManagerBonuses(manager)}
-                            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 p-2 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                            title="Управление бонусами"
-                          >
-                            🎁
-                          </button>
-                          <button
-                            onClick={() => handleManagerStats(manager)}
-                            className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 p-2 rounded hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                            title="Детальная статистика"
-                          >
-                            📊
-                          </button>
-                          <button
-                            onClick={() => handleToggleManagerStatus(manager)}
-                            className={`p-2 rounded ${
-                              manager.isBlocked
-                                ? 'text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                : 'text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20'
-                            }`}
-                            title={manager.isBlocked ? 'Разблокировать' : 'Заблокировать'}
-                          >
-                            {manager.isBlocked ? '✅' : '🚫'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {managers.length === 0 && (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Нет менеджеров</h3>
-                      <p className="text-gray-500 dark:text-gray-400">Пользователи с ролью PROCESSOR появятся здесь автоматически</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "materials" && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    Управление инструкциями и скриптами
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      onClick={() => setShowInstructionModal(true)}
-                      className="bg-blue-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm lg:text-base"
-                    >
-                      Инструкция
-                    </button>
-                    <button 
-                      onClick={() => setShowScriptModal(true)}
-                      className="bg-green-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm lg:text-base"
-                    >
-                      Скрипт
-                    </button>
-                    <button 
-                      onClick={() => setShowResourceModal(true)}
-                      className="bg-purple-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm lg:text-base"
-                    >
-                      Ресурс
-                    </button>
-                    <button 
-                      onClick={() => setShowTemplateModal(true)}
-                      className="bg-orange-600 text-white px-3 lg:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm lg:text-base"
-                    >
-                      Шаблон
-                    </button>
-                  </div>
-                </div>
-
-                {/* Статистика материалов - адаптивная версия */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Инструкции</h4>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {instructions.length}
-                    </div>
-                    <div className="text-sm text-blue-600 dark:text-blue-400">
-                      {instructions.filter(i => i.isActive).length} активных
-                    </div>
-                  </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">Скрипты</h4>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {scripts.length}
-                    </div>
-                    <div className="text-sm text-green-600 dark:text-green-400">
-                      {scripts.filter(s => s.isActive).length} активных
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">Ресурсы</h4>
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                      {resources.length}
-                    </div>
-                    <div className="text-sm text-purple-600 dark:text-purple-400">
-                      {resources.filter(r => r.isActive).length} активных
-                    </div>
-                  </div>
-                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-2">Шаблоны</h4>
-                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                      {templates.length}
-                    </div>
-                    <div className="text-sm text-orange-600 dark:text-orange-400">
-                      {templates.filter(t => t.isActive).length} активных
-                    </div>
-                  </div>
-                </div>
-
-                {/* Инструкции */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Инструкции</h4>
-                  <div className="space-y-3">
-                    {instructions.map((instruction) => (
-                      <div key={instruction.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              instruction.category === 'rules' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                              instruction.category === 'faq' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                              'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            }`}>
-                              {instruction.category === 'rules' ? 'Правила' : 
-                               instruction.category === 'faq' ? 'FAQ' : 'Советы'}
-                            </span>
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              instruction.priority >= 4 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
-                              instruction.priority >= 2 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                            }`}>
-                              Приоритет {instruction.priority}
-                            </span>
-                          </div>
-                          <div className="font-medium mt-1">{instruction.title}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {instruction.content.substring(0, 100)}...
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            instruction.isActive 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {instruction.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditInstruction(instruction)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteInstruction(instruction.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {instructions.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Инструкции не созданы
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Скрипты */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Скрипты</h4>
-                  <div className="space-y-3">
-                    {scripts.map((script) => (
-                      <div key={script.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              script.category === 'greeting' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                              script.category === 'clarification' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              script.category === 'confirmation' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                            }`}>
-                              {script.category === 'greeting' ? 'Приветствие' : 
-                               script.category === 'clarification' ? 'Уточнение' :
-                               script.category === 'confirmation' ? 'Подтверждение' : 'Поддержка'}
-                            </span>
-                            <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-                              {script.language.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="font-medium mt-1">{script.title}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {script.description || script.content.substring(0, 100)}...
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            script.isActive 
-                              ? 'bg-green-100 text-green-800 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {script.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditScript(script)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteScript(script.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {scripts.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Скрипты не созданы
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Ресурсы */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Ресурсы</h4>
-                  <div className="space-y-3">
-                    {resources.map((resource) => (
-                      <div key={resource.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              resource.type === 'link' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                              resource.type === 'video' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                              resource.type === 'document' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                            }`}>
-                              {resource.type === 'link' ? 'Ссылка' : 
-                               resource.type === 'video' ? 'Видео' :
-                               resource.type === 'document' ? 'Документ' : 'Файл'}
-                            </span>
-                            <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-                              Порядок: {resource.order}
-                            </span>
-                          </div>
-                          <div className="font-medium mt-1">{resource.title}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {resource.description || resource.url || resource.filePath}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            resource.isActive 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {resource.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditResource(resource)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteResource(resource.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {resources.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Ресурсы не созданы
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Шаблоны */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Шаблоны</h4>
-                  <div className="space-y-3">
-                    {templates.map((template) => (
-                      <div key={template.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              template.type === 'email' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                              template.type === 'message' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                            }`}>
-                              {template.type === 'email' ? 'Email' : 
-                               template.type === 'message' ? 'Сообщение' : 'Уведомление'}
-                            </span>
-                          </div>
-                          <div className="font-medium mt-1">{template.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {template.description || template.content.substring(0, 100)}...
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            template.isActive 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {template.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditTemplate(template)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTemplate(template.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {templates.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Шаблоны не созданы
-                      </div>
-                    )}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === "bonusGrid" && (
-              <div className="space-y-6">
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-base lg:text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    Настройка бонусной сетки для пользователей
-                  </h3>
-                  <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">
-                    Настройте, как будет выглядеть страница &quot;Бонусная сетка и условия работы&quot; для пользователей
-                  </p>
-                </div>
 
-                {/* Основные настройки страницы */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
-                    Основные настройки страницы
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                        Заголовок страницы
-                      </label>
-                      <input
-                        type="text"
-                        defaultValue="Бонусная сетка и условия работы"
-                        className="w-full px-3 py-2 border border-blue-200 rounded-md bg-white dark:bg-gray-800 dark:border-blue-700 dark:text-white"
-                        placeholder="Заголовок страницы бонусов"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                        Подзаголовок
-                      </label>
-                      <input
-                        type="text"
-                        defaultValue="Узнайте, как рассчитываются бонусы и комиссии за ваши депозиты"
-                        className="w-full px-3 py-2 border border-blue-200 rounded-md bg-white dark:bg-gray-800 dark:border-blue-700 dark:text-white"
-                        placeholder="Описание страницы"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Базовая комиссия */}
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-4">
-                    Базовая комиссия и бонусы
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-green-900 dark:text-green-100 mb-2">
-                        Комиссия платформы (%)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        defaultValue={bonusSettings?.baseCommissionRate || 30.0}
-                        className="w-full px-3 py-2 border border-green-200 rounded-md bg-white dark:bg-gray-800 dark:border-green-700 dark:text-white"
-                        onChange={(e) => setBonusSettings(prev => prev ? { ...prev, baseCommissionRate: parseFloat(e.target.value) || 0 } : null)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-green-900 dark:text-green-100 mb-2">
-                        Базовый бонус (%)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        defaultValue={bonusSettings?.baseBonusRate || 5.0}
-                        className="w-full px-3 py-2 border border-green-200 rounded-md bg-white dark:bg-gray-800 dark:border-green-700 dark:text-white"
-                        onChange={(e) => setBonusSettings(prev => prev ? { ...prev, baseBonusRate: parseFloat(e.target.value) || 0 } : null)}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={saveBaseSettings}
-                        className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition-colors"
-                      >
-                        Сохранить
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Бонусная сетка */}
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
-                      Прогрессивная сетка бонусов
-                    </h4>
-                    <button 
-                      onClick={() => setShowBonusGridModal(true)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      Добавить ступень
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {bonusGrids.map((grid) => (
-                      <div key={grid.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            ${grid.minAmount.toLocaleString()} - {grid.maxAmount ? `$${grid.maxAmount.toLocaleString()}` : '∞'}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{grid.description}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-bold text-purple-600">{grid.bonusPercentage}%</span>
-                          <button
-                            onClick={() => handleEditBonusGrid(grid)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBonusGrid(grid.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {bonusGrids.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Бонусная сетка не настроена. Добавьте первую ступень для начала.
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Дополнительные мотивации */}
-                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
-                      Дополнительные мотивации
-                    </h4>
-                    <button 
-                      onClick={() => setShowMotivationModal(true)}
-                      className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                    >
-                      Добавить мотивацию
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {bonusMotivations.map((motivation) => (
-                      <div key={motivation.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{motivation.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{motivation.description}</div>
-                          <div className="text-xs text-orange-600 dark:text-orange-400">
-                            {motivation.type === 'PERCENTAGE' ? `${motivation.value}%` : `$${motivation.value}`}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            motivation.isActive 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                          }`}>
-                            {motivation.isActive ? 'Активно' : 'Неактивно'}
-                          </span>
-                          <button
-                            onClick={() => handleEditMotivation(motivation)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMotivation(motivation.id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {bonusMotivations.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Мотивации не настроены. Добавьте первую мотивацию для начала.
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Примеры расчета */}
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 mb-4">
-                    Примеры расчета бонусов
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-                      <div className="font-medium mb-2">Депозит $100 (первый за день)</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Бонус: $100 × 5% = $5.00
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-                      <div className="font-medium mb-2">Депозит $500 (сумма за день $600)</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Бонус: $500 × 5% = $25.00 (базовая ставка)
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
-                      <div className="font-medium mb-2">Депозит $1000 (сумма за день $2000)</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Бонус: $1000 × 7.5% = $75.00 (повышенная ставка)
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Предварительный просмотр */}
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Предварительный просмотр страницы
-                  </h4>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="text-center mb-4">
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        Бонусная сетка и условия работы
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Узнайте, как рассчитываются бонусы и комиссии за ваши депозиты
-                      </p>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                        <div className="text-lg font-bold text-blue-600">{bonusSettings?.baseCommissionRate || 30}%</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Комиссия платформы</div>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                        <div className="text-lg font-bold text-green-600">{bonusSettings?.baseBonusRate || 5}%</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Базовый бонус</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {bonusGrids.slice(0, 3).map((grid, index) => (
-                        <div key={index} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                          <span className="text-sm">Дневная сумма ${grid.minAmount.toLocaleString()} - {grid.maxAmount ? `$${grid.maxAmount.toLocaleString()}` : '∞'}</span>
-                          <span className="text-sm font-semibold text-green-600">{grid.bonusPercentage}% бонус</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {activeTab === "salaryRequests" && (
-              <SalaryRequestsTab />
-            )}
-
-            {activeTab === "shiftLogs" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    Логи смен обработчиков
-                  </h3>
-                  <div className="flex gap-4">
-                    <select className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      <option value="">Все смены</option>
-                      <option value="MORNING">🌅 Утренние</option>
-                      <option value="DAY">☀️ Дневные</option>
-                      <option value="NIGHT">🌙 Ночные</option>
-                    </select>
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      placeholder="Дата"
-                    />
-                  </div>
+                {/* Под-табы */}
+                <div className="border-b border-[#171717]/5 dark:border-[#ededed]/10 pb-4">
+                  <nav className="flex flex-wrap gap-4 lg:gap-8">
+                    <button
+                      onClick={() => setActiveSalarySubTab("requests")}
+                      className={`flex-shrink-0 py-2 px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                        activeSalarySubTab === "requests"
+                          ? "border-blue-500 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      Заявки на ЗП
+                    </button>
+                    <button
+                      onClick={() => setActiveSalarySubTab("settings")}
+                      className={`flex-shrink-0 py-2 px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                        activeSalarySubTab === "settings"
+                          ? "border-blue-500 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      Настройки ЗП
+                    </button>
+                  </nav>
                 </div>
 
-                {/* Статистика смен */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-blue-600 dark:text-blue-400">Запланировано</p>
-                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
-                      </div>
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-green-600 dark:text-green-400">Активных</p>
-                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">0</p>
-                      </div>
-                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-purple-600 dark:text-purple-400">Завершено</p>
-                        <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">0</p>
-                      </div>
-                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-red-600 dark:text-red-400">Пропущено</p>
-                        <p className="text-2xl font-bold text-red-700 dark:text-red-300">0</p>
-                      </div>
-                      <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Таблица логов смен */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h4 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">История смен</h4>
-                  </div>
-                  <div className="p-6">
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                        Логи смен пока недоступны
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        Обработчики еще не начали использовать систему смен
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                {/* Контент под-табов */}
+                {activeSalarySubTab === "requests" && <SalaryRequestsTab />}
+                {activeSalarySubTab === "settings" && <SalarySettingsTab />}
               </div>
             )}
-          </div>
-        </div>
+
+            {activeTab === "shifts" && (
+              <div className="space-y-6">
+                {/* Под-табы */}
+                <div className="border-b border-[#171717]/5 dark:border-[#ededed]/10 pb-4">
+                  {/* Под-табы */}
+                  <nav className="flex flex-wrap gap-4 lg:gap-8">
+                    <button
+                      onClick={() => setActiveShiftSubTab("logs")}
+                      className={`flex-shrink-0 py-2 px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                        activeShiftSubTab === "logs"
+                          ? "border-blue-500 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      Логи смен
+                    </button>
+                    <button
+                      onClick={() => setActiveShiftSubTab("settings")}
+                      className={`flex-shrink-0 py-2 px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
+                        activeShiftSubTab === "settings"
+                          ? "border-blue-500 text-blue-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      Настройки смен
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Контент под-табов */}
+                {activeShiftSubTab === "logs" && <ShiftLogsTab />}
+                {activeShiftSubTab === "settings" && <ShiftScheduleTab />}
+              </div>
+            )}
       </div>
 
       {/* Модальные окна для управления депозитами */}
@@ -2316,291 +1343,6 @@ export default function AdminProcessingPage() {
         </div>
       )}
 
-      {/* Модальные окна для бонусной системы */}
-      
-      {/* Модальное окно бонусной сетки */}
-      {showBonusGridModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingBonusGrid ? 'Редактировать ступень' : 'Добавить ступень сетки'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                shiftType: formData.get('shiftType') as string || 'MORNING',
-                minAmount: parseFloat(formData.get('minAmount') as string),
-                maxAmount: formData.get('maxAmount') ? parseFloat(formData.get('maxAmount') as string) : null,
-                bonusPercentage: parseFloat(formData.get('bonusPercentage') as string),
-                fixedBonus: formData.get('fixedBonus') ? parseFloat(formData.get('fixedBonus') as string) : null,
-                fixedBonusMin: formData.get('fixedBonusMin') ? parseFloat(formData.get('fixedBonusMin') as string) : null,
-                description: formData.get('description') as string,
-              };
-
-              try {
-                const response = await fetch('/api/admin/bonus-settings', {
-                  method: editingBonusGrid ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    type: 'bonusGrid',
-                    ...(editingBonusGrid && { id: editingBonusGrid.id }),
-                    ...(editingBonusGrid && { updates: data }),
-                    ...(!editingBonusGrid && { settings: data }),
-                  }),
-                });
-
-                if (response.ok) {
-                  await loadBonusSettings();
-                  setShowBonusGridModal(false);
-                  setEditingBonusGrid(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения ступени сетки:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Минимальная сумма ($)</label>
-                  <input
-                    type="number"
-                    name="minAmount"
-                    step="0.01"
-                    defaultValue={editingBonusGrid?.minAmount || 0}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Максимальная сумма ($) - необязательно</label>
-                  <input
-                    type="number"
-                    name="maxAmount"
-                    step="0.01"
-                    defaultValue={editingBonusGrid?.maxAmount || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Оставьте пустым для ∞"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Тип смены</label>
-                  <select
-                    name="shiftType"
-                    defaultValue={editingBonusGrid?.shiftType || 'MORNING'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  >
-                    <option value="MORNING">🌅 Утренняя смена (06:00-14:00 UTC+3)</option>
-                    <option value="DAY">☀️ Дневная смена (14:00-22:00 UTC+3)</option>
-                    <option value="NIGHT">🌙 Ночная смена (22:00-06:00 UTC+3)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Процент бонуса (%)</label>
-                  <input
-                    type="number"
-                    name="bonusPercentage"
-                    step="0.1"
-                    defaultValue={editingBonusGrid?.bonusPercentage || 0}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Фиксированный бонус ($) - необязательно</label>
-                  <input
-                    type="number"
-                    name="fixedBonus"
-                    step="0.01"
-                    defaultValue={editingBonusGrid?.fixedBonus || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Например: 25"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Мин. сумма для фикс. бонуса ($) - необязательно</label>
-                  <input
-                    type="number"
-                    name="fixedBonusMin"
-                    step="0.01"
-                    defaultValue={editingBonusGrid?.fixedBonusMin || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Например: 800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-                  <input
-                    type="text"
-                    name="description"
-                    defaultValue={editingBonusGrid?.description || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Например: Высокий объем"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBonusGridModal(false);
-                    setEditingBonusGrid(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition-colors"
-                >
-                  {editingBonusGrid ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно мотиваций */}
-      {showMotivationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingMotivation ? 'Редактировать мотивацию' : 'Добавить мотивацию'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                type: formData.get('type') as 'PERCENTAGE' | 'FIXED_AMOUNT',
-                name: formData.get('name') as string,
-                description: formData.get('description') as string,
-                value: parseFloat(formData.get('value') as string),
-                conditions: formData.get('conditions') as string,
-                isActive: formData.get('isActive') === 'true',
-              };
-
-              try {
-                const response = await fetch('/api/admin/bonus-settings', {
-                  method: editingMotivation ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    type: 'bonusMotivation',
-                    ...(editingMotivation && { id: editingMotivation.id }),
-                    ...(editingMotivation && { updates: data }),
-                    ...(!editingMotivation && { settings: data }),
-                  }),
-                });
-
-                if (response.ok) {
-                  await loadBonusSettings();
-                  setShowMotivationModal(false);
-                  setEditingMotivation(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения мотивации:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Тип мотивации</label>
-                  <select
-                    name="type"
-                    defaultValue={editingMotivation?.type || 'PERCENTAGE'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  >
-                    <option value="PERCENTAGE">Процент от суммы</option>
-                    <option value="FIXED_AMOUNT">Фиксированная сумма</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название</label>
-                  <input
-                    type="text"
-                    name="name"
-                    defaultValue={editingMotivation?.name || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Например: Бонус за 100 депозитов"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-                  <textarea
-                    name="description"
-                    defaultValue={editingMotivation?.description || ''}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Подробное описание условий"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {editingMotivation?.type === 'FIXED_AMOUNT' ? 'Сумма ($)' : 'Процент (%)'}
-                  </label>
-                  <input
-                    type="number"
-                    name="value"
-                    step="0.01"
-                    defaultValue={editingMotivation?.value || 0}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Условия (JSON)</label>
-                  <textarea
-                    name="conditions"
-                    defaultValue={editingMotivation?.conditions || ''}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder='{"minDeposits": 100, "minAmount": 5000}'
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
-                  <select
-                    name="isActive"
-                    defaultValue={editingMotivation?.isActive?.toString() || 'true'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="true">Активно</option>
-                    <option value="false">Неактивно</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMotivationModal(false);
-                    setEditingMotivation(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition-colors"
-                >
-                  {editingMotivation ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Модальные окна для управления менеджерами */}
       
@@ -2920,600 +1662,6 @@ export default function AdminProcessingPage() {
                 Закрыть
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальные окна для управления материалами */}
-      
-      {/* Модальное окно инструкции */}
-      {showInstructionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingInstruction ? 'Редактировать инструкцию' : 'Добавить инструкцию'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                title: formData.get('title') as string,
-                content: formData.get('content') as string,
-                category: formData.get('category') as string,
-                priority: parseInt(formData.get('priority') as string),
-                isActive: formData.get('isActive') === 'true',
-                isPublic: formData.get('isPublic') === 'true',
-                targetRoles: formData.get('targetRoles') ? JSON.parse(formData.get('targetRoles') as string) : null
-              };
-
-              try {
-                const response = await fetch('/api/admin/processing-instructions', {
-                  method: editingInstruction ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(editingInstruction ? { id: editingInstruction.id, ...data } : data),
-                });
-
-                if (response.ok) {
-                  await loadProcessingMaterials();
-                  setShowInstructionModal(false);
-                  setEditingInstruction(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения инструкции:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Заголовок</label>
-                  <input
-                    type="text"
-                    name="title"
-                    defaultValue={editingInstruction?.title || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Содержание</label>
-                  <textarea
-                    name="content"
-                    defaultValue={editingInstruction?.content || ''}
-                    rows={8}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Категория</label>
-                    <select
-                      name="category"
-                      defaultValue={editingInstruction?.category || 'general'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="general">Общие</option>
-                      <option value="rules">Правила</option>
-                      <option value="faq">FAQ</option>
-                      <option value="tips">Советы</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Приоритет</label>
-                    <select
-                      name="priority"
-                      defaultValue={editingInstruction?.priority || 1}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value={1}>1 - Низкий</option>
-                      <option value={2}>2 - Средний</option>
-                      <option value={3}>3 - Высокий</option>
-                      <option value={4}>4 - Критический</option>
-                      <option value={5}>5 - Максимальный</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
-                    <select
-                      name="isActive"
-                      defaultValue={editingInstruction?.isActive?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Активно</option>
-                      <option value="false">Неактивно</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Публичность</label>
-                  <select
-                    name="isPublic"
-                    defaultValue={editingInstruction?.isPublic?.toString() || 'true'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="true">Публичная</option>
-                    <option value="false">Приватная</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowInstructionModal(false);
-                    setEditingInstruction(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
-                >
-                  {editingInstruction ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно скрипта */}
-      {showScriptModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingScript ? 'Редактировать скрипт' : 'Добавить скрипт'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                title: formData.get('title') as string,
-                content: formData.get('content') as string,
-                description: formData.get('description') as string,
-                category: formData.get('category') as string,
-                language: formData.get('language') as string,
-                isActive: formData.get('isActive') === 'true',
-                isPublic: formData.get('isPublic') === 'true',
-                targetRoles: formData.get('targetRoles') ? JSON.parse(formData.get('targetRoles') as string) : null
-              };
-
-              try {
-                const response = await fetch('/api/admin/processing-scripts', {
-                  method: editingScript ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(editingScript ? { id: editingScript.id, ...data } : data),
-                });
-
-                if (response.ok) {
-                  await loadProcessingMaterials();
-                  setShowScriptModal(false);
-                  setEditingScript(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения скрипта:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Заголовок</label>
-                  <input
-                    type="text"
-                    name="title"
-                    defaultValue={editingScript?.title || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-                  <textarea
-                    name="description"
-                    defaultValue={editingScript?.description || ''}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Краткое описание назначения скрипта"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Содержание</label>
-                  <textarea
-                    name="content"
-                    defaultValue={editingScript?.content || ''}
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Категория</label>
-                    <select
-                      name="category"
-                      defaultValue={editingScript?.category || 'general'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="general">Общие</option>
-                      <option value="greeting">Приветствие</option>
-                      <option value="clarification">Уточнение</option>
-                      <option value="confirmation">Подтверждение</option>
-                      <option value="support">Поддержка</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Язык</label>
-                    <select
-                      name="language"
-                      defaultValue={editingScript?.language || 'ru'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="ru">Русский</option>
-                      <option value="en">English</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
-                    <select
-                      name="isActive"
-                      defaultValue={editingScript?.isActive?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Активно</option>
-                      <option value="false">Неактивно</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Публичность</label>
-                  <select
-                    name="isPublic"
-                    defaultValue={editingScript?.isPublic?.toString() || 'true'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="true">Публичный</option>
-                    <option value="false">Приватный</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowScriptModal(false);
-                    setEditingScript(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition-colors"
-                >
-                  {editingScript ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно ресурса */}
-      {showResourceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingResource ? 'Редактировать ресурс' : 'Добавить ресурс'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                title: formData.get('title') as string,
-                description: formData.get('description') as string,
-                type: formData.get('type') as string,
-                url: formData.get('url') as string,
-                filePath: formData.get('filePath') as string,
-                category: formData.get('category') as string,
-                isActive: formData.get('isActive') === 'true',
-                isPublic: formData.get('isPublic') === 'true',
-                order: parseInt(formData.get('order') as string),
-                targetRoles: formData.get('targetRoles') ? JSON.parse(formData.get('targetRoles') as string) : null
-              };
-
-              try {
-                const response = await fetch('/api/admin/processing-resources', {
-                  method: editingResource ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(editingResource ? { id: editingResource.id, ...data } : data),
-                });
-
-                if (response.ok) {
-                  await loadProcessingMaterials();
-                  setShowResourceModal(false);
-                  setEditingResource(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения ресурса:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Заголовок</label>
-                  <input
-                    type="text"
-                    name="title"
-                    defaultValue={editingResource?.title || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-                  <textarea
-                    name="description"
-                    defaultValue={editingResource?.description || ''}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Тип</label>
-                    <select
-                      name="type"
-                      defaultValue={editingResource?.type || 'link'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="link">Ссылка</option>
-                      <option value="video">Видео</option>
-                      <option value="document">Документ</option>
-                      <option value="file">Файл</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Категория</label>
-                    <select
-                      name="category"
-                      defaultValue={editingResource?.category || 'general'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="general">Общие</option>
-                      <option value="education">Обучение</option>
-                      <option value="tutorial">Инструкции</option>
-                      <option value="tools">Инструменты</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Порядок</label>
-                    <input
-                      type="number"
-                      name="order"
-                      defaultValue={editingResource?.order || 0}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL</label>
-                  <input
-                    type="url"
-                    name="url"
-                    defaultValue={editingResource?.url || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="https://example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Путь к файлу</label>
-                  <input
-                    type="text"
-                    name="filePath"
-                    defaultValue={editingResource?.filePath || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="/uploads/files/document.pdf"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
-                    <select
-                      name="isActive"
-                      defaultValue={editingResource?.isActive?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Активно</option>
-                      <option value="false">Неактивно</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Публичность</label>
-                    <select
-                      name="isPublic"
-                      defaultValue={editingResource?.isPublic?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Публичный</option>
-                      <option value="false">Приватный</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowResourceModal(false);
-                    setEditingResource(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition-colors"
-                >
-                  {editingResource ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно шаблона */}
-      {showTemplateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {editingTemplate ? 'Редактировать шаблон' : 'Добавить шаблон'}
-            </h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const data = {
-                name: formData.get('name') as string,
-                description: formData.get('description') as string,
-                content: formData.get('content') as string,
-                type: formData.get('type') as string,
-                variables: formData.get('variables') ? JSON.parse(formData.get('variables') as string) : null,
-                isActive: formData.get('isActive') === 'true',
-                isPublic: formData.get('isPublic') === 'true',
-                targetRoles: formData.get('targetRoles') ? JSON.parse(formData.get('targetRoles') as string) : null
-              };
-
-              try {
-                const response = await fetch('/api/admin/processing-templates', {
-                  method: editingTemplate ? 'PUT' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(editingTemplate ? { id: editingTemplate.id, ...data } : data),
-                });
-
-                if (response.ok) {
-                  await loadProcessingMaterials();
-                  setShowTemplateModal(false);
-                  setEditingTemplate(null);
-                } else {
-                  const error = await response.json();
-                  alert(`Ошибка: ${error.error}`);
-                }
-              } catch (error) {
-                console.error("Ошибка сохранения шаблона:", error);
-                alert("Ошибка при сохранении");
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название</label>
-                  <input
-                    type="text"
-                    name="name"
-                    defaultValue={editingTemplate?.name || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Описание</label>
-                  <textarea
-                    name="description"
-                    defaultValue={editingTemplate?.description || ''}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Содержание</label>
-                  <textarea
-                    name="content"
-                    defaultValue={editingTemplate?.content || ''}
-                    rows={8}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Тип</label>
-                    <select
-                      name="type"
-                      defaultValue={editingTemplate?.type || 'email'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="email">Email</option>
-                      <option value="message">Сообщение</option>
-                      <option value="notification">Уведомление</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Переменные (JSON)</label>
-                    <input
-                      type="text"
-                      name="variables"
-                      defaultValue={editingTemplate?.variables || ''}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      placeholder='["СУММА", "ВАЛЮТА", "БОНУС"]'
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Статус</label>
-                    <select
-                      name="isActive"
-                      defaultValue={editingTemplate?.isActive?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Активно</option>
-                      <option value="false">Неактивно</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Публичность</label>
-                    <select
-                      name="isPublic"
-                      defaultValue={editingTemplate?.isPublic?.toString() || 'true'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="true">Публичный</option>
-                      <option value="false">Приватный</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowTemplateModal(false);
-                    setEditingTemplate(null);
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-orange-600 text-white py-2 px-4 rounded hover:bg-orange-700 transition-colors"
-                >
-                  {editingTemplate ? 'Сохранить' : 'Добавить'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

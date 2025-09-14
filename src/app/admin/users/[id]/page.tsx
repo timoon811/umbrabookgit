@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useModal } from "@/hooks/useModal";
+import { getRoleDisplayName } from "@/types/roles";
+import type { UserRole } from "@/types/roles";
 import AlertModal from "@/components/modals/AlertModal";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 
@@ -247,12 +249,7 @@ export default function UserDetailsPage() {
                 <div className="mt-2 flex items-center gap-3">
                   {/* Статус пользователя убран */}
                   <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
-                    {user.role === "ADMIN" ? "Администратор" : 
-                     user.role === "MODERATOR" ? "Модератор" : 
-                     user.role === "MEDIA_BUYER" ? "Медиа байер" : 
-                     user.role === "PROCESSOR" ? "Обработчик" : 
-                     user.role === "SUPPORT" ? "Поддержка" : 
-                     "Пользователь"}
+                    {getRoleDisplayName(user.role as UserRole)}
                   </span>
                 </div>
               </div>
@@ -317,9 +314,11 @@ export default function UserDetailsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="USER">Пользователь</option>
-                  <option value="MODERATOR">Модератор</option>
-                  <option value="MEDIA_BUYER">Медиа байер</option>
                   <option value="PROCESSOR">Обработчик</option>
+                  <option value="MEDIA_BUYER">Медиа байер</option>
+                  <option value="ROP_PROCESSOR">РОП обработки</option>
+                  <option value="ROP_BUYER">РОП байер</option>
+                  <option value="MODERATOR">Модератор</option>
                   <option value="SUPPORT">Поддержка</option>
                   <option value="ADMIN">Администратор</option>
                 </select>

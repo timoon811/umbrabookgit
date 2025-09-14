@@ -26,8 +26,11 @@ model users {
   shiftPenalties     shift_penalties[]
   shifts             processor_shifts[]
   wallets            user_wallets[]
+  actionLogs         processor_action_logs[]
   assignedBuyer      users?               @relation("BuyerProcessors", fields: [assignedBuyerId], references: [id])
   assignedProcessors users[]              @relation("BuyerProcessors")
+  userShiftAssignments user_shift_assignments[] @relation("UserShiftAssignments")
+  assignedShifts     user_shift_assignments[] @relation("AssignedByUser")
 
   @@index([email])
   @@index([role])
@@ -102,6 +105,19 @@ model course_pages {
   @@map("course_pages")
 }
 
+model content_projects {
+  id                    String                  @id @default(uuid())
+  name                  String
+  description           String?
+  type                  String                  @default("documentation") // documentation, courses, materials
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  documentationSections documentation_sections[]
+  
+  @@map("content_projects")
+}
+
 model documentation_sections {
   id          String          @id @default(uuid())
   name        String
@@ -109,9 +125,11 @@ model documentation_sections {
   description String?
   order       Int             @default(0)
   isVisible   Boolean         @default(true)
+  projectId   String?         // Связь с проектом
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   pages       documentation[]
+  project     content_projects? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@map("documentation_sections")
 }
@@ -492,6 +510,11 @@ enum ShiftStatus {
   MISSED    // Пропущена
 }
 
+enum ProcessorActionType {
+  SHIFT_START
+  SHIFT_END
+}
+
 model processor_shifts {
   id            String        @id @default(uuid())
   processorId   String
@@ -598,12 +621,14 @@ model processing_resources {
 }
 
 enum UserRole {
-  USER
-  ADMIN
-  MODERATOR
-  MEDIA_BUYER
-  SUPPORT
-  PROCESSOR
+  USER              // Пользователь
+  ADMIN             // Администратор
+  PROCESSOR         // Обработчик
+  MEDIA_BUYER       // Медиа Байер
+  ROP_PROCESSOR     // РОП обработки
+  ROP_BUYER         // РОП байер
+  MODERATOR         // Модератор
+  SUPPORT           // Поддержка
 }
 
 enum UserStatus {
@@ -661,8 +686,117 @@ enum MotivationType {
   FIXED_AMOUNT
 }
 
+model shift_settings {
+  id          String    @id @default(uuid())
+  shiftType   ShiftType @unique
+  startHour   Int       @default(6)
+  startMinute Int       @default(0)
+  endHour     Int       @default(14)
+  endMinute   Int       @default(0)
+  timezone    String    @default("+3")
+  isActive    Boolean   @default(true)
+  name        String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Связи
+  user_shift_assignments user_shift_assignments[]
+
+  @@map("shift_settings")
+}
+
 enum ShiftType {
   MORNING     // 06:00 - 14:00 UTC+3
   DAY         // 14:00 - 22:00 UTC+3
   NIGHT       // 22:00 - 06:00 UTC+3
+}
+
+model salary_settings {
+  id             String   @id @default(uuid())
+  name           String   // Название настройки
+  description    String?  // Описание настройки
+  hourlyRate     Float    @default(2.0)  // Фиксированная ставка за час ($2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("salary_settings")
+}
+
+model salary_deposit_grid {
+  id               String   @id @default(uuid())
+  salarySettingsId String?  // Связь с основными настройками (опционально)
+  minAmount        Float    // Минимальная сумма депозитов за смену
+  maxAmount        Float?   // Максимальная сумма (null = без ограничений)
+  percentage       Float    // Процент от депозитов
+  description      String?  // Описание правила
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("salary_deposit_grid")
+}
+
+model salary_monthly_bonus {
+  id           String   @id @default(uuid())
+  name         String   // Название бонуса
+  description  String?  // Описание
+  minAmount    Float    // Минимальная сумма депозитов за месяц
+  bonusPercent Float    // Дополнительный процент
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("salary_monthly_bonus")
+}
+
+model platform_commission {
+  id                String   @id @default(uuid())
+  name              String   // Название настройки
+  description       String?  // Описание настройки
+  commissionPercent Float    @default(5.0)  // Процент комиссии платформы
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("platform_commission")
+}
+
+model processor_action_logs {
+  id          String              @id @default(uuid())
+  processorId String
+  action      ProcessorActionType
+  description String
+  metadata    String?             // Дополнительные данные в виде JSON строки
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime            @default(now())
+  processor   users               @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("processor_action_logs")
+}
+
+model user_shift_assignments {
+  id             String        @id @default(uuid())
+  userId         String
+  shiftSettingId String
+  assignedAt     DateTime      @default(now())
+  assignedBy     String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Связи
+  user          users         @relation("UserShiftAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  shiftSetting  shift_settings @relation(fields: [shiftSettingId], references: [id], onDelete: Cascade)
+  assignedByUser users        @relation("AssignedByUser", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@unique([userId, shiftSettingId])
+  @@index([userId])
+  @@index([shiftSettingId])
+  @@map("user_shift_assignments")
 }

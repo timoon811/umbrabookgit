@@ -961,9 +961,9 @@ export default function AdvancedContentEditor({
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: 'var(--editor-bg)' }} data-documentation-editor="true">
       {/* Шапка редактора */}
-      <div className="border-b px-3 py-3" style={{ borderColor: 'var(--editor-border)' }}>
+      <div className="border-b px-3 sm:px-4 lg:px-6 py-3 sm:py-4" style={{ borderColor: 'var(--editor-border)' }}>
         {/* Строка с полями ввода */}
-        <div className="flex items-start gap-2 mb-3">
+        <div className="flex items-start gap-2 sm:gap-3 mb-3">
           <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
             selectedPage.isPublished ? 'bg-green-500' : 'bg-yellow-500'
           }`} />
@@ -1004,7 +1004,7 @@ export default function AdvancedContentEditor({
         </div>
         
         {/* Строка с кнопками управления */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           {/* Индикатор статуса */}
           <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs" style={{ backgroundColor: 'var(--editor-accent)' }}>
             <div className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-orange-500' : 'bg-green-500'}`}></div>
@@ -1014,7 +1014,7 @@ export default function AdvancedContentEditor({
           </div>
 
           {/* Кнопки управления */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 sm:gap-2">
             {/* Кнопка ручного сохранения */}
             <button
               onClick={handleManualSave}
@@ -1032,14 +1032,14 @@ export default function AdvancedContentEditor({
               {isManualSaving ? (
                 <>
                   <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Сохранение...
+                  <span className="hidden sm:inline">Сохранение...</span>
                 </>
               ) : (
                 <>
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  Сохранить
+                  <span className="hidden sm:inline">Сохранить</span>
                 </>
               )}
             </button>
@@ -1076,6 +1076,7 @@ export default function AdvancedContentEditor({
 
 
 
+
             {/* Кнопка удаления */}
             {onDeletePage && (
               <button
@@ -1094,7 +1095,7 @@ export default function AdvancedContentEditor({
 
       {/* Основной редактор */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 relative">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
           <div onMouseUp={handleTextSelection}>
             {blocks.map((block) => renderBlock(block))}
           </div>
@@ -1259,6 +1260,7 @@ export default function AdvancedContentEditor({
         confirmText="Удалить страницу"
         cancelText="Отменить"
       />
+
     </div>
   );
 }

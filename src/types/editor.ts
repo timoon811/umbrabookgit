@@ -63,3 +63,4 @@ export const blockTypes: BlockType[] = [
   // Advanced
   { type: 'code', title: 'Код', description: 'Блок кода с подсветкой', icon: '</>', category: 'advanced' },
 ];
+
