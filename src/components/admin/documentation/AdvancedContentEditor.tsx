@@ -1345,7 +1345,7 @@ function BlockRenderer({
         // Сохраняем текущую позицию курсора
         const cursorPosition = element.selectionStart;
         
-        // Временно скрываем scrollbar для точного расчета
+        // Скрываем scrollbar для точного расчета размера
         const originalOverflow = element.style.overflow;
         element.style.overflow = 'hidden';
         

@@ -5,60 +5,31 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model users {
-  id                 String               @id @default(cuid())
-  email              String               @unique
-  name               String
-  password           String
-  telegram           String               @unique
-  role               UserRole             @default(USER)
-  status             UserStatus           @default(PENDING)
-  isBlocked          Boolean              @default(false)
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  assignedBuyerId    String?
-  analytics          analytics[]
-  bonusPayments      bonus_payments[]
-  processorDeposits  processor_deposits[]
-  salaryRequests     salary_requests[]
-  shiftPenalties     shift_penalties[]
-  shifts             processor_shifts[]
-  wallets            user_wallets[]
-  actionLogs         processor_action_logs[]
-  assignedBuyer      users?               @relation("BuyerProcessors", fields: [assignedBuyerId], references: [id])
-  assignedProcessors users[]              @relation("BuyerProcessors")
-  userShiftAssignments user_shift_assignments[] @relation("UserShiftAssignments")
-  assignedShifts     user_shift_assignments[] @relation("AssignedByUser")
+  id        String      @id @default(uuid())
+  email     String      @unique
+  name      String
+  password  String
+  telegram  String      @unique
+  role      UserRole    @default(USER)
+  status    UserStatus  @default(PENDING)
+  isBlocked Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  analytics analytics[]
 
   @@index([email])
   @@index([role])
   @@index([status])
   @@index([telegram])
-  @@index([assignedBuyerId])
   @@map("users")
 }
 
-model user_wallets {
-  id        String   @id @default(uuid())
-  userId    String
-  network   String   // BTC, ETH, TRX, USDT_TRC20, USDT_ERC20, USDT_BEP20, USDT_SOL20, USDC, XRP, BASE, BNB, TRON, TON, SOLANA
-  address   String
-  label     String?  // Пользовательская метка для кошелька
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, network])
-  @@index([userId])
-  @@index([network])
-  @@map("user_wallets")
-}
-
 model courses {
-  id          String            @id @default(cuid())
+  id          String            @id @default(uuid())
   title       String
   description String?
   slug        String            @unique
@@ -105,31 +76,18 @@ model course_pages {
   @@map("course_pages")
 }
 
-model content_projects {
-  id                    String                  @id @default(uuid())
-  name                  String
-  description           String?
-  type                  String                  @default("documentation") // documentation, courses, materials
-  isActive              Boolean                 @default(true)
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  documentationSections documentation_sections[]
-  
-  @@map("content_projects")
-}
-
 model documentation_sections {
-  id          String          @id @default(uuid())
+  id          String           @id @default(uuid())
   name        String
-  key         String          @unique
+  key         String           @unique
   description String?
-  order       Int             @default(0)
-  isVisible   Boolean         @default(true)
-  projectId   String?         // Связь с проектом
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  order       Int              @default(0)
+  isVisible   Boolean          @default(true)
+  projectId   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   pages       documentation[]
-  project     content_projects? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project     content_projects? @relation(fields: [projectId], references: [id])
 
   @@map("documentation_sections")
 }
@@ -147,9 +105,9 @@ model documentation {
   parentId    String?
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
+  section     documentation_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   parent      documentation?         @relation("DocumentationHierarchy", fields: [parentId], references: [id])
   children    documentation[]        @relation("DocumentationHierarchy")
-  section     documentation_sections @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   @@map("documentation")
 }
@@ -165,8 +123,7 @@ model finance_accounts {
   isArchived       Boolean                @default(false)
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
-  transactions     finance_transactions[] @relation("AccountTransactions")
-  toTransactions   finance_transactions[] @relation("ToAccountTransactions")
+  transactions     finance_transactions[]
 
   @@map("finance_accounts")
 }
@@ -203,7 +160,7 @@ model finance_categories {
 }
 
 model finance_projects {
-  id             String                 @id @default(cuid())
+  id             String                 @id @default(uuid())
   name           String
   description    String?
   status         String                 @default("ACTIVE")
@@ -236,24 +193,12 @@ model finance_transactions {
   date              DateTime                @default(now())
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
-  
-  // Поля для переводов (TRANSFER)
-  toAccountId       String?                 // Счет получатель для переводов
-  
-  // Поля для обменов (EXCHANGE)
-  fromCurrency      String?                 // Исходная валюта для обмена
-  toCurrency        String?                 // Целевая валюта для обмена
-  exchangeRate      Float?                  // Курс обмена
-  toAmount          Float?                  // Сумма получения в целевой валюте
-  
-  account           finance_accounts        @relation(name: "AccountTransactions", fields: [accountId], references: [id])
-  toAccount         finance_accounts?       @relation(name: "ToAccountTransactions", fields: [toAccountId], references: [id])
+  project           finance_projects?       @relation(fields: [projectId], references: [id])
   category          finance_categories?     @relation(fields: [categoryId], references: [id])
   counterparty      finance_counterparties? @relation(fields: [counterpartyId], references: [id])
-  project           finance_projects?       @relation(fields: [projectId], references: [id])
+  account           finance_accounts        @relation(fields: [accountId], references: [id])
 
   @@index([accountId])
-  @@index([toAccountId])
   @@index([categoryId])
   @@index([projectId])
   @@index([projectKey])
@@ -263,7 +208,7 @@ model finance_transactions {
 }
 
 model deposit_sources {
-  id         String           @id @default(cuid())
+  id         String           @id @default(uuid())
   name       String
   token      String
   projectId  String
@@ -341,294 +286,28 @@ model articles {
   @@map("articles")
 }
 
-model processor_deposits {
-  id               String        @id @default(uuid())
-  processorId      String
-  playerId         String
-  playerNick       String?
-  playerEmail      String?       // Email депозитера
-  offerId          String?
-  offerName        String?
-  geo              String?
-  amount           Float
-  currency         String        @default("USD")    // Для криптовалют: BTC, ETH, USDT, etc.
-  currencyType     String        @default("FIAT")   // FIAT или CRYPTO
-  paymentMethod    String?
-  leadSource       String?
-  proofs           String?
-  notes            String?
-  status           DepositStatus @default(PENDING)
-  moderatorId      String?
-  moderatorComment String?
-  moderatedAt      DateTime?
-  commissionRate   Float         @default(30.0)
-  bonusRate        Float         @default(5.0)
-  bonusAmount      Float         @default(0)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  processor        users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([playerId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([currency])
-  @@index([currencyType])
-  @@index([playerEmail])
-  @@map("processor_deposits")
-}
-
-model salary_requests {
-  id               String              @id @default(uuid())
-  processorId      String
-  periodStart      DateTime
-  periodEnd        DateTime
-  requestedAmount  Float
-  calculatedAmount Float?
-  paymentDetails   String?
-  comment          String?
-  adminComment     String?
-  status           SalaryRequestStatus @default(PENDING)
-  processedAt      DateTime?
-  paidAt           DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  processor        users               @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([status])
-  @@index([periodStart])
-  @@index([periodEnd])
-  @@map("salary_requests")
-}
-
-model bonus_payments {
-  id            String      @id @default(uuid())
-  processorId   String
-  type          BonusType   @default(DEPOSIT_BONUS)
-  description   String?
-  amount        Float
-  depositId     String?
-  period        DateTime?
-  shiftType     ShiftType?  // Тип смены для которой начислен бонус
-  holdUntil     DateTime?   // Дата до которой бонус в холде
-  burnReason    String?     // Причина сгорания бонуса
-  burnedAt      DateTime?   // Дата сгорания бонуса
-  conditions    String?
-  status        BonusStatus @default(PENDING)
-  processedAt   DateTime?
-  paidAt        DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  processor     users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([type])
-  @@index([status])
-  @@index([period])
-  @@index([shiftType])
-  @@map("bonus_payments")
-}
-
-model bonus_settings {
-  id                 String   @id @default(uuid())
-  name               String
-  description        String?
-  baseCommissionRate Float    @default(30.0)
-  baseBonusRate      Float    @default(5.0)
-  tiers              String
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  @@map("bonus_settings")
-}
-
-model bonus_grid {
-  id                String      @id @default(uuid())
-  shiftType         ShiftType   @default(MORNING)
-  minAmount         Float
-  maxAmount         Float?
-  bonusPercentage   Float
-  fixedBonus        Float?      // Фиксированный бонус за достижение порога
-  fixedBonusMin     Float?      // Минимальный объем для фиксированного бонуса
-  description       String?
-  isActive          Boolean     @default(true)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-
-  @@map("bonus_grid")
-}
-
-model bonus_motivations {
-  id          String      @id @default(uuid())
-  type        MotivationType
-  name        String
-  description String?
-  value       Float       // процент или фиксированная сумма
-  conditions  String?     // JSON с условиями
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@map("bonus_motivations")
-}
-
-model shift_penalties {
-  id            String        @id @default(uuid())
-  processorId   String
-  type          PenaltyType   @default(SHIFT_MISS)
-  shiftType     ShiftType?    // Тип смены которая была пропущена
-  shiftDate     DateTime      // Дата смены
-  amount        Float         @default(-50.0) // Сумма штрафа (отрицательная)
-  reason        String?       // Причина штрафа
-  adminComment  String?       // Комментарий администратора
-  status        PenaltyStatus @default(APPLIED)
-  appliedAt     DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  processor     users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([type])
-  @@index([shiftDate])
-  @@index([status])
-  @@map("shift_penalties")
-}
-
-enum PenaltyStatus {
-  PENDING   // Ожидает применения
-  APPLIED   // Применен
-  CANCELLED // Отменен
-  APPEALED  // Оспорен
-}
-
-enum ShiftStatus {
-  SCHEDULED // Запланирована
-  ACTIVE    // Активна
-  COMPLETED // Завершена
-  MISSED    // Пропущена
-}
-
-enum ProcessorActionType {
-  SHIFT_START
-  SHIFT_END
-}
-
-model processor_shifts {
-  id            String        @id @default(uuid())
-  processorId   String
-  shiftType     ShiftType     @default(MORNING)
-  shiftDate     DateTime      // Дата смены
-  scheduledStart DateTime     // Запланированное время начала
-  scheduledEnd  DateTime      // Запланированное время окончания
-  actualStart   DateTime?     // Фактическое время начала
-  actualEnd     DateTime?     // Фактическое время окончания
-  status        ShiftStatus   @default(SCHEDULED)
-  notes         String?       // Заметки обработчика
-  adminNotes    String?       // Заметки администратора
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  processor     users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([shiftType])
-  @@index([shiftDate])
-  @@index([status])
-  @@map("processor_shifts")
-}
-
-// Новые модели для инструкций и скриптов обработки
-model processing_instructions {
-  id          String   @id @default(uuid())
-  title       String
-  content     String
-  category    String   @default("general") // general, rules, faq, tips
-  priority    Int      @default(1)         // 1-5, где 5 - высший приоритет
-  isActive    Boolean  @default(true)
-  isPublic    Boolean  @default(true)      // показывать ли всем процессорам
-  targetRoles String?  // JSON массив ролей, для которых предназначена инструкция
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([priority])
-  @@index([isActive])
-  @@index([isPublic])
-  @@map("processing_instructions")
-}
-
-model processing_scripts {
-  id          String   @id @default(uuid())
-  title       String
-  content     String
-  description String?
-  category    String   @default("general") // general, greeting, clarification, confirmation, support
-  language    String   @default("ru")      // язык скрипта
-  isActive    Boolean  @default(true)
-  isPublic    Boolean  @default(true)
-  targetRoles String?  // JSON массив ролей
-  usageCount  Int      @default(0)        // счетчик использования
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([language])
-  @@index([isActive])
-  @@index([isPublic])
-  @@map("processing_scripts")
-}
-
-model processing_templates {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  content     String
-  type        String   @default("email")   // email, message, notification
-  variables   String?  // JSON с переменными шаблона
-  isActive    Boolean  @default(true)
-  isPublic    Boolean  @default(true)
-  targetRoles String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model content_projects {
+  id                     String                    @id @default(uuid())
+  name                   String
+  description            String?
+  type                   String                    @default("documentation")
+  isActive               Boolean                   @default(true)
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  documentationSections  documentation_sections[]
 
   @@index([type])
   @@index([isActive])
-  @@index([isPublic])
-  @@map("processing_templates")
-}
-
-model processing_resources {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  type        String   @default("link")    // link, file, video, document
-  url         String?
-  filePath    String?
-  category    String   @default("general")
-  isActive    Boolean  @default(true)
-  isPublic    Boolean  @default(true)
-  targetRoles String?
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([type])
-  @@index([isActive])
-  @@index([isPublic])
-  @@map("processing_resources")
+  @@map("content_projects")
 }
 
 enum UserRole {
-  USER              // Пользователь
-  ADMIN             // Администратор
-  PROCESSOR         // Обработчик
-  MEDIA_BUYER       // Медиа Байер
-  ROP_PROCESSOR     // РОП обработки
-  ROP_BUYER         // РОП байер
-  MODERATOR         // Модератор
-  SUPPORT           // Поддержка
+  USER
+  ADMIN
+  MODERATOR
+  MEDIA_BUYER
+  SUPPORT
+  PROCESSOR
 }
 
 enum UserStatus {
@@ -641,162 +320,4 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
-  EXCHANGE
-}
-
-enum DepositStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  PROCESSING
-}
-
-enum SalaryRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  PAID
-}
-
-enum BonusType {
-  DEPOSIT_BONUS
-  PERIODIC_BONUS
-  ACHIEVEMENT_BONUS
-  MANUAL_BONUS
-}
-
-enum BonusStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  PAID
-  BURNED    // Бонус сгорел
-  HELD      // Бонус в холде
-}
-
-enum PenaltyType {
-  SHIFT_MISS       // Пропуск смены
-  LATE_ARRIVAL     // Опоздание
-  EARLY_DEPARTURE  // Ранний уход
-  OTHER            // Другое
-}
-
-enum MotivationType {
-  PERCENTAGE
-  FIXED_AMOUNT
-}
-
-model shift_settings {
-  id          String    @id @default(uuid())
-  shiftType   ShiftType @unique
-  startHour   Int       @default(6)
-  startMinute Int       @default(0)
-  endHour     Int       @default(14)
-  endMinute   Int       @default(0)
-  timezone    String    @default("+3")
-  isActive    Boolean   @default(true)
-  name        String?
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Связи
-  user_shift_assignments user_shift_assignments[]
-
-  @@map("shift_settings")
-}
-
-enum ShiftType {
-  MORNING     // 06:00 - 14:00 UTC+3
-  DAY         // 14:00 - 22:00 UTC+3
-  NIGHT       // 22:00 - 06:00 UTC+3
-}
-
-model salary_settings {
-  id             String   @id @default(uuid())
-  name           String   // Название настройки
-  description    String?  // Описание настройки
-  hourlyRate     Float    @default(2.0)  // Фиксированная ставка за час ($2)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@map("salary_settings")
-}
-
-model salary_deposit_grid {
-  id               String   @id @default(uuid())
-  salarySettingsId String?  // Связь с основными настройками (опционально)
-  minAmount        Float    // Минимальная сумма депозитов за смену
-  maxAmount        Float?   // Максимальная сумма (null = без ограничений)
-  percentage       Float    // Процент от депозитов
-  description      String?  // Описание правила
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@map("salary_deposit_grid")
-}
-
-model salary_monthly_bonus {
-  id           String   @id @default(uuid())
-  name         String   // Название бонуса
-  description  String?  // Описание
-  minAmount    Float    // Минимальная сумма депозитов за месяц
-  bonusPercent Float    // Дополнительный процент
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("salary_monthly_bonus")
-}
-
-model platform_commission {
-  id                String   @id @default(uuid())
-  name              String   // Название настройки
-  description       String?  // Описание настройки
-  commissionPercent Float    @default(5.0)  // Процент комиссии платформы
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@map("platform_commission")
-}
-
-model processor_action_logs {
-  id          String              @id @default(uuid())
-  processorId String
-  action      ProcessorActionType
-  description String
-  metadata    String?             // Дополнительные данные в виде JSON строки
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime            @default(now())
-  processor   users               @relation(fields: [processorId], references: [id], onDelete: Cascade)
-
-  @@index([processorId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("processor_action_logs")
-}
-
-model user_shift_assignments {
-  id             String        @id @default(uuid())
-  userId         String
-  shiftSettingId String
-  assignedAt     DateTime      @default(now())
-  assignedBy     String
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  // Связи
-  user          users         @relation("UserShiftAssignments", fields: [userId], references: [id], onDelete: Cascade)
-  shiftSetting  shift_settings @relation(fields: [shiftSettingId], references: [id], onDelete: Cascade)
-  assignedByUser users        @relation("AssignedByUser", fields: [assignedBy], references: [id], onDelete: Restrict)
-
-  @@unique([userId, shiftSettingId])
-  @@index([userId])
-  @@index([shiftSettingId])
-  @@map("user_shift_assignments")
 }

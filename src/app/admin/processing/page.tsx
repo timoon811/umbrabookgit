@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import SalaryRequestsTab from "@/components/admin/SalaryRequestsTab";
 import SalarySettingsTab from "@/components/admin/SalarySettingsTab";
 import ShiftScheduleTab from "@/components/admin/ShiftScheduleTab";
@@ -245,11 +246,11 @@ export default function AdminProcessingPage() {
         setSelectedDeposit(null);
       } else {
         const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
+        toast.error(`Ошибка: ${error.error}`);
       }
     } catch (error) {
       console.error("Ошибка удаления депозита:", error);
-      alert("Ошибка при удалении депозита");
+      toast.error("Ошибка при удалении депозита");
     }
   };
 
@@ -275,11 +276,11 @@ export default function AdminProcessingPage() {
         setSelectedDeposit(null);
       } else {
         const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
+        toast.error(`Ошибка: ${error.error}`);
       }
     } catch (error) {
       console.error("Ошибка передачи депозита:", error);
-      alert("Ошибка при передаче депозита");
+      toast.error("Ошибка при передаче депозита");
     }
   };
 
@@ -388,11 +389,11 @@ export default function AdminProcessingPage() {
         await loadManagers();
       } else {
         const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
+        toast.error(`Ошибка: ${error.error}`);
       }
     } catch (error) {
       console.error("Ошибка изменения статуса менеджера:", error);
-      alert("Ошибка при изменении статуса");
+      toast.error("Ошибка при изменении статуса");
     }
   };
 
@@ -409,7 +410,7 @@ export default function AdminProcessingPage() {
         return true;
       } else {
         const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
+        toast.error(`Ошибка: ${error.error}`);
         return false;
       }
     } catch (error) {
@@ -432,7 +433,7 @@ export default function AdminProcessingPage() {
         return true;
       } else {
         const error = await response.json();
-        alert(`Ошибка: ${error.error}`);
+        toast.error(`Ошибка: ${error.error}`);
         return false;
       }
     } catch (error) {

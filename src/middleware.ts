@@ -107,6 +107,33 @@ export async function middleware(request: NextRequest) {
 
   // Проверяем, является ли маршрут публичным
   if (publicRoutes.includes(pathname)) {
+    // Для страниц логина и регистрации проверяем, авторизован ли пользователь
+    if (pathname === "/login" || pathname === "/register") {
+      const token = request.cookies.get("auth-token")?.value;
+      
+      if (token) {
+        // Проверяем валидность токена
+        try {
+          const tokenParts = token.split('.');
+          if (tokenParts.length === 3 && tokenParts.every(part => part.length > 0)) {
+            // Токен выглядит валидно, перенаправляем на главную
+            return NextResponse.redirect(new URL("/", request.url));
+          }
+        } catch (error) {
+          // Невалидный токен, очищаем cookie и позволяем доступ к странице
+          const response = NextResponse.next();
+          response.cookies.set("auth-token", "", {
+            path: "/",
+            httpOnly: true,
+            maxAge: 0,
+            expires: new Date(0),
+            sameSite: "lax",
+          });
+          return response;
+        }
+      }
+    }
+    
     return NextResponse.next();
   }
 
