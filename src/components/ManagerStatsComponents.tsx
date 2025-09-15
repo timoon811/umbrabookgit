@@ -164,7 +164,7 @@ export const PeriodSelector: React.FC<{
         <select
           value={selectedPeriod}
           onChange={(e) => handlePeriodSelect(e.target.value as 'current' | 'previous' | 'custom')}
-          className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none "
         >
           <option value="current">Текущий месяц</option>
           <option value="previous">Прошлый месяц</option>
@@ -198,7 +198,7 @@ export const PeriodSelector: React.FC<{
                   type="date"
                   value={customDateRange.start}
                   onChange={(e) => onCustomDateChange({ ...customDateRange, start: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none "
                 />
               </div>
               
@@ -210,7 +210,7 @@ export const PeriodSelector: React.FC<{
                   type="date"
                   value={customDateRange.end}
                   onChange={(e) => onCustomDateChange({ ...customDateRange, end: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none "
                 />
               </div>
             </div>

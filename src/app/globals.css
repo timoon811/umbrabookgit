@@ -48,6 +48,12 @@
   --text-secondary: #525252;
   --text-muted: #737373;
 
+  /* Цвета выделения ключевых элементов */
+  --accent-primary: rgb(75, 85, 99); /* gray-600 */
+  --accent-primary-hover: rgb(55, 65, 81); /* gray-700 */
+  --accent-primary-light: rgba(75, 85, 99, 0.1);
+  --accent-primary-border: rgba(75, 85, 99, 0.2);
+
   /* Цвета редактора */
   --editor-bg: #ffffff;
   --editor-text: #171717;
@@ -91,6 +97,12 @@
   --editor-code-bg: rgba(255, 255, 255, 0.1);
   --editor-secondary-text: #a3a3a3;
   --editor-placeholder: #737373;
+
+  /* Цвета выделения ключевых элементов для темной темы */
+  --accent-primary: rgb(156, 163, 175); /* gray-400 */
+  --accent-primary-hover: rgb(209, 213, 219); /* gray-300 */
+  --accent-primary-light: rgba(156, 163, 175, 0.1);
+  --accent-primary-border: rgba(156, 163, 175, 0.2);
 }
 
 body {
@@ -555,13 +567,8 @@ input, textarea, select {
 
 input:focus, textarea:focus, select:focus {
   outline: none !important;
-  border-color: rgb(75 85 99) !important; /* gray-600 */
-  box-shadow: 0 0 0 2px rgba(75, 85, 99, 0.2) !important;
-}
-
-.dark input:focus, .dark textarea:focus, .dark select:focus {
-  border-color: rgb(156 163 175) !important; /* gray-400 */
-  box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.2) !important;
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 2px var(--accent-primary-border) !important;
 }
 
 /* Remove webkit appearance for better control */
@@ -569,6 +576,29 @@ input[type="text"], input[type="url"], input[type="email"], input[type="password
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+}
+
+/* Стили для ключевых интерактивных элементов */
+.accent-button {
+  background-color: var(--accent-primary);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.accent-button:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.accent-border {
+  border-color: var(--accent-primary);
+}
+
+.accent-text {
+  color: var(--accent-primary);
+}
+
+.accent-ring:focus {
+  box-shadow: 0 0 0 2px var(--accent-primary-border);
 }
 
 /* Dark theme overrides */

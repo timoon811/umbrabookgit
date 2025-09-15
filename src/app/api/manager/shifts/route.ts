@@ -76,7 +76,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       shift: currentShift,
       isActive: currentShift.status === 'ACTIVE',
-      timeRemaining
+      timeRemaining,
+      serverTime: now.getTime() // Добавляем серверное время для синхронизации
     });
   } catch (error) {
     console.error('Ошибка получения смены:', error);
@@ -210,7 +211,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         shift: updatedShift,
         isActive: true,
-        message: "Смена начата"
+        message: "Смена начата",
+        serverTime: now.getTime() // Добавляем серверное время для синхронизации
       });
     }
 

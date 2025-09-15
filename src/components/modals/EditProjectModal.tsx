@@ -117,7 +117,7 @@ export default function EditProjectModal({
                 placeholder="Введите название проекта"
                 required
                 disabled={saving}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400  disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -132,7 +132,7 @@ export default function EditProjectModal({
                 placeholder="Введите описание проекта (необязательно)"
                 rows={3}
                 disabled={saving}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400  disabled:opacity-50 disabled:cursor-not-allowed resize-none"
               />
             </div>
 
@@ -146,7 +146,7 @@ export default function EditProjectModal({
                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
                 required
                 disabled={saving}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white  disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="documentation">Документация</option>
                 <option value="courses">Курсы</option>
@@ -161,7 +161,7 @@ export default function EditProjectModal({
                 checked={formData.isActive}
                 onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
                 disabled={saving}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                 Проект активен

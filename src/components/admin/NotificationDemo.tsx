@@ -93,7 +93,7 @@ export default function NotificationDemo() {
               ${notification.color}
               border-current border-opacity-20 
               hover:scale-105 hover:shadow-md
-              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+              focus:outline-none
             `}
           >
             {notification.icon}

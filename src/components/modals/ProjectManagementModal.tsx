@@ -366,12 +366,12 @@ export default function ProjectManagementModal({
                           placeholder="Название проекта"
                           value={newProject.name}
                           onChange={(e) => setNewProject(prev => ({ ...prev, name: e.target.value }))}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white "
                         />
                         <select
                           value={newProject.type}
                           onChange={(e) => setNewProject(prev => ({ ...prev, type: e.target.value }))}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white "
                         >
                           <option value="documentation">Документация</option>
                           <option value="courses">Курсы</option>
@@ -391,7 +391,7 @@ export default function ProjectManagementModal({
                           placeholder="Описание (необязательно)"
                           value={newProject.description}
                           onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))}
-                          className="mt-3 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="mt-3 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white "
                         />
                       )}
                     </div>
@@ -505,7 +505,7 @@ export default function ProjectManagementModal({
                                         type="checkbox"
                                         checked={projectPermissions?.allowedRoles.includes(role) || false}
                                         onChange={(e) => handlePermissionChange(project.id, role, e.target.checked)}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300 rounded"
                                       />
                                       <span className="text-sm text-gray-700 dark:text-gray-300">
                                         {getRoleDisplayName(role as UserRole)}

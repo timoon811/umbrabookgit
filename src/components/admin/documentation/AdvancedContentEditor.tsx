@@ -977,7 +977,7 @@ export default function AdvancedContentEditor({
                   onUpdateTitle(e.target.value);
                 }
               }}
-              className="text-lg font-semibold bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 rounded px-1 py-0.5 transition-colors"
+              className="text-lg font-semibold bg-transparent border-none outline-none w-full  rounded px-1 py-0.5 transition-colors"
               style={{
                 color: 'var(--editor-text)',
                 backgroundColor: 'transparent'
@@ -993,7 +993,7 @@ export default function AdvancedContentEditor({
                   onUpdateDescription(e.target.value);
                 }
               }}
-              className="text-xs bg-transparent border-none outline-none w-full focus:ring-1 focus:ring-blue-500 rounded px-1 py-0.5 transition-colors"
+              className="text-xs bg-transparent border-none outline-none w-full  rounded px-1 py-0.5 transition-colors"
               style={{
                 color: 'var(--editor-secondary-text)',
                 backgroundColor: 'transparent'

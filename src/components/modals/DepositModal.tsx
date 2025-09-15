@@ -171,7 +171,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
                 min="0"
                 value={formData.amount}
                 onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                className="w-full pl-8 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-lg"
+                className="w-full pl-8 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-lg"
                 placeholder="0.00"
                 required
               />
@@ -222,7 +222,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
               <button
                 type="button"
                 onClick={() => setShowCryptoDropdown(!showCryptoDropdown)}
-                className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{selectedCrypto.icon}</span>
@@ -245,7 +245,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
                       placeholder="Поиск криптовалюты..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white text-sm"
                     />
                   </div>
                   
@@ -293,7 +293,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
                 type="email"
                 value={formData.playerEmail}
                 onChange={(e) => setFormData({...formData, playerEmail: e.target.value})}
-                className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
                 placeholder="user@example.com"
                 required
               />
@@ -308,7 +308,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+              className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white resize-none"
               rows={3}
               placeholder="Дополнительная информация о депозите..."
             />

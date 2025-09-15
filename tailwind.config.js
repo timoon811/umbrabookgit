@@ -11,6 +11,12 @@ module.exports = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        accent: {
+          primary: "var(--accent-primary)",
+          "primary-hover": "var(--accent-primary-hover)",
+          "primary-light": "var(--accent-primary-light)",
+          "primary-border": "var(--accent-primary-border)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "Geist", "ui-sans-serif", "system-ui", "sans-serif"],

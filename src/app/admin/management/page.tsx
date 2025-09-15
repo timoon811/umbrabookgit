@@ -136,14 +136,6 @@ export default function AdminManagementPage() {
     sortBy: 'name',
     sortOrder: 'asc'
   });
-  const [showManagerModal, setShowManagerModal] = useState(false);
-  const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
-  const [editingManager, setEditingManager] = useState<Manager | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{
-    type: 'block' | 'unblock';
-    manager: Manager | null;
-  }>({ type: 'block', manager: null });
 
 
   useEffect(() => {
@@ -381,46 +373,6 @@ export default function AdminManagementPage() {
     }
   };
 
-  const handleEditManager = (manager: Manager) => {
-    setEditingManager(manager);
-    setShowManagerModal(true);
-  };
-
-
-  const handleToggleManagerStatus = (manager: Manager) => {
-    setConfirmAction({
-      type: manager.isBlocked ? 'unblock' : 'block',
-      manager
-    });
-    setShowConfirmModal(true);
-  };
-
-  const confirmToggleStatus = async () => {
-    if (!confirmAction.manager) return;
-
-    try {
-      const response = await fetch(`/api/admin/users/${confirmAction.manager.id}/toggle-status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isBlocked: !confirmAction.manager.isBlocked })
-      });
-
-      if (response.ok) {
-        await loadManagers();
-        const action = confirmAction.type === 'block' ? 'заблокирован' : 'разблокирован';
-        toast.success(`Менеджер ${confirmAction.manager.name} успешно ${action}`);
-      } else {
-        const error = await response.json();
-        toast.error(`Ошибка: ${error.error}`);
-      }
-    } catch (error) {
-      console.error("Ошибка изменения статуса менеджера:", error);
-      toast.error("Ошибка при изменении статуса");
-    } finally {
-      setShowConfirmModal(false);
-      setConfirmAction({ type: 'block', manager: null });
-    }
-  };
 
 
   const saveManagerSalary = async (processorId: string, salary: { baseSalary: number; commissionRate: number; bonusMultiplier: number; lastPaid: string | null; totalPaid: number }) => {
@@ -817,7 +769,7 @@ export default function AdminManagementPage() {
                         placeholder="Имя, email..."
                         value={managerFilters.search}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, search: e.target.value }))}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                       />
                     </div>
                     <div>
@@ -825,7 +777,7 @@ export default function AdminManagementPage() {
                       <select
                         value={managerFilters.status}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                       >
                         <option value="all">Все</option>
                         <option value="active">Активные</option>
@@ -837,7 +789,7 @@ export default function AdminManagementPage() {
                       <select
                         value={managerFilters.sortBy}
                         onChange={(e) => setManagerFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                       >
                         <option value="name">По имени</option>
                         <option value="totalDeposits">По депозитам</option>
@@ -928,9 +880,6 @@ export default function AdminManagementPage() {
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                             Статус
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                            Действия
                           </th>
                         </tr>
                       </thead>
@@ -1050,41 +999,6 @@ export default function AdminManagementPage() {
                                 {manager.isBlocked ? 'Заблокирован' : 'Активен'}
                               </span>
                             </td>
-                            
-                            {/* Действия */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleEditManager(manager)}
-                                  className="p-1.5 text-[#171717]/60 dark:text-[#ededed]/60 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
-                                  title="Редактировать"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                
-                                <button
-                                  onClick={() => handleToggleManagerStatus(manager)}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    manager.isBlocked
-                                      ? 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10'
-                                      : 'text-[#171717]/60 dark:text-[#ededed]/60 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
-                                  }`}
-                                  title={manager.isBlocked ? 'Разблокировать' : 'Заблокировать'}
-                                >
-                                  {manager.isBlocked ? (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                  ) : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            </td>
                           </tr>
                         ))}
                         
@@ -1105,7 +1019,7 @@ export default function AdminManagementPage() {
                           return filteredManagers.length === 0;
                         })() && (
                           <tr>
-                            <td colSpan={7} className="px-4 py-8 text-center">
+                            <td colSpan={6} className="px-4 py-8 text-center">
                               <div className="text-[#171717]/40 dark:text-[#ededed]/40">
                                 <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -1211,7 +1125,7 @@ export default function AdminManagementPage() {
                   step="0.01"
                   value={editForm.amount}
                   onChange={(e) => setEditForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                 />
               </div>
               
@@ -1222,7 +1136,7 @@ export default function AdminManagementPage() {
                 <select
                   value={editForm.currency}
                   onChange={(e) => setEditForm(prev => ({ ...prev, currency: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                 >
                   <option value="">Выберите валюту</option>
                   <option value="USDT_TRC20">USDT (TRC20)</option>
@@ -1244,7 +1158,7 @@ export default function AdminManagementPage() {
                   type="email"
                   value={editForm.playerEmail}
                   onChange={(e) => setEditForm(prev => ({ ...prev, playerEmail: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                 />
               </div>
 
@@ -1257,7 +1171,7 @@ export default function AdminManagementPage() {
                   value={editForm.paymentMethod}
                   onChange={(e) => setEditForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
                   placeholder="Например: Банковская карта, PayPal, криптовалюта"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                 />
               </div>
 
@@ -1271,7 +1185,7 @@ export default function AdminManagementPage() {
                   onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
                   placeholder="Внутренние заметки для администраторов"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white "
                 />
               </div>
             </div>
@@ -1363,411 +1277,8 @@ export default function AdminManagementPage() {
       )}
 
 
-      {/* Модальные окна для управления менеджерами */}
-      
-      {/* Модальное окно редактирования менеджера */}
-      {showManagerModal && (editingManager || selectedManager) && (
-        <EditManagerModal
-          manager={editingManager || selectedManager}
-          onClose={() => {
-            setShowManagerModal(false);
-            setEditingManager(null);
-            setSelectedManager(null);
-          }}
-          onSave={async (managerData) => {
-            // Логика сохранения изменений менеджера
-            try {
-              const response = await fetch(`/api/admin/users/${managerData.id}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  name: managerData.name,
-                  email: managerData.email,
-                  role: managerData.role,
-                  password: managerData.password || undefined,
-                }),
-              });
-              
-              if (response.ok) {
-                await loadManagers();
-                setShowManagerModal(false);
-                setEditingManager(null);
-                setSelectedManager(null);
-                toast.success('Менеджер успешно обновлен');
-              } else {
-                const error = await response.json();
-                toast.error(`Ошибка: ${error.error}`);
-              }
-            } catch (error) {
-              console.error('Ошибка при обновлении менеджера:', error);
-              toast.error('Ошибка при сохранении изменений');
-            }
-          }}
-          isEditing={!!editingManager}
-        />
-      )}
-
-      {/* Красивое модальное окно подтверждения */}
-      {showConfirmModal && confirmAction.manager && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl border border-[#171717]/10 dark:border-[#ededed]/10 w-full max-w-md overflow-hidden shadow-2xl">
-            {/* Заголовок */}
-            <div className="p-6 border-b border-[#171717]/10 dark:border-[#ededed]/10">
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  confirmAction.type === 'block' 
-                    ? 'bg-red-100 dark:bg-red-900/30' 
-                    : 'bg-green-100 dark:bg-green-900/30'
-                }`}>
-                  {confirmAction.type === 'block' ? (
-                    <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                    {confirmAction.type === 'block' ? 'Заблокировать менеджера' : 'Разблокировать менеджера'}
-                  </h3>
-                  <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                    Это действие изменит доступ пользователя к системе
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Содержимое */}
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="flex items-center gap-3 p-4 bg-[#171717]/5 dark:bg-[#ededed]/5 rounded-xl">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
-                    {confirmAction.manager.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-medium text-[#171717] dark:text-[#ededed]">
-                      {confirmAction.manager.name}
-                    </div>
-                    <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                      {confirmAction.manager.email}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-[#171717]/70 dark:text-[#ededed]/70 leading-relaxed">
-                {confirmAction.type === 'block' 
-                  ? 'Вы уверены, что хотите заблокировать этого менеджера? Пользователь потеряет доступ к системе и не сможет входить в аккаунт.'
-                  : 'Вы уверены, что хотите разблокировать этого менеджера? Пользователь получит доступ к системе и сможет войти в аккаунт.'
-                }
-              </p>
-            </div>
-            
-            {/* Кнопки действий */}
-            <div className="p-6 bg-[#171717]/2 dark:bg-[#ededed]/2 border-t border-[#171717]/10 dark:border-[#ededed]/10">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowConfirmModal(false);
-                    setConfirmAction({ type: 'block', manager: null });
-                  }}
-                  className="flex-1 px-4 py-2.5 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] rounded-xl hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-all duration-200 font-medium"
-                >
-                  Отмена
-                </button>
-                <button
-                  onClick={confirmToggleStatus}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 ${
-                    confirmAction.type === 'block'
-                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/25'
-                      : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
-                  }`}
-                >
-                  {confirmAction.type === 'block' ? 'Заблокировать' : 'Разблокировать'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
 }
 
-// Edit Manager Modal Component
-function EditManagerModal({ 
-  manager, 
-  onClose, 
-  onSave,
-  isEditing 
-}: {
-  manager: Manager | null;
-  onClose: () => void;
-  onSave: (managerData: any) => void;
-  isEditing: boolean;
-}) {
-  const [formData, setFormData] = useState({
-    id: manager?.id || '',
-    name: manager?.name || '',
-    email: manager?.email || '',
-    role: manager?.role || 'PROCESSOR',
-    password: '',
-  });
-
-  const [shiftsData, setShiftsData] = useState<{
-    shifts: Array<{
-      id: string;
-      shiftType: string;
-      name: string;
-      timeDisplay: string;
-      isActive: boolean;
-      isAssigned: boolean;
-      description?: string;
-    }>;
-    assignedCount: number;
-  } | null>(null);
-  const [shiftsLoading, setShiftsLoading] = useState(false);
-
-  // Загружаем смены при открытии модального окна
-  useEffect(() => {
-    if (formData.role === 'PROCESSOR' && manager?.id) {
-      loadUserShifts();
-    } else {
-      // Сброс данных смен если роль изменилась на не-PROCESSOR
-      setShiftsData(null);
-    }
-  }, [manager?.id, formData.role]);
-
-  const loadUserShifts = async () => {
-    if (!manager?.id) return;
-    
-    setShiftsLoading(true);
-    try {
-      const response = await fetch(`/api/admin/users/${manager.id}/shifts`);
-      if (response.ok) {
-        const data = await response.json();
-        setShiftsData(data);
-      } else {
-        const errorData = await response.json();
-        console.error('Ошибка API загрузки смен:', errorData);
-        setShiftsData({ shifts: [], assignedCount: 0 });
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки смен:', error);
-      setShiftsData({ shifts: [], assignedCount: 0 });
-    } finally {
-      setShiftsLoading(false);
-    }
-  };
-
-  const handleShiftToggle = (shiftId: string) => {
-    if (!shiftsData) return;
-    
-    setShiftsData({
-      ...shiftsData,
-      shifts: shiftsData.shifts.map(shift => 
-        shift.id === shiftId 
-          ? { ...shift, isAssigned: !shift.isAssigned }
-          : shift
-      )
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isEditing) {
-      onClose();
-      return;
-    }
-
-    try {
-      // Сохраняем изменения смен, если они есть
-      if (shiftsData && formData.role === 'PROCESSOR') {
-        const assignedShifts = shiftsData.shifts.filter(s => s.isAssigned).map(s => s.id);
-        
-        const shiftsResponse = await fetch(`/api/admin/users/${manager?.id}/shifts`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ shiftIds: assignedShifts }),
-        });
-
-        if (!shiftsResponse.ok) {
-          const shiftsError = await shiftsResponse.json();
-          console.error('Ошибка обновления смен:', shiftsError);
-        }
-      }
-
-      // Сохраняем основные данные пользователя
-      onSave(formData);
-    } catch (error) {
-      console.error('Ошибка при сохранении:', error);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-[#171717]/10 dark:border-[#ededed]/10">
-          <h2 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-            {isEditing ? 'Редактировать менеджера' : 'Информация о менеджере'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-[#171717]/40 dark:text-[#ededed]/40 hover:text-[#171717] dark:hover:text-[#ededed] transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                  Имя пользователя
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#171717]/5 text-[#171717] dark:text-[#ededed]"
-                  disabled={!isEditing}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#171717]/5 text-[#171717] dark:text-[#ededed]"
-                  disabled={!isEditing}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                  Роль
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#171717]/5 text-[#171717] dark:text-[#ededed]"
-                  disabled={!isEditing}
-                >
-                  <option value="PROCESSOR">Менеджер депозитов</option>
-                  <option value="ADMIN">Администратор</option>
-                </select>
-              </div>
-              {isEditing && (
-                <div>
-                  <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
-                    Новый пароль (оставьте пустым, если не хотите менять)
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#171717]/5 text-[#171717] dark:text-[#ededed]"
-                    placeholder="••••••••"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Смены для процессоров/менеджеров */}
-            {formData.role === 'PROCESSOR' && isEditing && (
-              <div>
-                <h3 className="text-md font-medium text-[#171717] dark:text-[#ededed] mb-3">
-                  Назначенные смены
-                </h3>
-                {shiftsLoading ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 mt-2">Загрузка смен...</p>
-                  </div>
-                ) : shiftsData ? (
-                  <div className="space-y-2">
-                    {shiftsData.shifts.length > 0 ? (
-                      shiftsData.shifts.map((shift) => (
-                        <div key={shift.id} className="flex items-center justify-between p-3 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium text-[#171717] dark:text-[#ededed]">
-                              {shift.name}
-                            </div>
-                            <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-                              {shift.timeDisplay} • {shift.shiftType}
-                            </div>
-                            {shift.description && (
-                              <div className="text-xs text-[#171717]/40 dark:text-[#ededed]/40 mt-1">
-                                {shift.description}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center ml-4">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={shift.isAssigned}
-                                onChange={() => handleShiftToggle(shift.id)}
-                              />
-                              <div className="w-11 h-6 bg-[#171717]/20 dark:bg-[#ededed]/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[#171717]/60 dark:text-[#ededed]/60 text-center py-4">
-                        Нет доступных смен
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-red-500 text-center py-4">
-                    Ошибка загрузки смен
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 text-[#171717] dark:text-[#ededed] rounded-lg hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-colors"
-            >
-              {isEditing ? 'Отмена' : 'Закрыть'}
-            </button>
-            {isEditing && (
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Сохранить
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}

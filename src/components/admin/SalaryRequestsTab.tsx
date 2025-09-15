@@ -272,45 +272,19 @@ export default function SalaryRequestsTab() {
 
   return (
     <div className="space-y-4">
-      {/* Компактная статистика */}
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg p-4 border border-[#171717]/5 dark:border-[#ededed]/10">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
-            Всего заявок: <span className="font-medium text-[#171717] dark:text-[#ededed]">{pagination.total}</span>
-          </div>
-        </div>
-        
-        {/* Компактная статистика по статусам */}
-        <div className="grid grid-cols-4 gap-3">
-          {['PENDING', 'APPROVED', 'REJECTED', 'PAID'].map(status => {
-            const count = salaryRequests.filter(r => r.status === status).length;
-            const statusInfo = getStatusInfo(status);
-            const Icon = statusInfo.icon;
-            
-            return (
-              <div key={status} className="text-center p-2 bg-[#171717]/[0.02] dark:bg-[#ededed]/5 rounded-lg hover:bg-[#171717]/[0.04] dark:hover:bg-[#ededed]/10 transition-colors">
-                <Icon className="w-4 h-4 mx-auto mb-1 text-[#171717]/60 dark:text-[#ededed]/60" />
-                <div className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">{count}</div>
-                <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">{statusInfo.label}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Компактные фильтры */}
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg p-4 border border-[#171717]/5 dark:border-[#ededed]/10">
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      {/* Компактные фильтры в одну строку */}
+      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg p-3 border border-[#171717]/5 dark:border-[#ededed]/10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
           {/* Поиск */}
-          <div className="lg:col-span-2">
+          <div className="col-span-2 lg:col-span-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#171717]/40 dark:text-[#ededed]/40" />
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-[#171717]/40 dark:text-[#ededed]/40" />
               <input
                 type="text"
-                placeholder="Поиск по менеджеру..."
+                placeholder="Поиск..."
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full pl-10 pr-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] placeholder:text-[#171717]/40 dark:placeholder:text-[#ededed]/40"
+                className="w-full pl-8 pr-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] placeholder:text-[#171717]/40 dark:placeholder:text-[#ededed]/40"
               />
             </div>
           </div>
@@ -320,7 +294,7 @@ export default function SalaryRequestsTab() {
             <select
               value={filters.status}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
+              className="w-full px-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
             >
               <option value="all">Все статусы</option>
               <option value="PENDING">Ожидает</option>
@@ -335,7 +309,7 @@ export default function SalaryRequestsTab() {
             <select
               value={filters.processorId}
               onChange={(e) => setFilters(prev => ({ ...prev, processorId: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
+              className="w-full px-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
             >
               <option value="all">Все менеджеры</option>
               {managers.map(manager => (
@@ -346,39 +320,29 @@ export default function SalaryRequestsTab() {
             </select>
           </div>
 
-          {/* Сброс */}
-          <div>
-            <button
-              onClick={resetFilters}
-              className="w-full px-3 py-2 text-sm bg-[#171717]/5 dark:bg-[#ededed]/5 text-[#171717] dark:text-[#ededed] rounded-lg hover:bg-[#171717]/10 dark:hover:bg-[#ededed]/10 transition-colors border border-[#171717]/10 dark:border-[#ededed]/10"
-            >
-              Сброс
-            </button>
-          </div>
-        </div>
-
-        {/* Дополнительные фильтры в одну строку */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t border-[#171717]/5 dark:border-[#ededed]/10">
+          {/* Дата с */}
           <div>
             <input
               type="date"
               value={filters.dateFrom}
               onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
-              placeholder="Дата с"
+              className="w-full px-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
+              title="Дата с"
             />
           </div>
           
+          {/* Дата до */}
           <div>
             <input
               type="date"
               value={filters.dateTo}
               onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
-              placeholder="Дата по"
+              className="w-full px-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
+              title="Дата до"
             />
           </div>
 
+          {/* Сортировка */}
           <div>
             <select
               value={`${sortBy}-${sortOrder}`}
@@ -387,7 +351,7 @@ export default function SalaryRequestsTab() {
                 setSortBy(field);
                 setSortOrder(order as 'asc' | 'desc');
               }}
-              className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
+              className="w-full px-2 py-1.5 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-md focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
             >
               <option value="createdAt-desc">Дата ↓</option>
               <option value="createdAt-asc">Дата ↑</option>
@@ -396,6 +360,17 @@ export default function SalaryRequestsTab() {
               <option value="manager-asc">Менеджер А-Я</option>
               <option value="manager-desc">Менеджер Я-А</option>
             </select>
+          </div>
+
+          {/* Сброс */}
+          <div>
+            <button
+              onClick={resetFilters}
+              className="w-full px-2 py-1.5 text-sm bg-[#171717]/5 dark:bg-[#ededed]/5 text-[#171717] dark:text-[#ededed] rounded-md hover:bg-[#171717]/10 dark:hover:bg-[#ededed]/10 transition-colors border border-[#171717]/10 dark:border-[#ededed]/10"
+              title="Сбросить фильтры"
+            >
+              Сброс
+            </button>
           </div>
         </div>
       </div>
@@ -749,7 +724,7 @@ export default function SalaryRequestsTab() {
               <textarea
                 value={actionData.adminComment}
                 onChange={(e) => setActionData(prev => ({ ...prev, adminComment: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] placeholder:text-[#171717]/40 dark:placeholder:text-[#ededed]/40 resize-none"
+                className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none  bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] placeholder:text-[#171717]/40 dark:placeholder:text-[#ededed]/40 resize-none"
                 rows={3}
                 placeholder="Причина одобрения или отклонения..."
               />

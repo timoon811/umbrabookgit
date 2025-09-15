@@ -1018,7 +1018,7 @@ export default function SalarySettingsTab() {
                     type="text"
                     name="name"
                     defaultValue={salarySettings.name}
-                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] "
                     placeholder="Название настроек"
                     required
                   />
@@ -1034,7 +1034,7 @@ export default function SalarySettingsTab() {
                     step="0.01"
                     min="0"
                     defaultValue={salarySettings.hourlyRate}
-                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] "
                     placeholder="2.00"
                     required
                   />
@@ -1048,7 +1048,7 @@ export default function SalarySettingsTab() {
                     name="description"
                     rows={3}
                     defaultValue={salarySettings.description || ''}
-                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] "
                     placeholder="Описание настроек зарплатной системы"
                   />
                 </div>

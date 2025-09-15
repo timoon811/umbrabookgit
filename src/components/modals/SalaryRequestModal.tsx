@@ -181,7 +181,7 @@ export default function SalaryRequestModal({
                   type="date"
                   value={formData.periodStart}
                   onChange={(e) => handleInputChange('periodStart', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   required
                 />
               </div>
@@ -195,7 +195,7 @@ export default function SalaryRequestModal({
                   type="date"
                   value={formData.periodEnd}
                   onChange={(e) => handleInputChange('periodEnd', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   required
                 />
               </div>
@@ -214,7 +214,7 @@ export default function SalaryRequestModal({
                 max={availableAmount}
                 value={formData.requestedAmount}
                 onChange={(e) => handleInputChange('requestedAmount', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 placeholder="0.00"
                 required
               />
@@ -238,7 +238,7 @@ export default function SalaryRequestModal({
                   <select
                     value={formData.paymentDetails.method}
                     onChange={(e) => handleInputChange('paymentDetails.method', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     required
                   >
                     <option value="bank">Банковский перевод</option>
@@ -256,7 +256,7 @@ export default function SalaryRequestModal({
                     type="text"
                     value={formData.paymentDetails.account}
                     onChange={(e) => handleInputChange('paymentDetails.account', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="Номер счета или адрес кошелька"
                     required
                   />
@@ -270,7 +270,7 @@ export default function SalaryRequestModal({
                 <textarea
                   value={formData.paymentDetails.additionalInfo}
                   onChange={(e) => handleInputChange('paymentDetails.additionalInfo', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   rows={2}
                   placeholder="Дополнительные детали для выплаты (необязательно)"
                 />
@@ -286,7 +286,7 @@ export default function SalaryRequestModal({
               <textarea
                 value={formData.comment}
                 onChange={(e) => handleInputChange('comment', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 rows={3}
                 placeholder="Дополнительная информация о заявке"
               />

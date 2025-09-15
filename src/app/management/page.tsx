@@ -416,7 +416,35 @@ function ProcessingPageContent() {
     isCurrent: boolean;
     icon: string;
   }>>([]);
-  
+
+  // Загрузка статистики зарплаты
+  const loadSalaryStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/manager/salary-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setSalaryStats(data);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки статистики зарплаты:", error);
+    }
+  }, []);
+
+  // Загрузка зарплатных заявок
+  const loadSalaryRequests = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/manager/salary-requests?page=1&limit=50`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSalaryRequests(data.salaryRequests || []);
+      } else {
+        console.error("Ошибка загрузки зарплатных заявок:", data.error);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки зарплатных заявок:", error);
+    }
+  }, []);
 
   // Проверка авторизации и роли
   useEffect(() => {
@@ -473,6 +501,10 @@ function ProcessingPageContent() {
 
                 if (shiftData.timeRemaining !== null) {
                   setShiftTimeRemaining(shiftData.timeRemaining);
+                  // Если есть активная смена, запускаем таймер
+                  if (shiftData.isActive && shiftData.timeRemaining > 0) {
+                    startTimer(shiftData.timeRemaining);
+                  }
                 }
               }
 
@@ -522,26 +554,19 @@ function ProcessingPageContent() {
     }
   }, [user, router, selectedPeriod, loadSalaryRequests, loadSalaryStats]);
 
-  // Обновление текущего времени каждую секунду
+  // Обновление текущего времени каждую секунду (UTC+3)
   useEffect(() => {
-    const timeInterval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const updateTime = () => {
+      const now = new Date();
+      // Конвертируем в UTC+3 время для отображения
+      const utc3Time = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (3 * 60 * 60 * 1000));
+      setCurrentTime(utc3Time);
+    };
+
+    updateTime(); // Устанавливаем время сразу
+    const timeInterval = setInterval(updateTime, 1000);
 
     return () => clearInterval(timeInterval);
-  }, []);
-
-  // Загрузка статистики зарплаты
-  const loadSalaryStats = useCallback(async () => {
-    try {
-      const response = await fetch('/api/manager/salary-stats');
-      if (response.ok) {
-        const data = await response.json();
-        setSalaryStats(data);
-      }
-    } catch (error) {
-      console.error("Ошибка загрузки статистики зарплаты:", error);
-    }
   }, []);
 
   // Периодическое обновление статистики зарплаты (каждые 30 секунд)
@@ -555,21 +580,27 @@ function ProcessingPageContent() {
     }
   }, [salaryStats, isShiftActive, loadSalaryStats]);
 
-  // Загрузка зарплатных заявок
-  const loadSalaryRequests = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/manager/salary-requests?page=1&limit=50`);
-      const data = await response.json();
+  // Периодическое обновление данных смены (каждые 60 секунд) для синхронизации времени
+  useEffect(() => {
+    if (isShiftActive && currentShift) {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch("/api/manager/shifts");
+          if (response.ok) {
+            const data = await response.json();
+            // Обновляем только время, не весь объект смены, чтобы не прерывать таймер
+            if (data.timeRemaining !== null && data.isActive) {
+              setShiftTimeRemaining(data.timeRemaining);
+            }
+          }
+        } catch (error) {
+          console.error("Ошибка синхронизации времени смены:", error);
+        }
+      }, 60000); // 60 секунд
 
-      if (response.ok) {
-        setSalaryRequests(data.salaryRequests || []);
-      } else {
-        console.error("Ошибка загрузки зарплатных заявок:", data.error);
-      }
-    } catch (error) {
-      console.error("Ошибка загрузки зарплатных заявок:", error);
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [isShiftActive, currentShift]);
 
   // Отдельная функция для загрузки детальной статистики с параметрами
   const loadDetailedStats = useCallback(async (period = selectedPeriod, startDate?: string, endDate?: string) => {
@@ -602,8 +633,27 @@ function ProcessingPageContent() {
     }
   };
 
+  // Функция для запуска таймера
+  const startTimer = useCallback((initialTime: number) => {
+    if (shiftTimer) {
+      clearInterval(shiftTimer);
+    }
 
+    setShiftTimeRemaining(initialTime);
 
+    const timer = setInterval(() => {
+      setShiftTimeRemaining(prev => {
+        if (prev === null || prev <= 1000) {
+          clearInterval(timer);
+          setShiftTimer(null);
+          return 0;
+        }
+        return prev - 1000;
+      });
+    }, 1000);
+
+    setShiftTimer(timer);
+  }, [shiftTimer]);
 
   // Загрузка данных о смене
   const loadShiftData = useCallback(async () => {
@@ -611,17 +661,40 @@ function ProcessingPageContent() {
       const response = await fetch("/api/manager/shifts");
       if (response.ok) {
         const data = await response.json();
+        
         setCurrentShift(data.shift);
         setIsShiftActive(data.isActive);
 
-        if (data.timeRemaining !== null) {
+        // Проверяем что получили корректные данные о времени
+        if (data.timeRemaining !== null && data.timeRemaining !== undefined) {
           setShiftTimeRemaining(data.timeRemaining);
+          
+          // Если есть активная смена и осталось время, запускаем таймер
+          if (data.isActive && data.timeRemaining > 0) {
+            startTimer(data.timeRemaining);
+          } else if (data.isActive && data.timeRemaining <= 0) {
+            setShiftTimeRemaining(0);
+          }
+        } else if (data.isActive && data.shift && data.shift.scheduledEnd) {
+          // Если нет timeRemaining, но смена активна, рассчитываем время с серверным временем
+          const serverTime = data.serverTime || Date.now();
+          const endTime = new Date(data.shift.scheduledEnd);
+          const calculatedTimeRemaining = Math.max(0, endTime.getTime() - serverTime);
+          
+          setShiftTimeRemaining(calculatedTimeRemaining);
+          
+          if (calculatedTimeRemaining > 0) {
+            startTimer(calculatedTimeRemaining);
+          }
+        } else {
+          // Смена не активна или нет данных о времени
+          setShiftTimeRemaining(null);
         }
       }
     } catch (error) {
       console.error("Ошибка загрузки данных смены:", error);
     }
-  }, []);
+  }, [startTimer]);
 
   // Загрузка истории действий
   const loadActionHistory = useCallback(async () => {
@@ -705,28 +778,6 @@ function ProcessingPageContent() {
     }
   };
 
-  // Функция для запуска таймера
-  const startTimer = useCallback((initialTime: number) => {
-    if (shiftTimer) {
-      clearInterval(shiftTimer);
-    }
-
-    setShiftTimeRemaining(initialTime);
-
-    const timer = setInterval(() => {
-      setShiftTimeRemaining(prev => {
-        if (prev === null || prev <= 1000) {
-          clearInterval(timer);
-          setShiftTimer(null);
-          return 0;
-        }
-        return prev - 1000;
-      });
-    }, 1000);
-
-    setShiftTimer(timer);
-  }, [shiftTimer]);
-
   // Начать смену
   const startShift = async () => {
     setShiftLoading(true);
@@ -744,9 +795,10 @@ function ProcessingPageContent() {
         
         // Вычисляем время до конца смены по графику
         if (data.shift.scheduledEnd) {
-          const now = new Date();
+          // Используем серверное время из ответа для точного расчета
+          const serverTime = data.serverTime || Date.now();
           const endTime = new Date(data.shift.scheduledEnd);
-          const timeRemaining = Math.max(0, endTime.getTime() - now.getTime());
+          const timeRemaining = Math.max(0, endTime.getTime() - serverTime);
           setShiftTimeRemaining(timeRemaining);
           startTimer(timeRemaining);
         }
@@ -808,6 +860,10 @@ function ProcessingPageContent() {
 
   // Форматирование времени
   const formatTime = (milliseconds: number) => {
+    if (milliseconds === null || milliseconds === undefined || milliseconds < 0) {
+      return '00:00:00';
+    }
+    
     const hours = Math.floor(milliseconds / (1000 * 60 * 60));
     const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
@@ -930,7 +986,7 @@ function ProcessingPageContent() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-gray-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#171717]/60 dark:text-[#ededed]/60">Загрузка...</p>
         </div>
       </div>
@@ -947,7 +1003,7 @@ function ProcessingPageContent() {
             <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800 p-8">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -962,7 +1018,7 @@ function ProcessingPageContent() {
               <div className="flex justify-center">
                 <a 
                   href="/admin/management"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+                  className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors inline-flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1046,7 +1102,7 @@ function ProcessingPageContent() {
                 onClick={() => setActiveTab("shifts")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === "shifts"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    ? "border-gray-500 text-gray-600 dark:text-gray-400"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
@@ -1060,7 +1116,7 @@ function ProcessingPageContent() {
                 onClick={() => setActiveTab("statistics")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === "statistics"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    ? "border-gray-500 text-gray-600 dark:text-gray-400"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
@@ -1074,7 +1130,7 @@ function ProcessingPageContent() {
                 onClick={() => setActiveTab("deposits")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === "deposits"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    ? "border-gray-500 text-gray-600 dark:text-gray-400"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
@@ -1088,7 +1144,7 @@ function ProcessingPageContent() {
                 onClick={() => setActiveTab("salary")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === "salary"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    ? "border-gray-500 text-gray-600 dark:text-gray-400"
                     : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 }`}
               >
@@ -1128,16 +1184,16 @@ function ProcessingPageContent() {
                     </div>
                     <div className="text-lg font-mono font-bold text-gray-900 dark:text-white">
                       {currentTime.toLocaleTimeString('ru-RU', { 
-                        timeZone: 'Europe/Moscow',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
+                        second: '2-digit'
                       })}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                       {currentTime.toLocaleDateString('ru-RU', { 
-                        timeZone: 'Europe/Moscow',
                         day: 'numeric',
-                        month: 'short'
+                        month: 'short',
+                        year: 'numeric'
                       })}
                     </div>
                     {availableShifts.length > 0 && (
@@ -1181,15 +1237,15 @@ function ProcessingPageContent() {
                     }`}>
                       {currentShift && currentShift.status === 'ACTIVE' ? 'Активна' : 'Не начата'}
                     </div>
-                    {shiftTimeRemaining !== null && (
+                    {shiftTimeRemaining !== null && currentShift && currentShift.status === 'ACTIVE' && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatTime(shiftTimeRemaining)} до окончания
+                        {shiftTimeRemaining > 0 ? `${formatTime(shiftTimeRemaining)} до окончания` : 'Время истекло'}
                       </div>
                     )}
                     {!isShiftActive && (
                       <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
                         <div className="font-medium">Доступные операции</div>
-                        <div className="text-blue-600 dark:text-blue-400">
+                        <div className="text-gray-600 dark:text-gray-400">
                           После начала смены станут доступны депозиты и другие функции
                         </div>
                       </div>
@@ -1248,7 +1304,7 @@ function ProcessingPageContent() {
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Смены проекта
@@ -1343,7 +1399,7 @@ function ProcessingPageContent() {
                   <div className="p-4">
                     {historyLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                        <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                       </div>
                     ) : actionLogs.length === 0 ? (
                       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -1441,7 +1497,7 @@ function ProcessingPageContent() {
                 {loading && !detailedStats && (
                   <div className="flex items-center justify-center p-12">
                     <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto mb-4"></div>
                       <p className="text-gray-600 dark:text-gray-400">Загрузка статистики...</p>
                     </div>
                   </div>
@@ -1471,7 +1527,7 @@ function ProcessingPageContent() {
                        value={`$${detailedStats.performance.today.earnings.toFixed(2)}`}
                        subtitle={`${detailedStats.performance.today.deposits} депозитов • ${detailedStats.performance.today.hours.toFixed(1)}ч`}
                        icon={
-                         <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <svg className="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                          </svg>
                        }
@@ -1522,7 +1578,7 @@ function ProcessingPageContent() {
                                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
                                  <div className="flex items-center gap-2 mb-6">
                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                     <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                                      </svg>
                                    </div>
@@ -1536,7 +1592,7 @@ function ProcessingPageContent() {
                                      label="Объем депозитов (месячный план)"
                                      value={detailedStats.performance.month.volume}
                                      target={detailedStats.goals.monthly.depositVolume}
-                                     color="bg-gradient-to-r from-blue-500 to-blue-600"
+                                     color="bg-gradient-to-r from-gray-500 to-gray-600"
                                      monthlyBonus={
                                      detailedStats.settings.currentMonthlyBonus || detailedStats.settings.nextMonthlyBonus
                                      }
