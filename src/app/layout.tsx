@@ -6,6 +6,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import NotificationProvider from "@/providers/NotificationProvider";
 import ToastContainer from "@/components/Toast";
 import ConfirmDialogContainer from "@/components/ConfirmDialog";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -46,10 +47,12 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>
-              <ConditionalNavigation />
-              {children}
-              <ToastContainer />
-              <ConfirmDialogContainer />
+              <ErrorBoundary>
+                <ConditionalNavigation />
+                {children}
+                <ToastContainer />
+                <ConfirmDialogContainer />
+              </ErrorBoundary>
             </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>

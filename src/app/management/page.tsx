@@ -483,6 +483,16 @@ function ProcessingPageContent() {
                 } else if (statsResponse.status === 403) {
                   showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
                   return;
+                } else {
+                  // Показываем ошибку загрузки основной статистики
+                  try {
+                    const errorData = await statsResponse.json();
+                    console.error('Детали ошибки основной статистики:', errorData);
+                    showError("Ошибка загрузки", errorData.error || errorData.message || "Не удалось загрузить основную статистику");
+                  } catch (e) {
+                    console.error('Не удалось разобрать ошибку основной статистики:', e);
+                    showError("Ошибка сервера", `HTTP ${statsResponse.status}: Не удалось загрузить статистику`);
+                  }
                 }
               }
 
@@ -668,7 +678,11 @@ function ProcessingPageContent() {
       }
     } catch (error) {
       console.error("Ошибка загрузки детальной статистики:", error);
-      showError("Ошибка сети", "Проблема с подключением к серверу");
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        showError("Ошибка сети", "Нет подключения к серверу. Проверьте интернет-соединение.");
+      } else {
+        showError("Ошибка сети", "Проблема с подключением к серверу");
+      }
     }
   }, [selectedPeriod, showError, router]);
 
@@ -1558,24 +1572,34 @@ function ProcessingPageContent() {
                 {/* Ошибка загрузки */}
                 {!loading && !detailedStats && (
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-                    <div className="flex items-center">
-                      <svg className="w-6 h-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <h3 className="text-lg font-medium text-red-800 dark:text-red-200">Не удалось загрузить статистику</h3>
-                        <p className="text-red-600 dark:text-red-300 mb-2">Возможные причины:</p>
-                        <ul className="text-sm text-red-600 dark:text-red-300 list-disc list-inside space-y-1">
-                          <li>Проблемы с авторизацией - попробуйте войти заново</li>
-                          <li>Недостаточно прав доступа</li>
-                          <li>Проблемы с подключением к серверу</li>
-                          <li>Временные неполадки сервиса</li>
-                        </ul>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <svg className="w-6 h-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <h3 className="text-lg font-medium text-red-800 dark:text-red-200">Не удалось загрузить статистику</h3>
+                          <p className="text-red-600 dark:text-red-300 mb-2">Возможные причины:</p>
+                          <ul className="text-sm text-red-600 dark:text-red-300 list-disc list-inside space-y-1">
+                            <li>Проблемы с авторизацией - попробуйте войти заново</li>
+                            <li>Недостаточно прав доступа</li>
+                            <li>Проблемы с подключением к серверу</li>
+                            <li>Временные неполадки сервиса</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => window.location.reload()} 
-                          className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
                         >
                           Обновить страницу
+                        </button>
+                        <button 
+                          onClick={() => loadDetailedStats()} 
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                        >
+                          Повторить запрос
                         </button>
                       </div>
                     </div>
