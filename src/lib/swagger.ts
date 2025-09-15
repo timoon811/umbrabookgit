@@ -206,7 +206,7 @@ const options = {
             },
             processorId: {
               type: 'string',
-              description: 'ID процессора',
+              description: 'ID менеджера',
             },
             createdAt: {
               type: 'string',

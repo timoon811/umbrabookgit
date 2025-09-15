@@ -32,6 +32,31 @@ interface ShiftStats {
   missed: number;
 }
 
+interface ActionLog {
+  id: string;
+  action: string;
+  description: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    telegram?: string;
+    role: string;
+  };
+  shiftType: string;
+  duration?: number;
+  autoEnded: boolean;
+  ip?: string;
+  userAgent?: string;
+}
+
+interface ActionLogStats {
+  total: number;
+  shiftStarts: number;
+  shiftEnds: number;
+}
+
 interface FilterParams {
   page: number;
   limit: number;
@@ -45,9 +70,13 @@ export default function ShiftLogsTab() {
   const { showSuccess, showError, showShiftAlert } = useNotificationContext();
   const [shifts, setShifts] = useState<ShiftLog[]>([]);
   const [stats, setStats] = useState<ShiftStats | null>(null);
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
+  const [actionStats, setActionStats] = useState<ActionLogStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionLogsLoading, setActionLogsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [processors, setProcessors] = useState<Array<{id: string, name: string, email: string}>>([]);
+  const [managers, setManagers] = useState<Array<{id: string, name: string, email: string}>>([]);
+  const [activeTab, setActiveTab] = useState<'shifts' | 'actions'>('shifts');
   
   // Упрощенные фильтры
   const [filters, setFilters] = useState<FilterParams>({
@@ -64,9 +93,13 @@ export default function ShiftLogsTab() {
   });
 
   useEffect(() => {
-    fetchShiftLogs();
-    fetchProcessors();
-  }, [filters]);
+    if (activeTab === 'shifts') {
+      fetchShiftLogs();
+    } else {
+      fetchActionLogs();
+    }
+    fetchManagers();
+  }, [filters, activeTab]);
 
   const fetchShiftLogs = async () => {
     try {
@@ -108,15 +141,15 @@ export default function ShiftLogsTab() {
     }
   };
 
-  const fetchProcessors = async () => {
+  const fetchManagers = async () => {
     try {
-      const response = await fetch('/api/admin/processors');
+      const response = await fetch('/api/admin/managers');
       if (response.ok) {
         const data = await response.json();
-        setProcessors(data.processors || []);
+        setManagers(data.managers || []);
       }
     } catch (error) {
-      console.error('Ошибка загрузки обработчиков:', error);
+      console.error('Ошибка загрузки менеджеров:', error);
     }
   };
 
@@ -126,6 +159,33 @@ export default function ShiftLogsTab() {
       [key]: value,
       page: key !== 'page' ? 1 : value
     }));
+  };
+
+  const fetchActionLogs = async () => {
+    try {
+      setActionLogsLoading(true);
+      const params = new URLSearchParams({
+        page: filters.page.toString(),
+        limit: filters.limit.toString(),
+      });
+
+      if (filters.processorId) params.append('userId', filters.processorId);
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+
+      const response = await fetch(`/api/admin/action-logs?${params}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setActionLogs(data.logs);
+        setActionStats(data.stats);
+      } else {
+        setError(data.error || 'Ошибка загрузки логов действий');
+      }
+    } catch (error) {
+      setError('Ошибка сети при загрузке логов действий');
+    } finally {
+      setActionLogsLoading(false);
+    }
   };
 
 
@@ -275,8 +335,34 @@ export default function ShiftLogsTab() {
 
   return (
     <div className="space-y-4">
-      {/* Компактная статистика */}
-      {stats && (
+      {/* Вкладки */}
+      <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+        <button
+          onClick={() => setActiveTab('shifts')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'shifts'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Смены
+        </button>
+        <button
+          onClick={() => setActiveTab('actions')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'actions'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Логи действий
+        </button>
+      </div>
+
+      {activeTab === 'shifts' && (
+        <>
+          {/* Компактная статистика */}
+          {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
             <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,10 +430,10 @@ export default function ShiftLogsTab() {
           onChange={(e) => handleFilterChange('processorId', e.target.value)}
           className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
         >
-          <option value="">Все обработчики</option>
-          {processors.map(processor => (
-            <option key={processor.id} value={processor.id}>
-              {processor.name}
+          <option value="">Все менеджери</option>
+          {managers.map(manager => (
+            <option key={manager.id} value={manager.id}>
+              {manager.name}
             </option>
           ))}
         </select>
@@ -430,7 +516,7 @@ export default function ShiftLogsTab() {
               Нет данных о сменах
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Обработчики еще не начали использовать систему смен
+              Менеджеры еще не начали использовать систему смен
             </p>
           </div>
         ) : (
@@ -439,7 +525,7 @@ export default function ShiftLogsTab() {
               <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                    Обработчик
+                    Менеджер
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Смена
@@ -549,6 +635,212 @@ export default function ShiftLogsTab() {
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {activeTab === 'actions' && (
+        <>
+          {/* Статистика логов действий */}
+          {actionStats && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <div>
+                  <div className="text-lg font-semibold text-gray-700 dark:text-gray-300">{actionStats.total}</div>
+                  <div className="text-xs text-gray-500">Всего действий</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+                <div>
+                  <div className="text-lg font-semibold text-green-700 dark:text-green-300">{actionStats.shiftStarts}</div>
+                  <div className="text-xs text-green-600 dark:text-green-400">Начато смен</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <div>
+                  <div className="text-lg font-semibold text-red-700 dark:text-red-300">{actionStats.shiftEnds}</div>
+                  <div className="text-xs text-red-600 dark:text-red-400">Завершено смен</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Фильтры для логов действий */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Менеджер
+                </label>
+                <select
+                  value={filters.processorId || ''}
+                  onChange={(e) => handleFilterChange('processorId', e.target.value)}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Все менеджеры</option>
+                  {managers.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name} ({manager.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Дата от
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateFrom || ''}
+                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={() => setFilters({
+                    page: 1,
+                    limit: 20,
+                  })}
+                  className="px-4 py-2 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                >
+                  Сбросить
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Таблица логов действий */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {actionLogsLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : actionLogs.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-gray-500 dark:text-gray-400">Логи действий не найдены</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-900/20">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Пользователь
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Действие
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Время
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Детали
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {actionLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td className="px-3 py-2">
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {log.user.name}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {log.user.email}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            {log.action === 'SHIFT_START' && (
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            )}
+                            {log.action === 'SHIFT_END' && (
+                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            )}
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {log.description}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="text-sm text-gray-700 dark:text-gray-300">
+                            {new Date(log.createdAt).toLocaleString('ru-RU', {
+                              timeZone: 'Europe/Moscow',
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {log.shiftType && (
+                              <div>Тип: {log.shiftType}</div>
+                            )}
+                            {log.duration && (
+                              <div>Длительность: {Math.round(log.duration / 60000)} мин</div>
+                            )}
+                            {log.autoEnded && (
+                              <div className="text-orange-600 dark:text-orange-400">Автозавершение</div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Пагинация для логов действий */}
+            {pagination.pages > 1 && (
+              <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} из {pagination.total}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleFilterChange('page', pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="p-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <span className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400">
+                    {pagination.page} / {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() => handleFilterChange('page', pagination.page + 1)}
+                    disabled={pagination.page >= pagination.pages}
+                    className="p-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

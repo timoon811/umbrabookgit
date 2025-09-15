@@ -36,7 +36,7 @@ interface SalaryRequest {
   };
 }
 
-interface Processor {
+interface Manager {
   id: string;
   name: string;
   email: string;
@@ -52,7 +52,7 @@ interface Pagination {
 export default function SalaryRequestsTab() {
   const { showSalaryAlert, showSuccess, showError } = useNotificationContext();
   const [salaryRequests, setSalaryRequests] = useState<SalaryRequest[]>([]);
-  const [processors, setProcessors] = useState<Processor[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 20,
@@ -106,7 +106,7 @@ export default function SalaryRequestsTab() {
       if (response.ok) {
         const data = await response.json();
         setSalaryRequests(data.salaryRequests);
-        setProcessors(data.processors);
+        setManagers(data.managers);
         setPagination(data.pagination);
         
         // Проверяем расхождения в зарплатах
@@ -307,7 +307,7 @@ export default function SalaryRequestsTab() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#171717]/40 dark:text-[#ededed]/40" />
               <input
                 type="text"
-                placeholder="Поиск по процессору..."
+                placeholder="Поиск по менеджеру..."
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 className="w-full pl-10 pr-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed] placeholder:text-[#171717]/40 dark:placeholder:text-[#ededed]/40"
@@ -330,17 +330,17 @@ export default function SalaryRequestsTab() {
             </select>
           </div>
 
-          {/* Процессор */}
+          {/* Менеджер */}
           <div>
             <select
               value={filters.processorId}
               onChange={(e) => setFilters(prev => ({ ...prev, processorId: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 bg-white dark:bg-[#0a0a0a] text-[#171717] dark:text-[#ededed]"
             >
-              <option value="all">Все процессоры</option>
-              {processors.map(processor => (
-                <option key={processor.id} value={processor.id}>
-                  {processor.name}
+              <option value="all">Все менеджеры</option>
+              {managers.map(manager => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name}
                 </option>
               ))}
             </select>
@@ -393,8 +393,8 @@ export default function SalaryRequestsTab() {
               <option value="createdAt-asc">Дата ↑</option>
               <option value="requestedAmount-desc">Сумма ↓</option>
               <option value="requestedAmount-asc">Сумма ↑</option>
-              <option value="processor-asc">Процессор А-Я</option>
-              <option value="processor-desc">Процессор Я-А</option>
+              <option value="manager-asc">Менеджер А-Я</option>
+              <option value="manager-desc">Менеджер Я-А</option>
             </select>
           </div>
         </div>
@@ -407,7 +407,7 @@ export default function SalaryRequestsTab() {
             <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/5 border-b border-[#171717]/5 dark:border-[#ededed]/10">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                  Процессор
+                  Менеджер
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                   Период
@@ -628,7 +628,7 @@ export default function SalaryRequestsTab() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                    Процессор
+                    Менеджер
                   </label>
                   <div className="p-3 bg-[#171717]/[0.02] dark:bg-[#ededed]/5 rounded-lg">
                     <p className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
@@ -687,7 +687,7 @@ export default function SalaryRequestsTab() {
               {selectedRequest.comment && (
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
-                    Комментарий процессора
+                    Комментарий менеджера
                   </label>
                   <div className="p-3 bg-blue-50/50 dark:bg-blue-500/10 border border-blue-200/50 dark:border-blue-500/20 rounded-lg">
                     <p className="text-sm text-[#171717] dark:text-[#ededed]">

@@ -9,7 +9,7 @@ interface AuthGuardProps {
   fallback?: ReactNode;
   redirectTo?: string;
   allowedRoles?: string[];
-  blockProcessors?: boolean;
+  blockManagers?: boolean;
 }
 
 export default function AuthGuard({ 
@@ -17,7 +17,7 @@ export default function AuthGuard({
   fallback = null, 
   redirectTo = "/login",
   allowedRoles = [],
-  blockProcessors = false
+  blockManagers = false
 }: AuthGuardProps) {
   const { user, loading, mounted } = useAuth();
   const router = useRouter();
@@ -36,13 +36,13 @@ export default function AuthGuard({
         return;
       }
 
-      // Если нужно блокировать процессоров
-      if (blockProcessors && user.role === "PROCESSOR") {
-        router.push("/processing");
+      // Если нужно блокировать менеджеров
+      if (blockManagers && user.role === "PROCESSOR") {
+        router.push("/management");
         return;
       }
     }
-  }, [mounted, loading, user, router, redirectTo, allowedRoles, blockProcessors]);
+  }, [mounted, loading, user, router, redirectTo, allowedRoles, blockManagers]);
 
   // Показываем loading state до монтирования
   if (!mounted) {
@@ -76,8 +76,8 @@ export default function AuthGuard({
     return fallback;
   }
 
-  // Если нужно блокировать процессоров
-  if (blockProcessors && user.role === "PROCESSOR") {
+  // Если нужно блокировать менеджеров
+  if (blockManagers && user.role === "PROCESSOR") {
     return fallback;
   }
 

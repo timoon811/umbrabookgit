@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
-export type ProcessorActionType = 
+export type ManagerActionType = 
   | 'SHIFT_START'
   | 'SHIFT_END';
 
 interface LogActionParams {
   processorId: string;
-  action: ProcessorActionType;
+  action: ManagerActionType;
   description: string;
   metadata?: Record<string, any>;
   request?: NextRequest;
@@ -30,20 +30,24 @@ export class ProcessorLogger {
         userAgent = request.headers.get('user-agent') || undefined;
       }
 
-      await prisma.processor_action_logs.create({
+      // Используем таблицу analytics для логирования действий смен
+      await prisma.analytics.create({
         data: {
-          processorId,
-          action,
-          description,
-          metadata: metadata ? JSON.stringify(metadata) : null,
-          ipAddress,
+          userId: processorId,
+          action: action,
+          metadata: JSON.stringify({
+            action,
+            description,
+            ...metadata
+          }),
+          ip: ipAddress,
           userAgent,
         }
       });
 
-      console.log(`📝 Logged action: ${action} for processor ${processorId} - ${description}`);
+      console.log(`📝 Logged action: ${action} for manager ${processorId} - ${description}`);
     } catch (error) {
-      console.error('❌ Failed to log processor action:', error);
+      console.error('❌ Failed to log manager action:', error);
       // Не выбрасываем ошибку, чтобы не нарушить основной поток
     }
   }

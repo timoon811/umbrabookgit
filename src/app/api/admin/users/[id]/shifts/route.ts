@@ -28,12 +28,12 @@ export async function GET(
       );
     }
 
-    // Смены могут быть назначены только обработчикам
+    // Смены могут быть назначены только менеджерам
     if (user.role !== 'PROCESSOR') {
       return NextResponse.json({
         shifts: [],
         assignedCount: 0,
-        message: "Назначение смен доступно только для обработчиков"
+        message: "Назначение смен доступно только для менеджеров"
       });
     }
 
@@ -112,7 +112,7 @@ export async function POST(
       );
     }
 
-    // Назначать смены можно только обработчикам
+    // Назначать смены можно только менеджерам
     if (user.role !== 'PROCESSOR') {
       return NextResponse.json(
         { error: "Назначать смены можно только пользователям с ролью PROCESSOR" },

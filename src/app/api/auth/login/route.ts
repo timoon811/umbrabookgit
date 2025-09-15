@@ -10,7 +10,7 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required for production");
 }
 
-// OPTIONS обработчик для CORS
+// OPTIONS менеджер для CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

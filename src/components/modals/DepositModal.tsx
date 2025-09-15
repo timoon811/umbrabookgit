@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import DepositBreakdown from '@/components/DepositBreakdown';
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
   const [showCryptoDropdown, setShowCryptoDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [platformCommission, setPlatformCommission] = useState(5.0);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const filteredCryptos = CRYPTO_OPTIONS.filter(crypto =>
     crypto.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,18 +152,36 @@ export default function DepositModal({ isOpen, onClose, onSubmit, isLoading }: D
             </div>
             {/* Показываем чистую сумму если введена сумма больше 0 */}
             {amount > 0 && (
-              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-green-800 dark:text-green-200">
-                    Чистая сумма депозита:
-                  </span>
-                  <span className="font-semibold text-green-800 dark:text-green-200">
-                    ${netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="text-xs text-green-600 dark:text-green-300 mt-1">
-                  После вычета комиссии платформы {platformCommission}%
-                </div>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBreakdown(!showBreakdown)}
+                  className="w-full p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      {showBreakdown ? 'Скрыть' : 'Показать'} разбивку депозита
+                    </span>
+                    <div className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      {netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {formData.currency}
+                    </div>
+                  </div>
+                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-left">
+                    Ваш заработок после комиссии ({platformCommission}%)
+                  </div>
+                </button>
+                
+                {showBreakdown && (
+                  <div className="mt-3">
+                    <DepositBreakdown
+                      amount={amount}
+                      currency={formData.currency}
+                      platformCommissionPercent={platformCommission}
+                      platformCommissionAmount={amount * (platformCommission / 100)}
+                      managerEarnings={netAmount}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

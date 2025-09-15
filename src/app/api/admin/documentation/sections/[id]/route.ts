@@ -1,41 +1,171 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/api-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+// PATCH /api/admin/documentation/sections/[id] - Обновить раздел документации
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
-// Проверка прав администратора
-async function checkAdminAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
+    const { user } = authResult;
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Доступ запрещен' },
+        { status: 403 }
+      );
+    }
 
-  if (!token) {
-    throw new Error("Не авторизован");
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
+    const body = await request.json();
+    const { name, key, description, order, isVisible } = body;
+
+    // Проверяем, что раздел существует
+    const existingSection = await prisma.documentation_sections.findUnique({
+      where: { id }
+    });
+
+    if (!existingSection) {
+      return NextResponse.json(
+        { error: 'Раздел не найден' },
+        { status: 404 }
+      );
+    }
+
+    // Если изменяется ключ, проверяем уникальность в рамках проекта
+    if (key && key !== existingSection.key) {
+      const duplicateSection = await prisma.documentation_sections.findFirst({
+        where: {
+          key,
+          projectId: existingSection.projectId,
+          id: { not: id }
+        }
+      });
+
+      if (duplicateSection) {
+        return NextResponse.json(
+          { error: `Раздел с ключом "${key}" уже существует в этом проекте` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Обновляем раздел
+    const updatedSection = await prisma.documentation_sections.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(key !== undefined && { key }),
+        ...(description !== undefined && { description }),
+        ...(order !== undefined && { order }),
+        ...(isVisible !== undefined && { isVisible }),
+        updatedAt: new Date()
+      }
+    });
+
+    return NextResponse.json(updatedSection);
+  } catch (error) {
+    console.error('Ошибка обновления раздела документации:', error);
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    );
   }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as {
-    userId: string;
-    role: string;
-  };
-
-  if (decoded.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
 }
 
-// GET /api/admin/documentation/sections/[id] - Получение раздела по ID
+// DELETE /api/admin/documentation/sections/[id] - Удалить раздел документации
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Доступ запрещен' },
+        { status: 403 }
+      );
+    }
+
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
+    // Проверяем, что раздел существует
+    const existingSection = await prisma.documentation_sections.findUnique({
+      where: { id },
+      include: {
+        pages: true
+      }
+    });
+
+    if (!existingSection) {
+      return NextResponse.json(
+        { error: 'Раздел не найден' },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем, что в разделе нет страниц
+    if (existingSection.pages.length > 0) {
+      return NextResponse.json(
+        { error: 'Нельзя удалить раздел, в котором есть страницы. Сначала удалите все страницы.' },
+        { status: 400 }
+      );
+    }
+
+    // Удаляем раздел
+    await prisma.documentation_sections.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ 
+      message: 'Раздел успешно удален' 
+    });
+  } catch (error) {
+    console.error('Ошибка удаления раздела документации:', error);
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET /api/admin/documentation/sections/[id] - Получить раздел документации по ID
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await checkAdminAuth();
-    
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Доступ запрещен' },
+        { status: 403 }
+      );
+    }
+
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+
     const section = await prisma.documentation_sections.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         pages: {
           orderBy: [
@@ -45,119 +175,20 @@ export async function GET(
         }
       }
     });
-    
+
     if (!section) {
-      return NextResponse.json({ error: "Раздел не найден" }, { status: 404 });
-    }
-    
-    return NextResponse.json({ section });
-  } catch (error: any) {
-    console.error("Ошибка при получении раздела:", error);
-    return NextResponse.json(
-      { error: error.message || "Не удалось получить раздел" },
-      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
-    );
-  }
-}
-
-// PATCH /api/admin/documentation/sections/[id] - Обновление раздела
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await checkAdminAuth();
-    
-    const body = await request.json();
-    const { name, key, description, order, isVisible } = body;
-    
-    // Проверяем, существует ли раздел
-    const existingSection = await prisma.documentation_sections.findUnique({
-      where: { id: params.id }
-    });
-    
-    if (!existingSection) {
-      return NextResponse.json({ error: "Раздел не найден" }, { status: 404 });
-    }
-    
-    // Если изменяется ключ, проверяем уникальность
-    if (key && key !== existingSection.key) {
-      const duplicateKey = await prisma.documentation_sections.findUnique({
-        where: { key }
-      });
-      
-      if (duplicateKey) {
-        return NextResponse.json({ error: "Раздел с таким ключом уже существует" }, { status: 400 });
-      }
-    }
-    
-    // Принудительно обновляем кэш после изменения
-    const updatedSection = await prisma.documentation_sections.update({
-      where: { id: params.id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(key !== undefined && { key }),
-  
-        ...(description !== undefined && { description }),
-        ...(order !== undefined && { order }),
-        ...(isVisible !== undefined && { isVisible }),
-      }
-    });
-    
-    // Принудительно обновляем кэш после изменения
-    await prisma.$queryRaw`SELECT 1`;
-    
-    return NextResponse.json(updatedSection);
-  } catch (error: any) {
-    console.error("Ошибка при обновлении раздела:", error);
-    return NextResponse.json(
-      { error: error.message || "Не удалось обновить раздел" },
-      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
-    );
-  }
-}
-
-// DELETE /api/admin/documentation/sections/[id] - Удаление раздела
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await checkAdminAuth();
-    
-    // Проверяем, существует ли раздел
-    const existingSection = await prisma.documentation_sections.findUnique({
-      where: { id: params.id },
-      include: {
-        pages: true
-      }
-    });
-    
-    if (!existingSection) {
-      return NextResponse.json({ error: "Раздел не найден" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Раздел не найден' },
+        { status: 404 }
+      );
     }
 
-    // Удаляем все страницы раздела
-    if (existingSection.pages.length > 0) {
-      await prisma.documentation.deleteMany({
-        where: { sectionId: params.id }
-      });
-    }
-    
-    // Удаляем раздел
-    await prisma.documentation_sections.delete({
-      where: { id: params.id }
-    });
-    
-    // Принудительно обновляем кэш после удаления
-    await prisma.$queryRaw`SELECT 1`;
-    
-    return NextResponse.json({ message: "Раздел и все его страницы успешно удалены" });
-  } catch (error: any) {
-    console.error("Ошибка при удалении раздела:", error);
+    return NextResponse.json(section);
+  } catch (error) {
+    console.error('Ошибка получения раздела документации:', error);
     return NextResponse.json(
-      { error: error.message || "Не удалось удалить раздел" },
-      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
     );
   }
 }

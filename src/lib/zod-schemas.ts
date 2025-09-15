@@ -92,7 +92,7 @@ export const salaryRequestCreateSchema = z.object({
   paymentDetails: z
     .object({
       method: z.enum(["bank", "crypto", "other"], {
-        errorMap: () => ({ message: "Выберите способ выплаты" })
+        message: "Выберите способ выплаты"
       }),
       details: z.string().min(1, "Реквизиты для выплаты обязательны"),
     })
@@ -119,7 +119,7 @@ export const salaryRequestCreateSchema = z.object({
 // Схемы для кошельков
 export const walletCreateSchema = z.object({
   network: z.enum(["BTC", "ETH", "USDT", "LTC", "XRP", "ADA", "DOT"], {
-    errorMap: () => ({ message: "Выберите поддерживаемую сеть" })
+    message: "Выберите поддерживаемую сеть"
   }),
   address: z
     .string()
@@ -153,7 +153,7 @@ export const walletUpdateSchema = z.object({
 export const fileUploadSchema = z.object({
   file: z.instanceof(File, { message: "Необходимо выбрать файл" }),
   type: z.enum(["image", "document"], {
-    errorMap: () => ({ message: "Неподдерживаемый тип файла" })
+    message: "Неподдерживаемый тип файла"
   }).optional(),
 });
 

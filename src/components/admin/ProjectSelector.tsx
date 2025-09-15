@@ -1,17 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-// import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
-
-interface ContentProject {
-  id: string;
-  name: string;
-  description?: string;
-  type: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { ContentProject, ContentProjectType, CONTENT_PROJECT_TYPES } from '@/types/content';
 
 interface ProjectSelectorProps {
   selectedProject: ContentProject | null;
@@ -40,25 +30,48 @@ export default function ProjectSelector({
     setLoading(true);
     try {
       console.log('🔄 Загружаем проекты контента...');
-      const response = await fetch('/api/admin/content-projects');
+      const response = await fetch('/api/admin/content-projects', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
       console.log('📡 Ответ API:', response.status, response.statusText);
       
       if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Проекты загружены:', data);
-        setProjects(data);
-        
-        // Если нет выбранного проекта, выбираем первый доступный
-        if (!selectedProject && data.length > 0) {
-          console.log('🎯 Автоматически выбираем первый проект:', data[0]);
-          onProjectSelect(data[0]);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          console.log('✅ Проекты загружены:', data);
+          setProjects(Array.isArray(data) ? data : []);
+          
+          // Если нет выбранного проекта, выбираем первый доступный
+          if (!selectedProject && Array.isArray(data) && data.length > 0) {
+            console.log('🎯 Автоматически выбираем первый проект:', data[0]);
+            onProjectSelect(data[0]);
+          }
+        } else {
+          console.error('❌ API вернул не JSON ответ');
+          const errorText = await response.text();
+          console.error('❌ Содержимое ответа:', errorText.substring(0, 500));
         }
       } else {
-        const errorData = await response.text();
-        console.error('❌ Ошибка API:', response.status, errorData);
+        const contentType = response.headers.get('content-type');
+        let errorData;
+        
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+          console.error('❌ Ошибка API (JSON):', response.status, errorData);
+        } else {
+          errorData = await response.text();
+          console.error('❌ Ошибка API (HTML/Text):', response.status, errorData.substring(0, 200));
+        }
       }
     } catch (error) {
       console.error('❌ Ошибка загрузки проектов:', error);
+      // Предотвращаем падение компонента при ошибке сети
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -110,16 +123,7 @@ export default function ProjectSelector({
   };
 
   const getProjectTypeLabel = (type: string) => {
-    switch (type) {
-      case 'documentation':
-        return 'Документация';
-      case 'courses':
-        return 'Курсы';
-      case 'materials':
-        return 'Материалы';
-      default:
-        return 'Контент';
-    }
+    return CONTENT_PROJECT_TYPES[type as ContentProjectType] || 'Контент';
   };
 
   const getProjectIcon = (type: string) => {

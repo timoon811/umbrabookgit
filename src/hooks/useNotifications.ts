@@ -162,7 +162,7 @@ export const useNotifications = () => {
     );
   }, [addNotification]);
 
-  const showShiftAlert = useCallback((type: 'missed' | 'late' | 'early_departure', processorName: string, shiftType: string) => {
+  const showShiftAlert = useCallback((type: 'missed' | 'late' | 'early_departure', managerName: string, shiftType: string) => {
     const messages = {
       missed: `Пропущена смена "${shiftType}"`,
       late: `Опоздание на смену "${shiftType}"`,
@@ -171,7 +171,7 @@ export const useNotifications = () => {
 
     return showWarning(
       'Проблема со сменой',
-      `${processorName}: ${messages[type]}`,
+      `${managerName}: ${messages[type]}`,
       'Смены',
       [
         {
@@ -183,12 +183,12 @@ export const useNotifications = () => {
     );
   }, [showWarning]);
 
-  const showSalaryAlert = useCallback((calculatedAmount: number, requestedAmount: number, processorName: string) => {
+  const showSalaryAlert = useCallback((calculatedAmount: number, requestedAmount: number, managerName: string) => {
     const diff = Math.abs(calculatedAmount - requestedAmount);
     
     return showWarning(
       'Расхождение в ЗП',
-      `${processorName}: расчетная сумма отличается на $${diff.toFixed(2)}`,
+      `${managerName}: расчетная сумма отличается на $${diff.toFixed(2)}`,
       'Зарплата',
       [
         {

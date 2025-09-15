@@ -28,6 +28,35 @@ export async function GET(request: NextRequest) {
       ]
     });
 
+    // Если проектов нет, создаем примеры по умолчанию
+    if (projects.length === 0) {
+      console.log('📁 Проекты не найдены, создаем примеры по умолчанию...');
+      
+      const defaultProjects = [
+        {
+          name: 'Основная документация',
+          description: 'Главная документация платформы',
+          type: 'documentation',
+          isActive: true
+        },
+        {
+          name: 'Учебные материалы',
+          description: 'Обучающие курсы и материалы',
+          type: 'courses', 
+          isActive: true
+        }
+      ];
+
+      const createdProjects = await Promise.all(
+        defaultProjects.map(project => 
+          prisma.content_projects.create({ data: project })
+        )
+      );
+
+      console.log('✅ Созданы проекты по умолчанию:', createdProjects.length);
+      return NextResponse.json(createdProjects);
+    }
+
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Ошибка получения проектов контента:', error);

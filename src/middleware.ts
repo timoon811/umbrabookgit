@@ -18,8 +18,8 @@ const publicRoutes = [
 // Маршруты только для администраторов
 const adminRoutes = ["/admin"];
 
-// Маршруты, запрещенные для PROCESSOR (они могут видеть только /processing, /docs, /profile)
-const processorRestrictedRoutes = [
+// Маршруты, запрещенные для PROCESSOR (они могут видеть только /management, /docs, /profile)
+const managerRestrictedRoutes = [
   "/connections", 
   "/buyer",
   "/finance",
@@ -30,7 +30,7 @@ const protectedRoutes = [
   "/", // Главная страница (требует авторизации)
   "/docs", // Документация (теперь требует авторизации)
   "/profile", // Профиль
-  "/processing", // Кабинет обработчика
+  "/management", // Кабинет менеджера
   "/connections", // Связки
   "/buyer", // Байер
   "/finance", // Финансы
@@ -205,11 +205,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // Дополнительная проверка для PROCESSOR - ограничиваем доступ к определенным страницам
-    if (processorRestrictedRoutes.some(route => pathname.startsWith(route))) {
+    if (managerRestrictedRoutes.some(route => pathname.startsWith(route))) {
       const userRole = await getUserRole(token);
       if (userRole === "PROCESSOR") {
-        // Перенаправляем PROCESSOR на /processing если он пытается попасть на запрещенную страницу
-        return NextResponse.redirect(new URL("/processing", request.url));
+        // Перенаправляем PROCESSOR на /management если он пытается попасть на запрещенную страницу
+        return NextResponse.redirect(new URL("/management", request.url));
       }
     }
 

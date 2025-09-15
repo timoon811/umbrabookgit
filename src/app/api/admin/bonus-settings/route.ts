@@ -63,10 +63,48 @@ export async function POST(request: NextRequest) {
     const { type, settings } = data;
 
     if (type === "bonusGrid") {
-      // Создание новой ступени бонусной сетки
+      // Валидация данных бонусной сетки
+      if (typeof settings.minAmount !== 'number' || settings.minAmount < 0) {
+        return NextResponse.json(
+          { error: "Минимальная сумма должна быть положительным числом" },
+          { status: 400 }
+        );
+      }
+
+      if (settings.maxAmount !== null && settings.maxAmount !== undefined) {
+        if (typeof settings.maxAmount !== 'number' || settings.maxAmount < 0) {
+          return NextResponse.json(
+            { error: "Максимальная сумма должна быть положительным числом" },
+            { status: 400 }
+          );
+        }
+        
+        if (settings.maxAmount <= settings.minAmount) {
+          return NextResponse.json(
+            { error: "Максимальная сумма должна быть больше минимальной" },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (typeof settings.bonusPercentage !== 'number' || settings.bonusPercentage < 0) {
+        return NextResponse.json(
+          { error: "Процент бонуса должен быть положительным числом" },
+          { status: 400 }
+        );
+      }
+
+      if (settings.bonusPercentage > 100) {
+        return NextResponse.json(
+          { error: "Процент бонуса не может превышать 100%" },
+          { status: 400 }
+        );
+      }
+
+      // Создание новой ступени единой бонусной сетки
       const bonusGrid = await prisma.bonus_grid.create({
         data: {
-          shiftType: settings.shiftType || 'MORNING',
+          shiftType: 'MORNING', // Единая сетка использует MORNING как стандартный тип
           minAmount: settings.minAmount,
           maxAmount: settings.maxAmount,
           bonusPercentage: settings.bonusPercentage,
@@ -99,12 +137,10 @@ export async function POST(request: NextRequest) {
         where: { id: 1 }, // Предполагаем, что у нас есть запись с ID 1
         update: {
           baseCommissionRate: settings.baseCommissionRate,
-          baseBonusRate: settings.baseBonusRate,
           isActive: settings.isActive,
         },
         create: {
           baseCommissionRate: settings.baseCommissionRate,
-          baseBonusRate: settings.baseBonusRate,
           isActive: settings.isActive,
         },
       });
@@ -133,6 +169,62 @@ export async function PUT(request: NextRequest) {
     const { type, id, updates } = data;
 
     if (type === "bonusGrid") {
+      // Валидация обновлений бонусной сетки
+      if (updates.minAmount !== undefined) {
+        if (typeof updates.minAmount !== 'number' || updates.minAmount < 0) {
+          return NextResponse.json(
+            { error: "Минимальная сумма должна быть положительным числом" },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (updates.maxAmount !== undefined && updates.maxAmount !== null) {
+        if (typeof updates.maxAmount !== 'number' || updates.maxAmount < 0) {
+          return NextResponse.json(
+            { error: "Максимальная сумма должна быть положительным числом" },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (updates.bonusPercentage !== undefined) {
+        if (typeof updates.bonusPercentage !== 'number' || updates.bonusPercentage < 0) {
+          return NextResponse.json(
+            { error: "Процент бонуса должен быть положительным числом" },
+            { status: 400 }
+          );
+        }
+        
+        if (updates.bonusPercentage > 100) {
+          return NextResponse.json(
+            { error: "Процент бонуса не может превышать 100%" },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Проверяем соотношение min/max если обновляется одно из них
+      if (updates.minAmount !== undefined || updates.maxAmount !== undefined) {
+        const currentRecord = await prisma.bonus_grid.findUnique({ where: { id } });
+        if (!currentRecord) {
+          return NextResponse.json(
+            { error: "Запись не найдена" },
+            { status: 404 }
+          );
+        }
+
+        const newMinAmount = updates.minAmount !== undefined ? updates.minAmount : currentRecord.minAmount;
+        const newMaxAmount = updates.maxAmount !== undefined ? updates.maxAmount : currentRecord.maxAmount;
+
+        if (newMaxAmount !== null && newMaxAmount <= newMinAmount) {
+          return NextResponse.json(
+            { error: "Максимальная сумма должна быть больше минимальной" },
+            { status: 400 }
+          );
+        }
+      }
+
       const updatedGrid = await prisma.bonus_grid.update({
         where: { id },
         data: updates,

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyAdminAuth } from '@/lib/api-auth';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const authResponse = await verifyAdminAuth(req);
-    if (authResponse) return authResponse;
+    const authResult = await requireAdminAuth(req);
+    if ('error' in authResult) return authResult.error;
 
     // Получаем настройки комиссии платформы (должна быть только одна запись)
     const commission = await prisma.platform_commission.findFirst({
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResponse = await verifyAdminAuth(req);
-    if (authResponse) return authResponse;
+    const authResult = await requireAdminAuth(req);
+    if ('error' in authResult) return authResult.error;
 
     const body = await req.json();
     const { name, description, commissionPercent } = body;
@@ -86,8 +86,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResponse = await verifyAdminAuth(req);
-    if (authResponse) return authResponse;
+    const authResult = await requireAdminAuth(req);
+    if ('error' in authResult) return authResult.error;
 
     const body = await req.json();
     const { id, name, description, commissionPercent } = body;

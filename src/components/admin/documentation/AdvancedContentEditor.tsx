@@ -1421,8 +1421,8 @@ function BlockRenderer({
       }
     },
     onMouseUp: onTextSelection,
-    onKeyUp: onTextSelection, // Добавляем обработчик для клавиатуры
-    onSelect: onTextSelection, // Добавляем специальный обработчик для выделения
+    onKeyUp: onTextSelection, // Добавляем менеджер для клавиатуры
+    onSelect: onTextSelection, // Добавляем специальный менеджер для выделения
     onKeyDown: (e: React.KeyboardEvent) => {
       // Обрабатываем только команду slash, всё остальное пропускаем
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {

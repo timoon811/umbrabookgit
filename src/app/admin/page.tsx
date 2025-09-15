@@ -76,7 +76,7 @@ export default function AdminPage() {
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       'USER': 'Пользователь',
-      'PROCESSOR': 'Обработчик',
+      'PROCESSOR': 'Менеджер',
       'MEDIA_BUYER': 'Медиа байер',
       'ROP_PROCESSOR': 'РОП обработки',
       'ROP_BUYER': 'РОП байер',

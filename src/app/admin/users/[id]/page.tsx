@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useModal } from "@/hooks/useModal";
 import { getRoleDisplayName } from "@/types/roles";
 import type { UserRole } from "@/types/roles";
+import { getUserInitial } from "@/utils/userUtils";
 import AlertModal from "@/components/modals/AlertModal";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 
@@ -226,7 +227,7 @@ export default function UserDetailsPage() {
               <span className="text-gray-500 dark:text-gray-400">→</span>
             </li>
             <li>
-              <span className="text-gray-900 dark:text-white font-medium">{user.name}</span>
+              <span className="text-gray-900 dark:text-white font-medium">{user.name || 'Пользователь'}</span>
             </li>
           </ol>
         </nav>
@@ -240,12 +241,12 @@ export default function UserDetailsPage() {
               <div className="flex-shrink-0 h-16 w-16">
                 <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
                   <span className="text-2xl font-medium text-gray-700 dark:text-gray-300">
-                    {user.name.charAt(0).toUpperCase()}
+                    {'U'}
                   </span>
                 </div>
               </div>
               <div className="ml-6">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name || 'Пользователь'}</h1>
                 <div className="mt-2 flex items-center gap-3">
                   {/* Статус пользователя убран */}
                   <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full">
@@ -314,7 +315,7 @@ export default function UserDetailsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="USER">Пользователь</option>
-                  <option value="PROCESSOR">Обработчик</option>
+                  <option value="PROCESSOR">Менеджер</option>
                   <option value="MEDIA_BUYER">Медиа байер</option>
                   <option value="ROP_PROCESSOR">РОП обработки</option>
                   <option value="ROP_BUYER">РОП байер</option>

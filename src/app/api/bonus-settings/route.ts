@@ -24,7 +24,6 @@ export async function GET() {
     return NextResponse.json({
       bonusSettings: bonusSettings || {
         baseCommissionRate: 30.0,
-        baseBonusRate: 5.0,
       },
       bonusGrids,
       bonusMotivations,

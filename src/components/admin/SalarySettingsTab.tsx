@@ -12,6 +12,7 @@ import {
   Target,
   Percent
 } from 'lucide-react';
+import GoalModal from './GoalModal';
 
 interface SalarySettings {
   id: string | null;
@@ -48,6 +49,40 @@ interface PlatformCommission {
   description?: string;
   commissionPercent: number;
   isActive: boolean;
+}
+
+interface GoalType {
+  id: string;
+  name: string;
+  description?: string;
+  unit: string;
+  type: string;
+  isActive: boolean;
+}
+
+interface GoalStage {
+  id?: string;
+  stage: number;
+  targetValue: number;
+  rewardAmount: number;
+  title: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+interface UserGoal {
+  id: string;
+  name: string;
+  description?: string;
+  goalTypeId: string;
+  goalTypeName: string;
+  goalTypeUnit: string;
+  goalTypeType: string;
+  periodType: string;
+  isActive: boolean;
+  stages: GoalStage[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function SalarySettingsTab() {
@@ -89,9 +124,43 @@ export default function SalarySettingsTab() {
   });
   const [showCommissionModal, setShowCommissionModal] = useState(false);
 
+  // Настройки планов/целей
+  const [goalTypes, setGoalTypes] = useState<GoalType[]>([]);
+  const [userGoals, setUserGoals] = useState<UserGoal[]>([]);
+  const [editingGoal, setEditingGoal] = useState<UserGoal | null>(null);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [activeGoalsTab, setActiveGoalsTab] = useState('list');
+
   useEffect(() => {
     loadSalarySettings();
   }, []);
+
+  // Отдельный useEffect для загрузки комиссии платформы
+  useEffect(() => {
+    loadPlatformCommission();
+  }, []);
+
+  const loadPlatformCommission = async () => {
+    try {
+      console.log('Загружаем настройки комиссии платформы...'); // Отладка
+      const commissionResponse = await fetch('/api/admin/platform-commission', {
+        credentials: 'include',
+      });
+
+      if (commissionResponse.ok) {
+        const commissionData = await commissionResponse.json();
+        console.log('Загружены настройки комиссии:', commissionData); // Отладка
+        if (commissionData.commission) {
+          setPlatformCommission(commissionData.commission);
+          console.log('Установлены настройки комиссии в состояние:', commissionData.commission); // Отладка
+        }
+      } else {
+        console.error('Ошибка загрузки настроек комиссии:', commissionResponse.status, commissionResponse.statusText);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки настроек комиссии:', error);
+    }
+  };
 
   const loadSalarySettings = async () => {
     try {
@@ -106,7 +175,15 @@ export default function SalarySettingsTab() {
 
       if (salaryResponse.ok) {
         const salaryData = await salaryResponse.json();
+        console.log('Загружены настройки зарплаты:', salaryData.salarySettings); // Отладка
         setSalarySettings(salaryData.salarySettings);
+        console.log('Установлены настройки зарплаты в состояние:', salaryData.salarySettings); // Отладка
+        
+        // Загружаем месячные бонусы из правильного источника
+        console.log('Загружены месячные бонусы:', salaryData.monthlyBonuses);
+        setMonthlyBonuses(salaryData.monthlyBonuses || []);
+      } else {
+        console.error('Ошибка загрузки настроек зарплаты:', salaryResponse.status, salaryResponse.statusText);
       }
 
       // Загружаем настройки бонусов
@@ -117,33 +194,26 @@ export default function SalarySettingsTab() {
       if (bonusResponse.ok) {
         const bonusData = await bonusResponse.json();
         console.log('Загружены данные бонусов:', bonusData);
-        console.log('Все мотивации:', bonusData.bonusMotivations);
         setBonusGrid(bonusData.bonusGrids || []);
-        // Улучшенная логика фильтрации месячных бонусов
-        const monthlyBonusMotivations = bonusData.bonusMotivations?.filter((b: { type: string; name: string; description?: string }) => {
-          const name = b.name?.toLowerCase() || '';
-          const description = b.description?.toLowerCase() || '';
-          return name.includes('месяч') || name.includes('план') || description.includes('месяч') || description.includes('план');
-        }) || [];
-        console.log('Отфильтрованные месячные бонусы:', monthlyBonusMotivations);
-        setMonthlyBonuses(monthlyBonusMotivations);
       } else {
         console.error('Ошибка загрузки бонусов:', bonusResponse.status, bonusResponse.statusText);
       }
 
-      // Загружаем настройки комиссии платформы
-      const commissionResponse = await fetch('/api/admin/platform-commission', {
+      // Загружаем планы/цели
+      const goalsResponse = await fetch('/api/admin/goals', {
         credentials: 'include',
       });
 
-      if (commissionResponse.ok) {
-        const commissionData = await commissionResponse.json();
-        if (commissionData.commission) {
-          setPlatformCommission(commissionData.commission);
-        }
-      } else if (commissionResponse.status !== 404) {
-        console.error('Ошибка загрузки настроек комиссии:', commissionResponse.status, commissionResponse.statusText);
+      if (goalsResponse.ok) {
+        const goalsData = await goalsResponse.json();
+        console.log('Загружены планы:', goalsData);
+        setGoalTypes(goalsData.goalTypes || []);
+        setUserGoals(goalsData.goals || []);
+      } else {
+        console.error('Ошибка загрузки планов:', goalsResponse.status, goalsResponse.statusText);
       }
+
+      // Настройки комиссии платформы загружаются в отдельном useEffect
 
     } catch (error) {
       setError('Ошибка сети');
@@ -181,6 +251,50 @@ export default function SalarySettingsTab() {
     } catch (error) {
       setError('Ошибка сети');
       console.error('Ошибка сохранения настроек ЗП:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSalarySettingsWithData = async (settingsData: SalarySettings) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const url = settingsData.id ? '/api/admin/salary-settings' : '/api/admin/salary-settings';
+      const method = settingsData.id ? 'PUT' : 'POST';
+
+      console.log('Отправляем настройки зарплаты:', settingsData); // Отладка
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settingsData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Получили ответ от сервера (зарплата):', data); // Отладка
+        setSalarySettings(data);
+        console.log('Обновили состояние настроек зарплаты:', data); // Отладка
+        showSuccess('Настройки зарплаты сохранены', 'Настройки успешно обновлены', 'ЗП');
+        // Перезагружаем настройки для подтверждения
+        setTimeout(() => {
+          loadSalarySettings();
+        }, 100);
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка API (зарплата):', errorData); // Отладка
+        setError(errorData.error || 'Ошибка сохранения настроек');
+        showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить настройки зарплаты', 'ЗП');
+      }
+    } catch (error) {
+      console.error('Ошибка сети при сохранении зарплаты:', error); // Отладка
+      setError('Ошибка сети');
+      showError('Ошибка сети', 'Проблема с подключением к серверу', 'ЗП');
     } finally {
       setSaving(false);
     }
@@ -232,27 +346,22 @@ export default function SalarySettingsTab() {
       setSaving(true);
       const method = monthlyBonusEntry.id ? 'PUT' : 'POST';
       
-      const response = await fetch('/api/admin/bonus-settings', {
+      const url = monthlyBonusEntry.id 
+        ? `/api/admin/salary-monthly-bonus?id=${monthlyBonusEntry.id}`
+        : '/api/admin/salary-monthly-bonus';
+      
+      const response = await fetch(url, {
         method,
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'bonusMotivation',
-          id: monthlyBonusEntry.id,
-          settings: monthlyBonusEntry.id ? undefined : {
-            ...monthlyBonusEntry,
-            type: 'PERCENTAGE',
-            value: monthlyBonusEntry.bonusPercent,
-            conditions: JSON.stringify({ minAmount: monthlyBonusEntry.minAmount }),
-            isActive: true,
-          },
-          updates: monthlyBonusEntry.id ? {
-            ...monthlyBonusEntry,
-            value: monthlyBonusEntry.bonusPercent,
-            conditions: JSON.stringify({ minAmount: monthlyBonusEntry.minAmount }),
-          } : undefined,
+          name: monthlyBonusEntry.name,
+          description: monthlyBonusEntry.description,
+          minAmount: monthlyBonusEntry.minAmount,
+          bonusPercent: monthlyBonusEntry.bonusPercent,
+          isActive: monthlyBonusEntry.isActive
         }),
       });
 
@@ -298,20 +407,23 @@ export default function SalarySettingsTab() {
 
   const deleteMonthlyBonus = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/bonus-settings?type=bonusMotivation&id=${id}`, {
+      const response = await fetch(`/api/admin/salary-monthly-bonus?id=${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
+        showSuccess('Месячный бонус удален', 'Настройки успешно обновлены', 'ЗП');
         await loadSalarySettings();
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Ошибка удаления настроек месячного бонуса');
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить месячный бонус', 'ЗП');
       }
     } catch (error) {
       setError('Ошибка сети');
       console.error('Ошибка удаления настроек месячного бонуса:', error);
+      showError('Ошибка сети', 'Проблема с подключением к серверу', 'ЗП');
     }
   };
 
@@ -346,6 +458,116 @@ export default function SalarySettingsTab() {
       setError('Ошибка сети');
       showError('Ошибка сети', 'Проблема с подключением к серверу', 'ЗП');
       console.error('Ошибка сохранения настроек комиссии:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteGoal = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/goals/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        showSuccess('План удален', 'План успешно удален', 'Планы');
+        await loadSalarySettings();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Ошибка удаления плана');
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить план', 'Планы');
+      }
+    } catch (error) {
+      setError('Ошибка сети');
+      console.error('Ошибка удаления плана:', error);
+      showError('Ошибка сети', 'Проблема с подключением к серверу', 'Планы');
+    }
+  };
+
+  const saveGoal = async (goalData: any) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const method = editingGoal ? 'PUT' : 'POST';
+      const url = editingGoal ? `/api/admin/goals/${editingGoal.id}` : '/api/admin/goals';
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(goalData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Результат сохранения плана:', result);
+        showSuccess(
+          editingGoal ? 'План обновлен' : 'План создан',
+          editingGoal ? 'План успешно обновлен' : 'План успешно создан',
+          'Планы'
+        );
+        await loadSalarySettings();
+        setShowGoalModal(false);
+        setEditingGoal(null);
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка сохранения плана:', errorData);
+        setError(errorData.error || 'Ошибка сохранения плана');
+        showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить план', 'Планы');
+      }
+    } catch (error) {
+      setError('Ошибка сети');
+      console.error('Ошибка сохранения плана:', error);
+      showError('Ошибка сети', 'Проблема с подключением к серверу', 'Планы');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePlatformCommissionWithData = async (commissionData: PlatformCommission) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const url = commissionData.id ? '/api/admin/platform-commission' : '/api/admin/platform-commission';
+      const method = commissionData.id ? 'PUT' : 'POST';
+
+      console.log('Отправляем данные комиссии:', commissionData); // Отладка
+
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(commissionData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Получили ответ от сервера:', data); // Отладка
+        setPlatformCommission(data.commission);
+        console.log('Обновили состояние комиссии после сохранения:', data.commission); // Отладка
+        showSuccess('Настройки комиссии сохранены', 'Настройки успешно обновлены', 'ЗП');
+        setShowCommissionModal(false);
+        // Перезагружаем настройки для подтверждения
+        setTimeout(() => {
+          loadPlatformCommission();
+        }, 100);
+      } else {
+        const errorData = await response.json();
+        console.error('Ошибка API:', errorData); // Отладка
+        setError(errorData.error || 'Ошибка сохранения настроек комиссии');
+        showError('Ошибка сохранения', errorData.error || 'Не удалось сохранить настройки комиссии', 'ЗП');
+      }
+    } catch (error) {
+      console.error('Ошибка сети при сохранении комиссии:', error); // Отладка
+      setError('Ошибка сети');
+      showError('Ошибка сети', 'Проблема с подключением к серверу', 'ЗП');
     } finally {
       setSaving(false);
     }
@@ -632,6 +854,125 @@ export default function SalarySettingsTab() {
         )}
       </div>
 
+      {/* Планы/Цели пользователей */}
+      <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/10 dark:border-[#ededed]/20 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                Планы и цели пользователей
+              </h4>
+              <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
+                Многоэтапные планы с фиксированными бонусами за достижения
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setEditingGoal(null);
+              setShowGoalModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Создать план
+          </button>
+        </div>
+
+        {userGoals.length > 0 ? (
+          <div className="space-y-6">
+            {userGoals.map((goal) => (
+              <div key={goal.id} className="border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h5 className="font-medium text-[#171717] dark:text-[#ededed]">
+                      {goal.name}
+                    </h5>
+                    <p className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 mt-1">
+                      {goal.goalTypeName} • {goal.periodType === 'DAILY' ? 'Ежедневно' : goal.periodType === 'WEEKLY' ? 'Еженедельно' : 'Ежемесячно'}
+                    </p>
+                    {goal.description && (
+                      <p className="text-xs text-[#171717]/50 dark:text-[#ededed]/50 mt-1">
+                        {goal.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingGoal(goal);
+                        setShowGoalModal(true);
+                      }}
+                      className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteGoal(goal.id)}
+                      className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Этапы плана */}
+                <div className="space-y-2">
+                  <h6 className="text-sm font-medium text-[#171717] dark:text-[#ededed] mb-2">
+                    Этапы ({goal.stages.length}):
+                  </h6>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {goal.stages
+                      .sort((a, b) => a.stage - b.stage)
+                      .map((stage) => (
+                        <div
+                          key={stage.id}
+                          className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                              Этап {stage.stage}
+                            </span>
+                            <span className="text-xs font-bold text-green-600 dark:text-green-400">
+                              +${stage.rewardAmount}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                            {stage.title}
+                          </p>
+                          <p className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
+                            {stage.targetValue}{goal.goalTypeUnit}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Target className="w-12 h-12 text-[#171717]/20 dark:text-[#ededed]/20 mx-auto mb-3" />
+            <p className="text-[#171717]/60 dark:text-[#ededed]/60 text-sm mb-4">
+              Нет настроенных планов
+            </p>
+            <button
+              onClick={() => {
+                setEditingGoal(null);
+                setShowGoalModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors mx-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Создать первый план
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Модальное окно редактирования базовых настроек */}
       {showEditSettingsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -656,13 +997,14 @@ export default function SalarySettingsTab() {
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              setSalarySettings({
+              const updatedSettings = {
                 ...salarySettings,
                 name: formData.get('name') as string,
                 description: formData.get('description') as string || '',
                 hourlyRate: parseFloat(formData.get('hourlyRate') as string) || 0,
-              });
-              saveSalarySettings();
+              };
+              setSalarySettings(updatedSettings);
+              saveSalarySettingsWithData(updatedSettings);
               setShowEditSettingsModal(false);
             }}>
               <div className="space-y-4">
@@ -1032,13 +1374,15 @@ export default function SalarySettingsTab() {
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              setPlatformCommission({
-                ...platformCommission,
+              const updatedCommission = {
+                id: platformCommission.id, // Явно сохраняем ID
                 name: formData.get('name') as string,
                 description: formData.get('description') as string || '',
                 commissionPercent: parseFloat(formData.get('commissionPercent') as string) || 0,
-              });
-              savePlatformCommission();
+                isActive: platformCommission.isActive // Явно сохраняем isActive
+              };
+              setPlatformCommission(updatedCommission);
+              savePlatformCommissionWithData(updatedCommission);
             }}>
               <div className="space-y-4">
                 <div>
@@ -1105,6 +1449,21 @@ export default function SalarySettingsTab() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Модальное окно планов/целей */}
+      {showGoalModal && (
+        <GoalModal
+          isOpen={showGoalModal}
+          onClose={() => {
+            setShowGoalModal(false);
+            setEditingGoal(null);
+          }}
+          goal={editingGoal}
+          goalTypes={goalTypes}
+          onSave={saveGoal}
+          isLoading={saving}
+        />
       )}
     </div>
   );

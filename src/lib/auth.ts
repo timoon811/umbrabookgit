@@ -12,7 +12,7 @@ if (!JWT_SECRET) {
 
 export async function verifyToken(token: string) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
+    const decoded = jwt.verify(token, JWT_SECRET!) as {
       userId: string;
       email: string;
       role: string;
@@ -58,12 +58,12 @@ export async function requireAdmin(requestOrToken: NextRequest | string) {
       throw new Error("Не авторизован");
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as {
+    const decoded = jwt.verify(token, JWT_SECRET!) as {
       userId: string;
       role: string;
     };
 
-    if (!hasAdminAccess(decoded.role as UserRole)) {
+    if (!hasAdminAccess({ role: decoded.role })) {
       throw new Error("Недостаточно прав");
     }
 

@@ -2,20 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 
-// Проверка прав администратора
-async function checkAdminAuth() {
-  const authResult = await requireAdminAuth({} as NextRequest);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-  return null;
-}
+// Удалено - используем централизованную авторизацию
 
 // Массовые операции с пользователями
 export async function PUT(request: NextRequest) {
   try {
-    const authError = await checkAdminAuth();
-    if (authError) return authError;
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
     const body = await request.json();
     const { userIds, action } = body;

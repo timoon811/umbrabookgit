@@ -1,12 +1,24 @@
 "use client";
 
+// UserActions v2.0 - исправлена ошибка charAt, усилена защита от undefined
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import NotificationIcon from "@/components/admin/NotificationIcon";
+import { getUserInitial } from "@/utils/userUtils";
 
 export default function UserActions() {
   const { user, loading, mounted } = useAuth();
   const router = useRouter();
+  
+  // Debug логирование состояния
+  console.log('UserActions render:', { 
+    mounted, 
+    loading, 
+    hasUser: !!user, 
+    userName: user?.name,
+    userType: typeof user?.name 
+  });
 
   const handleLogout = async () => {
     try {
@@ -75,6 +87,9 @@ export default function UserActions() {
         </Link>
       )}
 
+      {/* Уведомления */}
+      <NotificationIcon />
+
       {/* Профиль */}
       <Link
         href="/profile"
@@ -100,11 +115,24 @@ export default function UserActions() {
       {/* Аватар пользователя */}
       <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-          {user.name.charAt(0).toUpperCase()}
+          {(() => {
+            // Усиленная защита от ошибок charAt
+            try {
+              // Дополнительная проверка перед вызовом getUserInitial
+              const userName = user?.name;
+              if (userName === undefined || userName === null) {
+                return '?';
+              }
+              return getUserInitial(userName);
+            } catch (error) {
+              console.error('Ошибка в getUserInitial:', error, { userName: user?.name });
+              return '?';
+            }
+          })()}
         </div>
         <div className="hidden sm:block">
           <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-24">
-            {user.name}
+            {user?.name || 'Пользователь'}
           </div>
         </div>
       </div>

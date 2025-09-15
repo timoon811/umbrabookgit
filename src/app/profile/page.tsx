@@ -1,21 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { hasAdminAccess } from "@/lib/auth";
 import { getRoleDisplayName } from "@/types/roles";
 import type { UserRole } from "@/types/roles";
 import WalletsTab from "@/components/WalletsTab";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { getUserInitial } from "@/utils/userUtils";
 
 interface PasswordChangeData {
   currentPassword: string;
@@ -24,8 +17,7 @@ interface PasswordChangeData {
 }
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<"info" | "security" | "wallets">("info");
   const [passwordData, setPasswordData] = useState<PasswordChangeData>({
     currentPassword: "",
@@ -38,33 +30,6 @@ export default function ProfilePage() {
     message: string;
   } | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    fetchUser();
-  }, []);
-
-  const fetchUser = async () => {
-    try {
-      const response = await fetch("/api/auth/me");
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else if (response.status === 401) {
-        // Пользователь не авторизован
-        router.push("/login");
-      } else {
-        // Другие ошибки (403, 404, 500...)
-        const errorData = await response.json().catch(() => ({}));
-        console.warn("Проблема с получением данных пользователя:", errorData.message || `Status: ${response.status}`);
-        router.push("/login");
-      }
-    } catch (error) {
-      console.warn("Ошибка соединения при получении данных пользователя:", error);
-      router.push("/login");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,11 +163,11 @@ export default function ProfilePage() {
           <div className="mb-8 p-4 sm:p-6 border border-black/5 dark:border-white/10 rounded-lg bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
             <div className="flex flex-col sm:flex-row items-start gap-4">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-                {user.name.charAt(0).toUpperCase()}
+                {'P'}
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl font-semibold text-black/90 dark:text-white/90 mb-1">
-                  {user.name}
+                  {user.name || 'Пользователь'}
                 </h2>
                 <p className="text-sm sm:text-base text-black/70 dark:text-white/70 mb-3 break-all">
                   {user.email}
@@ -273,7 +238,7 @@ export default function ProfilePage() {
                       Имя пользователя
                     </dt>
                     <dd className="text-sm text-black/90 dark:text-white/90 break-words">
-                      {user.name}
+                      {user.name || 'Пользователь'}
                     </dd>
                   </div>
                   <div>

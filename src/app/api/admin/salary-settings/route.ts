@@ -1,36 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-
-// Проверка админских прав
-async function checkAdminAuth(request: NextRequest) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  
-  if (!token) {
-    throw new Error("Не авторизован");
-  }
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-  
-  if (!decoded || !decoded.userId) {
-    throw new Error("Недействительный токен");
-  }
-
-  const user = await prisma.users.findUnique({
-    where: { id: decoded.userId },
-  });
-
-  if (!user || user.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
-}
+import { requireAdminAuth } from "@/lib/api-auth";
 
 // GET /api/admin/salary-settings - Получение всех настроек ЗП
 export async function GET(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
     // Получаем основные настройки
     const salarySettings = await prisma.salary_settings.findFirst({
@@ -74,7 +52,10 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/salary-settings - Создание/обновление основных настроек ЗП
 export async function POST(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
     const data = await request.json();
 
     // Деактивируем все существующие настройки
@@ -107,7 +88,10 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/salary-settings - Обновление настроек ЗП
 export async function PUT(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
     const data = await request.json();
 
     if (!data.id) {

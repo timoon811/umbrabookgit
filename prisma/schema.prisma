@@ -5,26 +5,37 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model users {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  name      String
-  password  String
-  telegram  String      @unique
-  role      UserRole    @default(USER)
-  status    UserStatus  @default(PENDING)
-  isBlocked Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  analytics analytics[]
+  id                    String                  @id @default(uuid())
+  email                 String                  @unique
+  name                  String
+  password              String
+  telegram              String                  @unique
+  role                  UserRole                @default(USER)
+  status                UserStatus              @default(PENDING)
+  isBlocked             Boolean                 @default(false)
+  assignedBuyerId       String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  analytics             analytics[]
+  assignedBuyer         users?                  @relation("BuyerAssignment", fields: [assignedBuyerId], references: [id])
+  assignedProcessors    users[]                 @relation("BuyerAssignment")
+  processorDeposits     processor_deposits[]
+  salaryRequests        salary_requests[]
+  bonusPayments         bonus_payments[]
+  processorShifts       processor_shifts[]
+  shiftPenalties        shift_penalties[]
+  assignedShifts        user_shift_assignments[]
+  assignedByShifts      user_shift_assignments[] @relation("AssignedBy")
+  goalAchievements      user_goal_achievements[]
 
   @@index([email])
   @@index([role])
   @@index([status])
   @@index([telegram])
+  @@index([assignedBuyerId])
   @@map("users")
 }
 
@@ -295,10 +306,25 @@ model content_projects {
   createdAt              DateTime                  @default(now())
   updatedAt              DateTime                  @updatedAt
   documentationSections  documentation_sections[]
+  permissions            project_permissions[]
 
   @@index([type])
   @@index([isActive])
   @@map("content_projects")
+}
+
+model project_permissions {
+  id        String           @id @default(uuid())
+  projectId String
+  role      UserRole
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  project   content_projects @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, role])
+  @@index([projectId])
+  @@index([role])
+  @@map("project_permissions")
 }
 
 enum UserRole {
@@ -308,6 +334,8 @@ enum UserRole {
   MEDIA_BUYER
   SUPPORT
   PROCESSOR
+  ROP_PROCESSOR
+  ROP_BUYER
 }
 
 enum UserStatus {
@@ -320,4 +348,409 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+}
+
+enum SalaryRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum BonusType {
+  DEPOSIT_BONUS
+  PERIODIC_BONUS
+  ACHIEVEMENT_BONUS
+  MANUAL_BONUS
+}
+
+enum BonusStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+  BURNED
+  HELD
+}
+
+enum ShiftType {
+  MORNING
+  DAY
+  NIGHT
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  MISSED
+}
+
+enum PenaltyStatus {
+  PENDING
+  APPLIED
+  CANCELLED
+  APPEALED
+}
+
+enum PenaltyType {
+  SHIFT_MISS
+  LATE_ARRIVAL
+  EARLY_DEPARTURE
+  OTHER
+}
+
+enum MotivationType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+model processor_deposits {
+  id                String        @id @default(uuid())
+  processorId       String
+  playerId          String
+  playerNick        String?
+  playerEmail       String?
+  offerId           String?
+  offerName         String?
+  geo               String?
+  amount            Float
+  currency          String        @default("USD")
+  currencyType      String        @default("FIAT")
+  paymentMethod     String?
+  leadSource        String?
+  proofs            String?
+  notes             String?
+  status            DepositStatus @default(PENDING)
+  moderatorId       String?
+  moderatorComment  String?
+  moderatedAt       DateTime?
+  commissionRate              Float         @default(30.0)
+  bonusRate                   Float         @default(5.0)
+  bonusAmount                 Float         @default(0)
+  platformCommissionPercent   Float         @default(0)
+  platformCommissionAmount    Float         @default(0)
+  processorEarnings           Float         @default(0)
+  createdAt                   DateTime      @default(now())
+  updatedAt                   DateTime      @updatedAt
+  processor         users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([playerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("processor_deposits")
+}
+
+model salary_requests {
+  id                String              @id @default(uuid())
+  processorId       String
+  periodStart       DateTime
+  periodEnd         DateTime
+  requestedAmount   Float
+  calculatedAmount  Float?
+  paymentDetails    String?
+  comment           String?
+  adminComment      String?
+  status            SalaryRequestStatus @default(PENDING)
+  processedAt       DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  processor         users               @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([status])
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@map("salary_requests")
+}
+
+model bonus_payments {
+  id          String      @id @default(uuid())
+  processorId String
+  type        BonusType   @default(DEPOSIT_BONUS)
+  description String?
+  amount      Float
+  depositId   String?
+  period      DateTime?
+  conditions  String?
+  status      BonusStatus @default(PENDING)
+  processedAt DateTime?
+  paidAt      DateTime?
+  burnReason  String?
+  burnedAt    DateTime?
+  holdUntil   DateTime?
+  shiftType   ShiftType?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  processor   users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([type])
+  @@index([status])
+  @@index([period])
+  @@index([shiftType])
+  @@map("bonus_payments")
+}
+
+model bonus_settings {
+  id                  String    @id @default(uuid())
+  name                String
+  description         String?
+  baseCommissionRate  Float     @default(30.0)
+  tiers               String
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("bonus_settings")
+}
+
+model processor_shifts {
+  id             String      @id @default(uuid())
+  processorId    String
+  shiftType      ShiftType   @default(MORNING)
+  shiftDate      DateTime
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  actualStart    DateTime?
+  actualEnd      DateTime?
+  status         ShiftStatus @default(SCHEDULED)
+  notes          String?
+  adminNotes     String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  processor      users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([shiftType])
+  @@index([shiftDate])
+  @@index([status])
+  @@map("processor_shifts")
+}
+
+model shift_settings {
+  id                     String                   @id @default(uuid())
+  shiftType              ShiftType                @unique
+  startHour              Int                      @default(6)
+  startMinute            Int                      @default(0)
+  endHour                Int                      @default(14)
+  endMinute              Int                      @default(0)
+  timezone               String                   @default("+3")
+  isActive               Boolean                  @default(true)
+  name                   String?
+  description            String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  userShiftAssignments   user_shift_assignments[]
+
+  @@map("shift_settings")
+}
+
+model shift_penalties {
+  id           String        @id @default(uuid())
+  processorId  String
+  type         PenaltyType   @default(SHIFT_MISS)
+  shiftType    ShiftType?
+  shiftDate    DateTime
+  amount       Float         @default(-50.0)
+  reason       String?
+  adminComment String?
+  status       PenaltyStatus @default(APPLIED)
+  appliedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  processor    users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
+
+  @@index([processorId])
+  @@index([type])
+  @@index([shiftDate])
+  @@index([status])
+  @@map("shift_penalties")
+}
+
+model salary_settings {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  hourlyRate  Float    @default(2.0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("salary_settings")
+}
+
+model salary_deposit_grid {
+  id                String   @id @default(uuid())
+  salarySettingsId  String?
+  minAmount         Float
+  maxAmount         Float?
+  percentage        Float
+  description       String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("salary_deposit_grid")
+}
+
+model salary_monthly_bonus {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  minAmount    Float
+  bonusPercent Float
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("salary_monthly_bonus")
+}
+
+model user_shift_assignments {
+  id             String         @id @default(uuid())
+  userId         String
+  shiftSettingId String
+  assignedAt     DateTime       @default(now())
+  assignedBy     String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           users          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftSetting   shift_settings @relation(fields: [shiftSettingId], references: [id], onDelete: Cascade)
+  assigner       users          @relation("AssignedBy", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@unique([userId, shiftSettingId])
+  @@index([userId])
+  @@index([shiftSettingId])
+  @@map("user_shift_assignments")
+}
+
+model bonus_grid {
+  id              String     @id @default(uuid())
+  minAmount       Float
+  maxAmount       Float?
+  bonusPercentage Float
+  fixedBonus      Float?
+  fixedBonusMin   Float?
+  shiftType       ShiftType  @default(MORNING)
+  description     String?
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@map("bonus_grid")
+}
+
+model bonus_motivations {
+  id          String         @id @default(uuid())
+  type        MotivationType
+  name        String
+  description String?
+  value       Float
+  conditions  String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("bonus_motivations")
+}
+
+model platform_commission {
+  id                String   @id @default(uuid())
+  name              String
+  description       String?
+  commissionPercent Float    @default(5.0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("platform_commission")
+}
+
+// === СИСТЕМА ПЛАНОВ/ЦЕЛЕЙ ===
+
+model goal_types {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  unit        String      // '$', 'шт', 'ч'
+  type        String      // 'EARNINGS', 'DEPOSITS_COUNT', 'HOURS'
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Связи
+  goals       user_goals[]
+
+  @@map("goal_types")
+}
+
+model user_goals {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  goalTypeId  String
+  periodType  String      @default("DAILY") // 'DAILY', 'WEEKLY', 'MONTHLY'
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Связи
+  goalType    goal_types  @relation(fields: [goalTypeId], references: [id], onDelete: Restrict)
+  stages      goal_stages[]
+  achievements user_goal_achievements[]
+
+  @@map("user_goals")
+}
+
+model goal_stages {
+  id          String      @id @default(uuid())
+  goalId      String
+  stage       Int         // 1, 2, 3, 4...
+  targetValue Float       // Целевое значение
+  rewardAmount Float      // Фиксированная награда в долларах
+  title       String      // "Первый рубеж", "Профессионал"
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Связи
+  goal        user_goals  @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  achievements user_goal_achievements[]
+
+  @@unique([goalId, stage])
+  @@map("goal_stages")
+}
+
+model user_goal_achievements {
+  id           String      @id @default(uuid())
+  userId       String
+  goalId       String
+  stageId      String
+  achievedAt   DateTime    @default(now())
+  achievedValue Float      // Достигнутое значение
+  rewardAmount Float      // Полученная награда
+  period       String     // Период достижения (2025-09-15 для дневных)
+  isRewarded   Boolean    @default(false) // Выплачена ли награда
+  rewardedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  
+  // Связи
+  user         users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal         user_goals @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  stage        goal_stages @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stageId, period])
+  @@map("user_goal_achievements")
 }

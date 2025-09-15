@@ -214,11 +214,11 @@
 
 /**
  * @swagger
- * /processor/deposits:
+ * /manager/deposits:
  *   get:
  *     tags: [Deposits]
  *     summary: Получение списка депозитов
- *     description: Возвращает список депозитов для процессора или админа
+ *     description: Возвращает список депозитов для менеджера или админа
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -269,7 +269,7 @@
  *   post:
  *     tags: [Deposits]
  *     summary: Создание нового депозита
- *     description: Добавление нового депозита процессором
+ *     description: Добавление нового депозита менеджером
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -301,11 +301,11 @@
 
 /**
  * @swagger
- * /processor/stats:
+ * /manager/stats:
  *   get:
  *     tags: [Deposits]
  *     summary: Получение статистики по депозитам
- *     description: Возвращает статистику депозитов для процессора
+ *     description: Возвращает статистику депозитов для менеджера
  *     security:
  *       - cookieAuth: []
  *     responses:

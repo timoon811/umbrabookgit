@@ -33,7 +33,7 @@ export async function GET(
 ) {
   try {
     await checkAdminAuth(request);
-    const { id: managerId } = await params;
+    const { id: processorId } = await params;
 
     // Получаем данные о зарплате (пока используем значения по умолчанию)
     // В будущем можно создать отдельную таблицу для зарплатных данных
@@ -63,7 +63,7 @@ export async function PUT(
 ) {
   try {
     await checkAdminAuth(request);
-    const { id: managerId } = await params;
+    const { id: processorId } = await params;
     const data = await request.json();
 
     // Здесь можно сохранить данные о зарплате в базу данных

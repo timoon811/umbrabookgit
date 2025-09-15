@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { requireAdminAuth } from "@/lib/api-auth";
 
 interface SectionInfo {
   id: string;
@@ -19,33 +18,15 @@ interface ApiResponse {
   documentation?: unknown[];
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
-
-// Проверка прав администратора
-async function checkAdminAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) {
-    throw new Error("Не авторизован");
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as {
-    userId: string;
-    role: string;
-  };
-
-  if (decoded.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
-}
+// Удалено - используем централизованную авторизацию
 
 // GET /api/admin/documentation - Получение списка разделов и страниц документации
 export async function GET(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -134,7 +115,10 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/documentation - Создание новой страницы документации
 export async function POST(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
     
     const body = await request.json();
     const { title, description, slug, content, sectionId, order = 0, isPublished = false, parentId } = body;

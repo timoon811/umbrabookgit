@@ -3,7 +3,7 @@
 export type UserRole = 
   | 'USER'              // Пользователь
   | 'ADMIN'             // Администратор
-  | 'PROCESSOR'         // Обработчик
+  | 'PROCESSOR'         // Менеджер
   | 'MEDIA_BUYER'       // Медиа Байер
   | 'ROP_PROCESSOR'     // РОП обработки
   | 'ROP_BUYER'         // РОП байер
@@ -27,10 +27,10 @@ export type Permission =
   | 'admin.settings.edit'             // Редактирование настроек
   | 'admin.roles.view'                // Просмотр ролей
   | 'admin.roles.edit'                // Редактирование ролей
-  | 'processor.deposits.view'         // Просмотр депозитов (обработчик)
-  | 'processor.deposits.edit'         // Создание/редактирование депозитов
-  | 'processor.stats.view'            // Просмотр статистики обработчика
-  | 'processor.salary.view'           // Просмотр зарплатных данных
+  | 'manager.deposits.view'         // Просмотр депозитов (менеджер)
+  | 'manager.deposits.edit'         // Создание/редактирование депозитов
+  | 'manager.stats.view'            // Просмотр статистики менеджера
+  | 'manager.salary.view'           // Просмотр зарплатных данных
   | 'buyer.campaigns.view'            // Просмотр кампаний (байер)
   | 'buyer.campaigns.edit'            // Редактирование кампаний
   | 'buyer.stats.view'                // Просмотр статистики байера
@@ -88,13 +88,13 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   },
   PROCESSOR: {
     role: 'PROCESSOR',
-    displayName: 'Обработчик',
-    description: 'Специалист по обработке депозитов',
+    displayName: 'Менеджер',
+    description: 'Менеджер по работе с депозитами',
     permissions: [
-      'processor.deposits.view',
-      'processor.deposits.edit',
-      'processor.stats.view',
-      'processor.salary.view',
+      'manager.deposits.view',
+      'manager.deposits.edit',
+      'manager.stats.view',
+      'manager.salary.view',
       'content.projects.view'
     ],
     isSystem: true
@@ -124,9 +124,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
       'admin.users.view',
       'admin.finance.view',
       'admin.finance.stats',
-      'processor.deposits.view',
-      'processor.deposits.edit',
-      'processor.stats.view',
+      'manager.deposits.view',
+      'manager.deposits.edit',
+      'manager.stats.view',
       'content.projects.view'
     ],
     isSystem: true
@@ -211,11 +211,11 @@ export const ALL_PERMISSIONS: { permission: Permission; displayName: string; des
   { permission: 'admin.roles.view', displayName: 'Просмотр ролей', description: 'Просмотр ролей и прав доступа', category: 'Роли' },
   { permission: 'admin.roles.edit', displayName: 'Редактирование ролей', description: 'Изменение ролей и прав доступа', category: 'Роли' },
   
-  // Обработчик
-  { permission: 'processor.deposits.view', displayName: 'Просмотр депозитов', description: 'Просмотр депозитов для обработки', category: 'Обработчик' },
-  { permission: 'processor.deposits.edit', displayName: 'Обработка депозитов', description: 'Создание и редактирование депозитов', category: 'Обработчик' },
-  { permission: 'processor.stats.view', displayName: 'Статистика обработчика', description: 'Просмотр личной статистики обработки', category: 'Обработчик' },
-  { permission: 'processor.salary.view', displayName: 'Зарплатные данные', description: 'Просмотр зарплаты и бонусов', category: 'Обработчик' },
+  // Менеджер
+  { permission: 'manager.deposits.view', displayName: 'Просмотр депозитов', description: 'Просмотр депозитов для обработки', category: 'Менеджер' },
+  { permission: 'manager.deposits.edit', displayName: 'Обработка депозитов', description: 'Создание и редактирование депозитов', category: 'Менеджер' },
+  { permission: 'manager.stats.view', displayName: 'Статистика менеджера', description: 'Просмотр личной статистики работы', category: 'Менеджер' },
+  { permission: 'manager.salary.view', displayName: 'Зарплатные данные', description: 'Просмотр зарплаты и бонусов', category: 'Менеджер' },
   
   // Байер
   { permission: 'buyer.campaigns.view', displayName: 'Просмотр кампаний', description: 'Просмотр рекламных кампаний', category: 'Байер' },

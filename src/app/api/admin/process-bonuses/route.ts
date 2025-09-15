@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Активировано ${expiredHolds.length} бонусов из холда`);
     }
 
-    // 2. Проверяем условия сгорания для каждого процессора
-    const activeProcessors = await prisma.users.findMany({
+    // 2. Проверяем условия сгорания для каждого менеджера
+    const activeManagers = await prisma.users.findMany({
       where: {
         role: 'PROCESSOR',
         status: 'APPROVED'
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     let burnedCount = 0;
 
-    for (const processor of activeProcessors) {
+    for (const manager of activeManagers) {
       // Получаем бонусы в холде за вчера
       const yesterdayStart = new Date(todayStart);
       yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
       const yesterdayBonuses = await prisma.bonus_payments.findMany({
         where: {
-          processorId: processor.id,
+          processorId: manager.id,
           status: 'HELD',
           period: {
             gte: yesterdayStart,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       // Получаем депозиты за вчера и сегодня
       const yesterdayDeposits = await prisma.processor_deposits.findMany({
         where: {
-          processorId: processor.id,
+          processorId: manager.id,
           status: 'APPROVED',
           createdAt: {
             gte: yesterdayStart,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
       const todayDeposits = await prisma.processor_deposits.findMany({
         where: {
-          processorId: processor.id,
+          processorId: manager.id,
           status: 'APPROVED',
           createdAt: {
             gte: todayStart
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         burnedCount += yesterdayBonuses.length;
         const totalBurnedAmount = yesterdayBonuses.reduce((sum, b) => sum + b.amount, 0);
 
-        console.log(`🔥 Сгорели бонусы процессора ${processor.name}:`);
+        console.log(`🔥 Сгорели бонусы менеджера ${manager.name}:`);
         console.log(`   - Вчерашний результат: $${yesterdaySum}`);
         console.log(`   - Сегодняшний результат: $${todaySum}`);
         console.log(`   - Сгорело бонусов: ${yesterdayBonuses.length} шт.`);

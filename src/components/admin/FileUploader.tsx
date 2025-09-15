@@ -118,7 +118,7 @@ export default function FileUploader({
     fileInputRef.current?.click();
   };
 
-  // Если переданы custom children, рендерим их с обработчиками
+  // Если переданы custom children, рендерим их с менеджерами
   if (children) {
     return (
       <div 

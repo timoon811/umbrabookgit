@@ -27,6 +27,52 @@ async function checkAdminAuth() {
   return decoded.userId;
 }
 
+// Получение информации о пользователе
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await checkAdminAuth();
+    
+    const { id } = await params;
+
+    // Получаем пользователя с дополнительной информацией
+    const user = await prisma.users.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        telegram: true,
+        role: true,
+        status: true,
+        isBlocked: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "Пользователь не найден" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      user,
+    });
+  } catch (error: any) {
+    console.error("Ошибка получения пользователя:", error);
+    return NextResponse.json(
+      { message: error.message || "Внутренняя ошибка сервера" },
+      { status: error.message === "Не авторизован" ? 401 : error.message === "Недостаточно прав" ? 403 : 500 }
+    );
+  }
+}
+
 // Обновление пользователя (блокировка, одобрение, редактирование)
 export async function PUT(
   request: NextRequest,

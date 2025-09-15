@@ -33,11 +33,11 @@ export async function GET(
 ) {
   try {
     await checkAdminAuth(request);
-    const { id: managerId } = await params;
+    const { id: processorId } = await params;
 
     // Получаем все депозиты менеджера
     const allDeposits = await prisma.processor_deposits.findMany({
-      where: { processorId: managerId },
+      where: { processorId: processorId },
       select: {
         amount: true,
         bonusAmount: true,

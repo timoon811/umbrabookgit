@@ -1,30 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import UmbraLogo from "./UmbraLogo";
 import NotificationIcon from "./admin/NotificationIcon";
 import { getCurrentUTC3Time } from "@/lib/time-utils";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { getUserInitial } from "@/utils/userUtils";
 
 export default function AdminHeader() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const router = useRouter();
-
-  useEffect(() => {
-    fetchUser();
-  }, []);
 
   // Обновляем время каждую секунду
   useEffect(() => {
@@ -34,27 +23,6 @@ export default function AdminHeader() {
 
     return () => clearInterval(interval);
   }, []);
-
-  const fetchUser = async () => {
-    try {
-      const response = await fetch("/api/auth/me");
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else if (response.status === 401) {
-        setUser(null);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn("Проблема с получением данных пользователя:", errorData.message || `Status: ${response.status}`);
-        setUser(null);
-      }
-    } catch (error) {
-      console.warn("Ошибка соединения при получении данных пользователя:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -163,11 +131,11 @@ export default function AdminHeader() {
             {user && (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center text-white text-sm font-semibold">
-                  {user.name.charAt(0).toUpperCase()}
+                  {'A'}
                 </div>
                 <div className="hidden sm:block">
                   <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-24">
-                    {user.name}
+                    {user.name || 'Пользователь'}
                   </div>
                 </div>
               </div>

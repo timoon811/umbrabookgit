@@ -51,3 +51,26 @@ new_cookies.txt
 test_cookies.txt
 test_*.js
 prisma/schema.production.prisma
+
+# database dumps and migration files
+*.dat
+*.dump
+*.backup
+**/20*-*-*T*Z/
+migrate_*.js
+all_users.csv
+
+# extracted documentation (temporary)
+extracted_docs/
+
+# temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+*_backup.*
+*.bak
+
+# OS specific
+.DS_Store
+Thumbs.db

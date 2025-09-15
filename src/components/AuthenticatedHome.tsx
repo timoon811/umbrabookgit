@@ -1,51 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import UmbraLogo from "@/components/UmbraLogo";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  isBlocked: boolean;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/Toast";
+import { useNotificationContext } from "@/providers/NotificationProvider";
 
 export default function AuthenticatedHome() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Загружаем данные пользователя только после монтирования
-    if (mounted) {
-      fetchUser();
-    }
-  }, [mounted]);
-
-  const fetchUser = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      }
-    } catch (error) {
-      console.error("Ошибка получения данных пользователя:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user, loading, mounted } = useAuth();
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
+  const { 
+    showSuccess: showSystemSuccess, 
+    showError: showSystemError, 
+    showWarning: showSystemWarning, 
+    showInfo: showSystemInfo,
+    showAuthError,
+    showNetworkError 
+  } = useNotificationContext();
 
   // Показываем loading state до монтирования для предотвращения гидратации
   if (!mounted) {
@@ -105,6 +76,93 @@ export default function AuthenticatedHome() {
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 text-center">Управляйте настройками и личными данными</p>
             </div>
           </Link>
+        </div>
+
+        {/* Тестирование уведомлений */}
+        <div className="mt-12 max-w-6xl mx-auto space-y-6">
+          {/* Toast уведомления */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              📱 Toast уведомления (справа сверху)
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <button
+                onClick={() => showSuccess('Успех!', 'Операция выполнена успешно')}
+                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+              >
+                ✅ Успех
+              </button>
+              <button
+                onClick={() => showError('Ошибка!', 'Что-то пошло не так')}
+                className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                ❌ Ошибка
+              </button>
+              <button
+                onClick={() => showWarning('Внимание!', 'Проверьте данные')}
+                className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium"
+              >
+                ⚠️ Предупреждение
+              </button>
+              <button
+                onClick={() => showInfo('Информация', 'Новые данные доступны')}
+                className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+              >
+                ℹ️ Информация
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 text-center mt-3">
+              Автоматически исчезают через 5-10 секунд
+            </p>
+          </div>
+
+          {/* Системные уведомления */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              🔔 Системные уведомления (в историю)
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <button
+                onClick={() => showSystemSuccess('Данные сохранены', 'Все изменения успешно применены', 'Система')}
+                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+              >
+                💾 Сохранение
+              </button>
+              <button
+                onClick={() => showSystemError('Ошибка загрузки', 'Не удалось загрузить данные с сервера', 'API')}
+                className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                🌐 Ошибка API
+              </button>
+              <button
+                onClick={() => showSystemWarning('Проверьте подключение', 'Обнаружены проблемы с сетью', 'Сеть')}
+                className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium"
+              >
+                📡 Сеть
+              </button>
+              <button
+                onClick={() => showAuthError()}
+                className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                🔐 Авторизация
+              </button>
+              <button
+                onClick={() => showNetworkError('Тестовый модуль', () => alert('Повторная попытка!'))}
+                className="px-4 py-2 bg-orange-100 text-orange-800 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium"
+              >
+                🔧 С действием
+              </button>
+              <button
+                onClick={() => showSystemInfo('Обновление', 'Доступна новая версия системы', 'Обновления')}
+                className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+              >
+                🔄 Информация
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 text-center mt-3">
+              Попадают в историю, доступны в выпадающем меню уведомлений в Header
+            </p>
+          </div>
         </div>
       </div>
     </div>

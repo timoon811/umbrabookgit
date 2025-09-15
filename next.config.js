@@ -2,6 +2,11 @@ const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Экспериментальные флаги для Next.js 15
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+  },
+  
   // Настройки для изображений
   images: {
     remotePatterns: [

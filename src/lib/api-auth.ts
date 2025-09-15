@@ -3,8 +3,9 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { hasAdminAccess } from "./permissions";
+import { hasAdminAccess } from "@/lib/permissions";
 import { UserRole } from "@/types/roles";
+import { getDisplayName } from "@/utils/userUtils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
@@ -136,7 +137,7 @@ export async function authenticateApiRequest(
         userId: user.id,
         email: user.email,
         role: user.role,
-        name: user.name || undefined,
+        name: getDisplayName(user.name),
       }
     };
 
@@ -183,11 +184,14 @@ export async function requireAdminAuth(request: NextRequest): Promise<ApiAuthRes
 }
 
 /**
- * Shorthand for processor/admin endpoints
+ * Shorthand for manager/admin endpoints
  */
-export async function requireProcessorAuth(request: NextRequest): Promise<ApiAuthResult | ApiAuthError> {
+export async function requireManagerAuth(request: NextRequest): Promise<ApiAuthResult | ApiAuthError> {
   return authenticateApiRequest(request, ["PROCESSOR", "ADMIN"]);
 }
+
+// Алиас для обратной совместимости
+export const requireProcessorAuth = requireManagerAuth;
 
 /**
  * Shorthand for any authenticated user

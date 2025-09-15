@@ -4,7 +4,7 @@ import AuthGuard from "@/components/AuthGuard";
 
 export default function ConnectionsPage() {
   return (
-    <AuthGuard blockProcessors={true}>
+    <AuthGuard blockManagers={true}>
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <div className="mx-auto max-w-screen-2xl px-6 py-12">
           <div className="text-center">

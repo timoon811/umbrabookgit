@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useModal } from "@/hooks/useModal";
 import { getAllRoles, getRoleDisplayName } from "@/types/roles";
 import type { UserRole } from "@/types/roles";
+import EditProjectModal from "./EditProjectModal";
 
 interface ContentProject {
   id: string;
@@ -45,6 +46,10 @@ export default function ProjectManagementModal({
   const [permissions, setPermissions] = useState<ProjectPermission[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Состояние для редактирования проекта
+  const [editingProject, setEditingProject] = useState<ContentProject | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
 
   // Форма создания проекта
   const [newProject, setNewProject] = useState({
@@ -68,14 +73,13 @@ export default function ProjectManagementModal({
       if (projectsResponse.ok) {
         const projectsData = await projectsResponse.json();
         setProjects(projectsData);
-        
-        // Инициализируем permissions для каждого проекта
-        const initialPermissions = projectsData.map((project: ContentProject) => ({
-          projectId: project.id,
-          projectName: project.name,
-          allowedRoles: ['ADMIN'] // По умолчанию только админы
-        }));
-        setPermissions(initialPermissions);
+      }
+
+      // Загружаем права доступа к проектам
+      const permissionsResponse = await fetch('/api/admin/project-permissions');
+      if (permissionsResponse.ok) {
+        const permissionsData = await permissionsResponse.json();
+        setPermissions(permissionsData);
       }
 
       // Загружаем пользователей для настройки прав
@@ -161,6 +165,46 @@ export default function ProjectManagementModal({
     }
   };
 
+  const handleEditProject = (project: ContentProject) => {
+    setEditingProject(project);
+    setShowEditProject(true);
+  };
+
+  const handleUpdateProject = async (projectData: { name: string; description?: string; type: string; isActive: boolean }) => {
+    if (!editingProject) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/admin/content-projects/${editingProject.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      if (response.ok) {
+        const updatedProject = await response.json();
+        setProjects(prev => prev.map(p => 
+          p.id === editingProject.id ? updatedProject : p
+        ));
+        
+        setShowEditProject(false);
+        setEditingProject(null);
+
+        if (onProjectsUpdate) {
+          onProjectsUpdate();
+        }
+      } else {
+        console.error('Ошибка обновления проекта');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления проекта:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handlePermissionChange = (projectId: string, role: string, allowed: boolean) => {
     setPermissions(prev => prev.map(perm => 
       perm.projectId === projectId
@@ -172,6 +216,33 @@ export default function ProjectManagementModal({
           }
         : perm
     ));
+  };
+
+  const handleSavePermissions = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/project-permissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ permissions }),
+      });
+
+      if (response.ok) {
+        alert('Права доступа успешно сохранены');
+        // Перезагружаем данные для подтверждения сохранения
+        loadData();
+      } else {
+        const errorData = await response.json();
+        alert(`Ошибка сохранения прав доступа: ${errorData.error || 'Неизвестная ошибка'}`);
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения прав доступа:', error);
+      alert('Произошла ошибка при сохранении прав доступа');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getProjectTypeLabel = (type: string) => {
@@ -350,16 +421,28 @@ export default function ProjectManagementModal({
                                 </div>
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteProject(project.id, project.name)}
-                              disabled={saving}
-                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                              title="Удалить проект"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleEditProject(project)}
+                                disabled={saving}
+                                className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+                                title="Редактировать проект"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProject(project.id, project.name)}
+                                disabled={saving}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                title="Удалить проект"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         ))}
                         {projects.length === 0 && (
@@ -375,8 +458,20 @@ export default function ProjectManagementModal({
                 {/* Tab: Permissions */}
                 {activeTab === 'permissions' && (
                   <div className="space-y-4">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Настройте, какие роли пользователей имеют доступ к каждому проекту.
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Настройте, какие роли пользователей имеют доступ к каждому проекту.
+                      </div>
+                      <button
+                        onClick={handleSavePermissions}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm rounded-md transition-colors flex items-center gap-2"
+                      >
+                        {saving && (
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        )}
+                        {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                      </button>
                     </div>
                     
                     {projects.length > 0 ? (
@@ -445,6 +540,17 @@ export default function ProjectManagementModal({
           </div>
         </div>
       </div>
+      
+      {/* Модальное окно редактирования проекта */}
+      <EditProjectModal
+        isOpen={showEditProject}
+        onClose={() => {
+          setShowEditProject(false);
+          setEditingProject(null);
+        }}
+        onSubmit={handleUpdateProject}
+        project={editingProject}
+      />
     </div>
   );
 }

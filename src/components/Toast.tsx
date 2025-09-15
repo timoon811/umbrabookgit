@@ -19,12 +19,14 @@ interface ToastProps {
 
 function Toast({ toast, onRemove }: ToastProps) {
   useEffect(() => {
+    // Для ошибок - дольше показываем (10 секунд), для остальных - 5 секунд
+    const defaultDuration = toast.type === 'error' ? 10000 : 5000;
     const timer = setTimeout(() => {
       onRemove(toast.id);
-    }, toast.duration || 5000);
+    }, toast.duration || defaultDuration);
 
     return () => clearTimeout(timer);
-  }, [toast.id, toast.duration, onRemove]);
+  }, [toast.id, toast.duration, toast.type, onRemove]);
 
   const getToastStyles = () => {
     switch (toast.type) {

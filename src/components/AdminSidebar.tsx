@@ -11,7 +11,7 @@ const navigationSections = [
       { name: "Дашборд", href: "/admin" },
       { name: "Пользователи", href: "/admin/users" },
       { name: "Редактор", href: "/admin/documentation" },
-      { name: "Обработка", href: "/admin/processing" },
+      { name: "Обработка", href: "/admin/management" },
     ],
   },
   {

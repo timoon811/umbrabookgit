@@ -11,7 +11,7 @@ export default async function DocsIndexPage() {
       where: {
         isPublished: true,
         slug: {
-          isNot: null
+          not: null
         }
       },
       select: {

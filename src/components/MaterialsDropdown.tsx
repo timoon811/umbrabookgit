@@ -119,27 +119,12 @@ export default function MaterialsDropdown() {
     const firstPage = firstSection?.pages?.[0];
     
     if (firstPage?.slug) {
-      switch (project.type) {
-        case 'documentation':
-        case 'materials':
-          return `/docs/${firstPage.slug}`;
-        case 'courses':
-          return `/courses/${firstPage.slug}`;
-        default:
-          return `/docs/${firstPage.slug}`;
-      }
+      // Все проекты ведут на /docs/[slug] - единая точка входа
+      return `/docs/${firstPage.slug}`;
     }
     
-    // Fallback для проектов без страниц
-    switch (project.type) {
-      case 'documentation':
-      case 'materials':
-        return '/docs';
-      case 'courses':
-        return '/courses';
-      default:
-        return '/docs';
-    }
+    // Fallback для проектов без страниц - переходим на главную страницу документации
+    return '/docs';
   };
 
   return (

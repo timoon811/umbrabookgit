@@ -12,10 +12,14 @@ export async function GET(request: NextRequest) {
 
   try {
     return NextResponse.json({
-      id: user.userId,
-      email: user.email,
-      name: user.name,
-      role: user.role,
+      user: {
+        id: user.userId,
+        email: user.email,
+        name: user.name || 'Пользователь',
+        role: user.role,
+        status: 'APPROVED', // Если пользователь дошел до этой точки, он одобрен
+        isBlocked: false // Если пользователь дошел до этой точки, он не заблокирован
+      }
     });
   } catch (error: unknown) {
     console.error("Ошибка получения информации о пользователе:", error);

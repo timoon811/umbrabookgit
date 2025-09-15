@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { getUserInitial } from "@/utils/userUtils";
 import { useModal } from "@/hooks/useModal";
 import AlertModal from "@/components/modals/AlertModal";
 import ConfirmModal from "@/components/modals/ConfirmModal";
@@ -56,7 +57,6 @@ export default function UsersPage() {
 
   // Filter states
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
@@ -158,7 +158,6 @@ export default function UsersPage() {
   const clearFilters = () => {
     setSearchTerm('');
     setRoleFilter('all');
-    setStatusFilter('all');
     setDateFrom('');
     setDateTo('');
     setSortBy('createdAt');
@@ -490,7 +489,7 @@ export default function UsersPage() {
   const getRoleBadge = (role: string) => {
     const roleConfig = {
       USER: { label: 'Пользователь', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
-      PROCESSOR: { label: 'Обработчик', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+      PROCESSOR: { label: 'Менеджер', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
       MEDIA_BUYER: { label: 'Медиа байер', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
       ROP_PROCESSOR: { label: 'РОП обработки', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
       ROP_BUYER: { label: 'РОП байер', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300' },
@@ -535,17 +534,15 @@ export default function UsersPage() {
     .filter(user => {
       // Text search
       const matchesSearch = !searchTerm ||
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Role filter
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
 
-      // Status filter
-      const matchesStatus = statusFilter === 'all' ||
-        (statusFilter === 'BLOCKED' && user.isBlocked) ||
-        (statusFilter !== 'BLOCKED' && !user.isBlocked && user.status === statusFilter);
+      // Показываем только активных пользователей (не заблокированных и одобренных)
+      const matchesStatus = !user.isBlocked && user.status === 'APPROVED';
 
       // Date range filter
       const userDate = new Date(user.createdAt);
@@ -591,15 +588,15 @@ export default function UsersPage() {
     .filter(user => {
       // Text search
       const matchesSearch = !searchTerm ||
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Role filter
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
 
-      // Status filter (pending users are always PENDING status)
-      const matchesStatus = statusFilter === 'all' || statusFilter === 'PENDING';
+      // Показываем только заявки в статусе PENDING
+      const matchesStatus = true; // Все заявки всегда в статусе PENDING
 
       // Date range filter
       const userDate = new Date(user.createdAt);
@@ -666,7 +663,7 @@ export default function UsersPage() {
         </div>
 
         {/* Вторая строка - Фильтры */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           {/* Role Filter */}
           <div>
             <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
@@ -679,31 +676,13 @@ export default function UsersPage() {
             >
               <option value="all">Все роли</option>
               <option value="USER">Пользователь</option>
-              <option value="PROCESSOR">Обработчик</option>
+              <option value="PROCESSOR">Менеджер</option>
               <option value="MEDIA_BUYER">Медиа байер</option>
               <option value="ROP_PROCESSOR">РОП обработки</option>
               <option value="ROP_BUYER">РОП байер</option>
               <option value="MODERATOR">Модератор</option>
               <option value="SUPPORT">Поддержка</option>
               <option value="ADMIN">Администратор</option>
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-2">
-              Статус
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
-            >
-              <option value="all">Все статусы</option>
-              <option value="APPROVED">Активный</option>
-              <option value="PENDING">Ожидает</option>
-              <option value="REJECTED">Отклонен</option>
-              <option value="BLOCKED">Заблокирован</option>
             </select>
           </div>
 
@@ -878,18 +857,20 @@ function SortableHeader({
   field,
   sortBy,
   sortOrder,
-  onSort
+  onSort,
+  className = "px-6 py-3"
 }: {
   title: string;
   field: string;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   onSort: (field: string) => void;
+  className?: string;
 }) {
   const isActive = sortBy === field;
 
   return (
-    <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+    <th className={`${className} text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider`}>
       <button
         onClick={() => onSort(field)}
         className="flex items-center gap-1 hover:text-[#171717] dark:hover:text-[#ededed] transition-colors"
@@ -978,7 +959,7 @@ function UsersTable({
         <table className="min-w-full divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
           <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/[0.02]">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider w-8">
                 <input
                   type="checkbox"
                   checked={selectedUsers.size === users.length && users.length > 0}
@@ -992,6 +973,7 @@ function UsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
               <SortableHeader
                 title="Email"
@@ -999,8 +981,9 @@ function UsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Telegram
               </th>
               <SortableHeader
@@ -1009,15 +992,17 @@ function UsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
               <SortableHeader
-                title="Дата регистрации"
+                title="Дата"
                 field="createdAt"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
-              <th className="px-6 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider w-32">
                 Действия
               </th>
             </tr>
@@ -1025,7 +1010,7 @@ function UsersTable({
           <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
               {users.map((user) => (
               <tr key={user.id} className="hover:bg-[#171717]/[0.01] dark:hover:bg-[#ededed]/[0.01]">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={selectedUsers.has(user.id)}
@@ -1033,38 +1018,38 @@ function UsersTable({
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
-                        <span className="text-sm font-medium text-white">
-                            {user.name.charAt(0).toUpperCase()}
+                      <div className="flex-shrink-0 h-8 w-8">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
+                        <span className="text-xs font-medium text-white">
+                            {'X'}
                           </span>
                         </div>
                       </div>
-                      <div className="ml-4">
+                      <div className="ml-3">
                       <div className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
-                          {user.name}
+                          {user.name || 'Пользователь'}
                         </div>
-                      <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
+                      <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
                         {getStatusBadge(user.status, user.isBlocked)}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.email}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.telegram}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                   {getRoleBadge(user.role)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
+                <td className="px-3 py-3 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
                   {new Date(user.createdAt).toLocaleDateString("ru")}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                <td className="px-3 py-3 whitespace-nowrap text-right">
                   <UserActionButtons
                     user={user}
                     onView={onView}
@@ -1094,12 +1079,12 @@ function UsersTable({
                 <div className="flex items-center">
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-medium text-white">
-                      {user.name.charAt(0).toUpperCase()}
+                      {'Y'}
                     </span>
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
                     <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
-                      {user.name}
+                      {user.name || 'Пользователь'}
                     </div>
                     <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
                       {user.email}
@@ -1279,7 +1264,7 @@ function PendingUsersTable({
         <table className="min-w-full divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
           <thead className="bg-[#171717]/[0.02] dark:bg-[#ededed]/[0.02]">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider w-8">
                 <input
                   type="checkbox"
                   checked={selectedUsers.size === users.length && users.length > 0}
@@ -1293,6 +1278,7 @@ function PendingUsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
               <SortableHeader
                 title="Email"
@@ -1300,8 +1286,9 @@ function PendingUsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
-              <th className="px-6 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
                 Telegram
               </th>
               <SortableHeader
@@ -1310,15 +1297,17 @@ function PendingUsersTable({
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
               <SortableHeader
-                title="Дата подачи"
+                title="Дата"
                 field="createdAt"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
+                className="px-3 py-3"
               />
-              <th className="px-6 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider">
+              <th className="px-3 py-3 text-right text-xs font-medium text-[#171717]/60 dark:text-[#ededed]/60 uppercase tracking-wider w-40">
                 Действия
               </th>
             </tr>
@@ -1326,7 +1315,7 @@ function PendingUsersTable({
           <tbody className="divide-y divide-[#171717]/5 dark:divide-[#ededed]/10">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-[#171717]/[0.01] dark:hover:bg-[#ededed]/[0.01]">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={selectedUsers.has(user.id)}
@@ -1334,20 +1323,20 @@ function PendingUsersTable({
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                        <span className="text-sm font-medium text-white">
-                          {user.name.charAt(0).toUpperCase()}
+                    <div className="flex-shrink-0 h-8 w-8">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                        <span className="text-xs font-medium text-white">
+                          {'Y'}
                         </span>
                       </div>
                     </div>
-                    <div className="ml-4">
+                    <div className="ml-3">
                       <div className="text-sm font-medium text-[#171717] dark:text-[#ededed]">
-                        {user.name}
+                        {user.name || 'Пользователь'}
                       </div>
-                      <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60">
+                      <div className="text-xs text-[#171717]/60 dark:text-[#ededed]/60">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
                           Ожидает
                         </span>
@@ -1355,19 +1344,19 @@ function PendingUsersTable({
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap">
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.email}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap">
                   <div className="text-sm text-[#171717] dark:text-[#ededed]">{user.telegram}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap">
                   {getRoleBadge(user.role)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
+                <td className="px-3 py-3 whitespace-nowrap text-sm text-[#171717]/60 dark:text-[#ededed]/60">
                   {new Date(user.createdAt).toLocaleDateString("ru")}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                <td className="px-3 py-3 whitespace-nowrap text-right">
                   <PendingUserActionButtons
                     user={user}
                     onView={onView}
@@ -1375,8 +1364,8 @@ function PendingUsersTable({
                     onReject={onReject}
                   />
                   </td>
-                </tr>
-              ))}
+              </tr>
+            ))}
             </tbody>
           </table>
       </div>
@@ -1396,12 +1385,12 @@ function PendingUsersTable({
                 <div className="flex items-center">
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-medium text-white">
-                      {user.name.charAt(0).toUpperCase()}
+                      {'Y'}
                     </span>
                   </div>
                   <div className="ml-3 flex-1 min-w-0">
                     <div className="text-sm font-medium text-[#171717] dark:text-[#ededed] truncate">
-                      {user.name}
+                      {user.name || 'Пользователь'}
                     </div>
                     <div className="text-sm text-[#171717]/60 dark:text-[#ededed]/60 truncate">
                       {user.email}
@@ -1528,7 +1517,7 @@ function ViewUserModal({
           <div className="flex items-center gap-4 mb-6">
             <div className="h-16 w-16 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
               <span className="text-xl font-medium text-white">
-                {user.name.charAt(0).toUpperCase()}
+                          {'Y'}
               </span>
             </div>
             <div>
@@ -1788,7 +1777,7 @@ function EditUserModal({
       ...formData,
     });
 
-    // Сохраняем назначения смен для процессоров
+    // Сохраняем назначения смен для менеджеров
     if (formData.role === 'PROCESSOR' && shiftsData) {
       try {
         const assignedShiftIds = shiftsData.shifts
@@ -1870,7 +1859,7 @@ function EditUserModal({
                 className="w-full px-3 py-2 bg-white dark:bg-[#0a0a0a] border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
               >
                 <option value="USER">Пользователь</option>
-                <option value="PROCESSOR">Обработчик</option>
+                <option value="PROCESSOR">Менеджер</option>
                 <option value="MEDIA_BUYER">Медиа байер</option>
                 <option value="ROP_PROCESSOR">РОП обработки</option>
                 <option value="ROP_BUYER">РОП байер</option>
@@ -1893,7 +1882,7 @@ function EditUserModal({
               />
             </div>
 
-            {/* Назначение смен для обработчиков */}
+            {/* Назначение смен для менеджеров */}
             {formData.role === 'PROCESSOR' && (
               <div>
                 <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-3">
@@ -1945,7 +1934,7 @@ function EditUserModal({
                   </div>
                 )}
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Выберите смены, которые может начинать обработчик
+                  Выберите смены, которые может начинать менеджер
                 </div>
               </div>
             )}

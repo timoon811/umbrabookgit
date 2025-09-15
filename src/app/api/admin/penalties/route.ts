@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const penalties = await prisma.shift_penalties.findMany({
       where,
       include: {
-        processor: {
+        manager: {
           select: { name: true, email: true }
         }
       },
@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверяем, что процессор существует
-    const processor = await prisma.users.findUnique({
+    // Проверяем, что менеджер существует
+    const manager = await prisma.users.findUnique({
       where: { id: processorId }
     });
 
-    if (!processor || processor.role !== 'PROCESSOR') {
+    if (!manager || manager.role !== 'PROCESSOR') {
       return NextResponse.json(
-        { error: "Процессор не найден" },
+        { error: "Менеджер не найден" },
         { status: 404 }
       );
     }
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log(`💰 Применен штраф -50$ для процессора ${processor.name} за пропуск смены ${shiftType} ${shiftDate}`);
+    console.log(`💰 Применен штраф -50$ для менеджера ${manager.name} за пропуск смены ${shiftType} ${shiftDate}`);
 
     return NextResponse.json(penalty, { status: 201 });
   } catch (error) {

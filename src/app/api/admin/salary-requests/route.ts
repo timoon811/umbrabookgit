@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAuth } from "@/lib/api-auth";
 
 // GET /api/admin/salary-requests - Получение всех заявок на зарплату
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -16,7 +19,7 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get("dateTo");
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
-    const search = searchParams.get("search"); // Поиск по имени процессора
+    const search = searchParams.get("search"); // Поиск по имени менеджера
     
     const skip = (page - 1) * limit;
 
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      where.processor = {
+      where.manager = {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
@@ -52,15 +55,15 @@ export async function GET(request: NextRequest) {
 
     // Формируем сортировку
     const orderBy: Record<string, unknown> = {};
-    if (sortBy === "processor") {
-      orderBy.processor = { name: sortOrder };
+    if (sortBy === "manager") {
+      orderBy.manager = { name: sortOrder };
     } else if (sortBy === "amount") {
       orderBy.requestedAmount = sortOrder;
     } else {
       orderBy[sortBy] = sortOrder;
     }
 
-    // Получаем заявки с информацией о процессорах
+    // Получаем заявки с информацией о менеджерах
     const [salaryRequests, total] = await Promise.all([
       prisma.salary_requests.findMany({
         where,
@@ -81,8 +84,8 @@ export async function GET(request: NextRequest) {
       prisma.salary_requests.count({ where }),
     ]);
 
-    // Получаем список всех процессоров для фильтра
-    const processors = await prisma.users.findMany({
+    // Получаем список всех менеджеров для фильтра
+    const managers = await prisma.users.findMany({
       where: { role: "PROCESSOR" },
       select: { id: true, name: true, email: true },
       orderBy: { name: "asc" },
@@ -90,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       salaryRequests,
-      processors,
+      managers,
       pagination: {
         page,
         limit,
@@ -111,7 +114,10 @@ export async function GET(request: NextRequest) {
 // PUT /api/admin/salary-requests/[id] - Обновление статуса заявки
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const authResult = await requireAdminAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
     const body = await request.json();
     const { id, status, adminComment, action } = body;
@@ -161,18 +167,18 @@ export async function PUT(request: NextRequest) {
     if (status === "APPROVED") {
       updateData.processedAt = new Date();
       
-      // Находим счет процессора (создаем временный, если не существует)
-      let processorAccount = await prisma.finance_accounts.findFirst({
+      // Находим счет менеджера (создаем временный, если не существует)
+      let managerAccount = await prisma.finance_accounts.findFirst({
         where: {
-          name: `Счет процессора ${currentRequest.processor.name}`,
+          name: `Счет менеджера ${currentRequest.manager.name}`,
           type: "PROCESSOR",
         },
       });
 
-      if (!processorAccount) {
-        processorAccount = await prisma.finance_accounts.create({
+      if (!managerAccount) {
+        managerAccount = await prisma.finance_accounts.create({
           data: {
-            name: `Счет процессора ${currentRequest.processor.name}`,
+            name: `Счет менеджера ${currentRequest.manager.name}`,
             type: "PROCESSOR",
             currency: "USD",
             balance: 0,
@@ -184,7 +190,7 @@ export async function PUT(request: NextRequest) {
       // Создаем транзакцию списания
       const transaction = await prisma.finance_transactions.create({
         data: {
-          accountId: processorAccount.id,
+          accountId: managerAccount.id,
           type: "EXPENSE",
           amount: currentRequest.calculatedAmount || currentRequest.requestedAmount,
           netAmount: currentRequest.calculatedAmount || currentRequest.requestedAmount,
@@ -196,11 +202,11 @@ export async function PUT(request: NextRequest) {
         },
       });
 
-      // Обновляем баланс счета процессора
+      // Обновляем баланс счета менеджера
       await prisma.finance_accounts.update({
-        where: { id: processorAccount.id },
+        where: { id: managerAccount.id },
         data: {
-          balance: processorAccount.balance - (currentRequest.calculatedAmount || currentRequest.requestedAmount),
+          balance: managerAccount.balance - (currentRequest.calculatedAmount || currentRequest.requestedAmount),
         },
       });
 
