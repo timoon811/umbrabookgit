@@ -17,11 +17,14 @@ model users {
   status                UserStatus              @default(PENDING)
   isBlocked             Boolean                 @default(false)
   assignedBuyerId       String?
+  leadBuyerId           String?                 // Для привязки к Lead Buyer
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   analytics             analytics[]
   assignedBuyer         users?                  @relation("BuyerAssignment", fields: [assignedBuyerId], references: [id])
   assignedProcessors    users[]                 @relation("BuyerAssignment")
+  leadBuyer             users?                  @relation("LeadBuyerAssignment", fields: [leadBuyerId], references: [id])
+  teamMembers           users[]                 @relation("LeadBuyerAssignment")
   processorDeposits     processor_deposits[]
   salaryRequests        salary_requests[]
   bonusPayments         bonus_payments[]
@@ -34,11 +37,24 @@ model users {
   requestsLog           salary_request_log[]     @relation("ProcessorRequestLog")
   adminRequestsLog      salary_request_log[]     @relation("AdminRequestLog")
 
+  // Buyer связи
+  buyerProjects         buyer_projects[]        @relation("BuyerProjects")
+  buyerDailyLogs        buyer_daily_logs[]      @relation("BuyerDailyLogs")
+  moderatedLogs         buyer_daily_logs[]      @relation("DailyLogModerator")
+  lockedLogs            buyer_daily_logs[]      @relation("DailyLogLocker")
+  buyerRequests         buyer_requests[]        @relation("BuyerRequests")
+  processedRequests     buyer_requests[]        @relation("RequestProcessor")
+  bonusAssignments      buyer_bonus_assignments[] @relation("BuyerBonusAssignments")
+  sharedCostAllocations shared_cost_allocations[] @relation("SharedCostAllocations")
+  buyerSignals          buyer_signals[]         @relation("BuyerSignals")
+  resolvedSignals       buyer_signals[]         @relation("SignalResolver")
+
   @@index([email])
   @@index([role])
   @@index([status])
   @@index([telegram])
   @@index([assignedBuyerId])
+  @@index([leadBuyerId])
   @@map("users")
 }
 
@@ -339,6 +355,9 @@ enum UserRole {
   PROCESSOR
   ROP_PROCESSOR
   ROP_BUYER
+  BUYER
+  LEAD_BUYER
+  FINANCE
 }
 
 enum UserStatus {
@@ -423,6 +442,73 @@ enum PenaltyType {
 enum MotivationType {
   PERCENTAGE
   FIXED_AMOUNT
+}
+
+// Buyer система енумы
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum DailyLogStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  LOCKED
+}
+
+enum RequestType {
+  BUDGET
+  CONSUMABLES
+  ACCESS
+  PAYOUT
+  CUSTOM
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  FULFILLED
+  CLOSED
+  PAID
+}
+
+enum BonusSchemeType {
+  FIFTY_FIFTY
+  TIER_SYSTEM
+  CUSTOM_FORMULA
+}
+
+enum SharedCostStatus {
+  PLANNED
+  ACTIVE
+  ALLOCATED
+  ARCHIVED
+}
+
+enum SignalType {
+  ROAS_DROP
+  ANOMALY
+  MISSING_LOG
+  OVERSPEND
+  CUSTOM
+}
+
+enum SignalSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SignalStatus {
+  ACTIVE
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
 }
 
 model processor_deposits {
@@ -827,4 +913,238 @@ model user_goal_achievements {
 
   @@unique([userId, stageId, period])
   @@map("user_goal_achievements")
+}
+
+// === BUYER СИСТЕМА ===
+
+// Проекты байеров
+model buyer_projects {
+  id                 String            @id @default(uuid())
+  name               String
+  buyerId            String
+  offer              String?           // Оффер/вертикаль
+  geo                String?           // GEO
+  trafficSource      String?           // Источник трафика
+  attributionWindow  Int               @default(1)  // Окно атрибуции в днях
+  attributionModel   String            @default("DATE_BASED")  // DATE_BASED, CLICK_BASED
+  currency           String            @default("USD")
+  status             ProjectStatus     @default(ACTIVE)
+  stopConditions     String?           // JSON с условиями остановки
+  isArchived         Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Связи
+  buyer              users             @relation("BuyerProjects", fields: [buyerId], references: [id], onDelete: Cascade)
+  dailyLogs          buyer_daily_logs[]
+  requests           buyer_requests[]
+  sharedCostAllocations shared_cost_allocations[]
+  signals            buyer_signals[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@map("buyer_projects")
+}
+
+// Дневники байеров
+model buyer_daily_logs {
+  id             String            @id @default(uuid())
+  buyerId        String
+  projectId      String
+  date           DateTime          // Дата, за которую записывается лог (T-1)
+  spend          Float             @default(0)
+  ftdCount       Int               @default(0)
+  ftdAmount      Float             @default(0)
+  redCount       Int               @default(0)
+  redAmount      Float             @default(0)
+  totalDeposits  Float             @default(0)
+  averageCheck   Float             @default(0)
+  registrations  Int               @default(0)
+  clicks         Int               @default(0)
+  notes          String?
+  status         DailyLogStatus    @default(DRAFT)
+  adminComment   String?
+  moderatedAt    DateTime?
+  moderatedBy    String?
+  lockedAt       DateTime?
+  lockedBy       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  buyer          users             @relation("BuyerDailyLogs", fields: [buyerId], references: [id], onDelete: Cascade)
+  project        buyer_projects    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  moderator      users?            @relation("DailyLogModerator", fields: [moderatedBy], references: [id], onDelete: SetNull)
+  locker         users?            @relation("DailyLogLocker", fields: [lockedBy], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, date])
+  @@index([buyerId])
+  @@index([projectId])
+  @@index([date])
+  @@index([status])
+  @@map("buyer_daily_logs")
+}
+
+// Заявки байеров
+model buyer_requests {
+  id             String            @id @default(uuid())
+  buyerId        String
+  projectId      String?
+  type           RequestType
+  title          String
+  description    String?
+  amount         Float?
+  deliveryMethod String?           // Способ выдачи (кошелёк, кабинет и т.п.)
+  payoutPeriod   String?           // Период выплаты (1-15, 16-end)
+  walletAddress  String?
+  items          String?           // JSON со списком расходников
+  status         RequestStatus     @default(DRAFT)
+  adminComment   String?
+  processedAt    DateTime?
+  processedBy    String?
+  fulfilledAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  buyer          users             @relation("BuyerRequests", fields: [buyerId], references: [id], onDelete: Cascade)
+  project        buyer_projects?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  processor      users?            @relation("RequestProcessor", fields: [processedBy], references: [id], onDelete: SetNull)
+
+  @@index([buyerId])
+  @@index([projectId])
+  @@index([type])
+  @@index([status])
+  @@map("buyer_requests")
+}
+
+// Схемы бонусов для байеров
+model buyer_bonus_schemes {
+  id             String            @id @default(uuid())
+  name           String
+  description    String?
+  type           BonusSchemeType   // FIFTY_FIFTY, TIER_SYSTEM, CUSTOM_FORMULA
+  percentage     Float?            // Для FIFTY_FIFTY
+  tiers          String?           // JSON с тирами для TIER_SYSTEM
+  formula        String?           // Кастомная формула
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  assignments    buyer_bonus_assignments[]
+
+  @@map("buyer_bonus_schemes")
+}
+
+// Назначения схем бонусов байерам
+model buyer_bonus_assignments {
+  id             String            @id @default(uuid())
+  buyerId        String
+  schemeId       String
+  startDate      DateTime          @default(now())
+  endDate        DateTime?
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  buyer          users             @relation("BuyerBonusAssignments", fields: [buyerId], references: [id], onDelete: Cascade)
+  scheme         buyer_bonus_schemes @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@index([schemeId])
+  @@index([startDate])
+  @@map("buyer_bonus_assignments")
+}
+
+// Общие расходы
+model shared_costs {
+  id             String            @id @default(uuid())
+  name           String
+  description    String?
+  amount         Float
+  costType       String            // Тип расходника (accounts, proxy, etc.)
+  period         String            // Период действия
+  isShared       Boolean           @default(true)
+  allocationRule String            @default("BY_SPEND") // BY_SPEND, BY_REVENUE, EQUAL, MANUAL
+  status         SharedCostStatus  @default(PLANNED)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  allocations    shared_cost_allocations[]
+
+  @@index([status])
+  @@index([costType])
+  @@map("shared_costs")
+}
+
+// Аллокация общих расходов
+model shared_cost_allocations {
+  id             String            @id @default(uuid())
+  sharedCostId   String
+  projectId      String
+  buyerId        String
+  allocatedAmount Float
+  percentage     Float             // Процент от общей суммы
+  period         String            // Период аллокации
+  calculatedAt   DateTime          @default(now())
+
+  // Связи
+  sharedCost     shared_costs      @relation(fields: [sharedCostId], references: [id], onDelete: Cascade)
+  project        buyer_projects    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  buyer          users             @relation("SharedCostAllocations", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([sharedCostId, projectId, period])
+  @@index([buyerId])
+  @@index([period])
+  @@map("shared_cost_allocations")
+}
+
+// Каталог расходников
+model consumable_catalog {
+  id             String            @id @default(uuid())
+  name           String
+  category       String            // accounts, proxy, antidect, sim, domains, hosting, antiсaptcha, tracker, creative, voice, edit
+  description    String?
+  unit           String            @default("шт")   // шт, мес, год
+  basePrice      Float?
+  isShared       Boolean           @default(false)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@map("consumable_catalog")
+}
+
+// Сигналы/алерты
+model buyer_signals {
+  id             String            @id @default(uuid())
+  buyerId        String?
+  projectId      String?
+  type           SignalType
+  title          String
+  description    String
+  severity       SignalSeverity    @default(MEDIUM)
+  status         SignalStatus      @default(ACTIVE)
+  metadata       String?           // JSON с дополнительными данными
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  adminComment   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Связи
+  buyer          users?            @relation("BuyerSignals", fields: [buyerId], references: [id], onDelete: SetNull)
+  project        buyer_projects?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  resolver       users?            @relation("SignalResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([buyerId])
+  @@index([projectId])
+  @@index([type])
+  @@index([status])
+  @@map("buyer_signals")
 }

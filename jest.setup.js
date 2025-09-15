@@ -49,6 +49,7 @@ if (typeof window !== 'undefined') {
       dispatchEvent: jest.fn(),
     })),
   });
+
 }
 
 // Mock next/router

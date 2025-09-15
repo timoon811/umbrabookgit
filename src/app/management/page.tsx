@@ -322,6 +322,38 @@ function ProcessingPageContent() {
   const { showSuccess, showError, showWarning } = useToast();
   const { user } = useAuth();
 
+  // Универсальная функция проверки и обработки ошибок авторизации
+  const handleAuthError = (response: Response) => {
+    if (response.status === 401 || response.status === 307 || response.redirected) {
+      showError("Ошибка авторизации", "Ваша сессия истекла. Пожалуйста, войдите в систему заново");
+      // Очищаем токен
+      document.cookie = "auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      router.push("/login");
+      return true;
+    } else if (response.status === 403) {
+      showError("Доступ запрещен", "У вас нет прав для выполнения этой операции");
+      return true;
+    }
+    return false;
+  };
+
+  // Универсальная функция обработки API ошибок
+  const handleApiError = async (response: Response, operation: string) => {
+    if (handleAuthError(response)) {
+      return true;
+    }
+
+    try {
+      const errorData = await response.json();
+      console.error(`Ошибка ${operation}:`, errorData);
+      showError(`Ошибка ${operation}`, errorData.error || errorData.message || `Не удалось выполнить ${operation}`);
+    } catch (e) {
+      console.error(`Не удалось разобрать ошибку ${operation}:`, e);
+      showError("Ошибка сервера", `HTTP ${response.status}: Не удалось выполнить ${operation}`);
+    }
+    return true;
+  };
+
   // Функция для красивого отображения названий валют
   const getCurrencyDisplayName = (currency: string) => {
     const currencyNames: Record<string, string> = {
@@ -451,18 +483,30 @@ function ProcessingPageContent() {
     const checkAuth = async () => {
       try {
         if (!user) {
+          console.log('❌ Пользователь не найден, перенаправление на логин');
           router.push("/login");
           return;
         }
+
+        console.log('👤 Текущий пользователь:', {
+          userId: user.userId,
+          role: user.role,
+          email: user.email
+        });
         
         setUserRole(user.role);
         
         // Загружаем данные для менеджеров и админов
         if (user.role === "PROCESSOR" || user.role === "ADMIN") {
+          console.log('🔄 Начинаем загрузку данных для роли:', user.role);
+          
           // Запускаем загрузку данных
           (async () => {
             try {
               setLoading(true);
+
+              // Проверяем доступность API
+              console.log('🔍 Проверяем доступность API...');
 
               // Загружаем статистику
               const statsResponse = await fetch("/api/manager/stats");
@@ -472,28 +516,14 @@ function ProcessingPageContent() {
               } else {
                 console.error('Ошибка загрузки основной статистики:', {
                   status: statsResponse.status,
-                  statusText: statsResponse.statusText
+                  statusText: statsResponse.statusText,
+                  url: statsResponse.url,
+                  redirected: statsResponse.redirected,
+                  headers: Object.fromEntries(statsResponse.headers.entries())
                 });
                 
-                // Проверяем, не проблема ли авторизации
-                if (statsResponse.status === 401) {
-                  showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
-                  router.push("/login");
-                  return;
-                } else if (statsResponse.status === 403) {
-                  showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
-                  return;
-                } else {
-                  // Показываем ошибку загрузки основной статистики
-                  try {
-                    const errorData = await statsResponse.json();
-                    console.error('Детали ошибки основной статистики:', errorData);
-                    showError("Ошибка загрузки", errorData.error || errorData.message || "Не удалось загрузить основную статистику");
-                  } catch (e) {
-                    console.error('Не удалось разобрать ошибку основной статистики:', e);
-                    showError("Ошибка сервера", `HTTP ${statsResponse.status}: Не удалось загрузить статистику`);
-                  }
-                }
+                // Обрабатываем ошибку
+                await handleApiError(statsResponse, "загрузки основной статистики");
               }
 
               // Загружаем детальную статистику
@@ -507,27 +537,13 @@ function ProcessingPageContent() {
                 console.error('Ошибка загрузки детальной статистики:', {
                   status: detailedStatsResponse.status,
                   statusText: detailedStatsResponse.statusText,
-                  url: url
+                  url: url,
+                  redirected: detailedStatsResponse.redirected,
+                  headers: Object.fromEntries(detailedStatsResponse.headers.entries())
                 });
                 
-                // Проверяем, не проблема ли авторизации
-                if (detailedStatsResponse.status === 401) {
-                  showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
-                  router.push("/login");
-                  return;
-                } else if (detailedStatsResponse.status === 403) {
-                  showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
-                  return;
-                }
-                
-                try {
-                  const errorData = await detailedStatsResponse.json();
-                  console.error('Детали ошибки:', errorData);
-                  showError("Ошибка загрузки статистики", errorData.error || errorData.message || "Не удалось загрузить статистику");
-                } catch (e) {
-                  console.error('Не удалось разобрать ошибку:', e);
-                  showError("Ошибка сервера", "Не удалось загрузить статистику. Попробуйте позже.");
-                }
+                // Обрабатываем ошибку
+                await handleApiError(detailedStatsResponse, "загрузки детальной статистики");
               }
 
               // Загружаем данные смены
@@ -659,22 +675,8 @@ function ProcessingPageContent() {
           url: url
         });
         
-        // Проверяем, не проблема ли авторизации
-        if (detailedStatsResponse.status === 401) {
-          showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
-          router.push("/login");
-          return;
-        } else if (detailedStatsResponse.status === 403) {
-          showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
-          return;
-        }
-        
-        try {
-          const errorData = await detailedStatsResponse.json();
-          showError("Ошибка загрузки статистики", errorData.error || errorData.message || "Не удалось загрузить статистику");
-        } catch (e) {
-          showError("Ошибка сервера", "Не удалось загрузить статистику. Попробуйте позже.");
-        }
+        // Обрабатываем ошибку
+        await handleApiError(detailedStatsResponse, "загрузки статистики");
       }
     } catch (error) {
       console.error("Ошибка загрузки детальной статистики:", error);

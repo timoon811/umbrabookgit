@@ -10,7 +10,13 @@ async function main() {
   const adminPassword = await bcrypt.hash("umbra2024", 10);
   const admin = await prisma.users.upsert({
     where: { email: "admin@umbra-platform.dev" },
-    update: {},
+    update: {
+      // Обновляем только основную информацию, но не пароль
+      name: "Umbra Platform Admin",
+      telegram: "@umbra_admin",
+      role: "ADMIN",
+      status: "APPROVED",
+    },
     create: {
       email: "admin@umbra-platform.dev",
       name: "Umbra Platform Admin",

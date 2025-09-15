@@ -4,11 +4,14 @@ export type UserRole =
   | 'USER'              // Пользователь
   | 'ADMIN'             // Администратор
   | 'PROCESSOR'         // Менеджер
-  | 'MEDIA_BUYER'       // Медиа Байер
+  | 'MEDIA_BUYER'       // Медиа Байер (устаревшая роль, заменена на BUYER)
   | 'ROP_PROCESSOR'     // РОП обработки
-  | 'ROP_BUYER'         // РОП байер
+  | 'ROP_BUYER'         // РОП байер (устаревшая роль, заменена на LEAD_BUYER)
   | 'MODERATOR'         // Модератор
-  | 'SUPPORT';          // Поддержка
+  | 'SUPPORT'           // Поддержка
+  | 'BUYER'             // Байер
+  | 'LEAD_BUYER'        // Лид Байер
+  | 'FINANCE';          // Финансы
 
 export type Permission = 
   | 'admin.access'                    // Доступ к админ панели
@@ -31,15 +34,43 @@ export type Permission =
   | 'manager.deposits.edit'         // Создание/редактирование депозитов
   | 'manager.stats.view'            // Просмотр статистики менеджера
   | 'manager.salary.view'           // Просмотр зарплатных данных
-  | 'buyer.campaigns.view'            // Просмотр кампаний (байер)
-  | 'buyer.campaigns.edit'            // Редактирование кампаний
-  | 'buyer.stats.view'                // Просмотр статистики байера
-  | 'buyer.finance.view'              // Просмотр финансов байера
+  | 'buyer.campaigns.view'            // Просмотр кампаний (байер) - УСТАРЕЛО
+  | 'buyer.campaigns.edit'            // Редактирование кампаний - УСТАРЕЛО
+  | 'buyer.stats.view'                // Просмотр статистики байера - УСТАРЕЛО
+  | 'buyer.finance.view'              // Просмотр финансов байера - УСТАРЕЛО
   | 'support.tickets.view'            // Просмотр тикетов поддержки
   | 'support.tickets.edit'            // Обработка тикетов поддержки
   | 'support.users.assist'            // Помощь пользователям
   | 'content.projects.view'           // Просмотр проектов контента
-  | 'content.projects.edit';          // Редактирование проектов контента
+  | 'content.projects.edit'           // Редактирование проектов контента
+  // Новые права для Buyer системы
+  | 'buyer.projects.view'             // Просмотр своих проектов
+  | 'buyer.projects.create'           // Создание проектов
+  | 'buyer.projects.edit'             // Редактирование своих проектов
+  | 'buyer.dailylogs.view'            // Просмотр дневников
+  | 'buyer.dailylogs.create'          // Создание дневников
+  | 'buyer.dailylogs.edit'            // Редактирование дневников
+  | 'buyer.requests.view'             // Просмотр заявок
+  | 'buyer.requests.create'           // Создание заявок
+  | 'buyer.requests.edit'             // Редактирование заявок
+  | 'buyer.bonus.view'                // Просмотр бонусов
+  | 'buyer.dashboard.view'            // Доступ к dashboard байера
+  // Права для Lead Buyer
+  | 'leadbuyer.team.view'             // Просмотр команды
+  | 'leadbuyer.approve.local'         // Локальные аппрувы (рекомендации)
+  // Админские права для buyer системы
+  | 'admin.buyer.view'                // Просмотр всех байеров
+  | 'admin.buyer.edit'                // Редактирование байеров
+  | 'admin.buyer.projects.view'       // Просмотр всех проектов
+  | 'admin.buyer.projects.edit'       // Редактирование всех проектов
+  | 'admin.buyer.requests.approve'    // Аппрув заявок
+  | 'admin.buyer.bonus.manage'        // Управление бонусными схемами
+  | 'admin.buyer.sharedcosts.manage'  // Управление общими расходами
+  | 'admin.buyer.signals.view'        // Просмотр сигналов
+  | 'admin.buyer.reports.view'        // Просмотр отчетов
+  // Финансовые права
+  | 'finance.payouts.view'            // Просмотр выплат
+  | 'finance.payouts.process';        // Обработка выплат
 
 export interface RolePermissions {
   role: UserRole;
@@ -82,7 +113,19 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
       'admin.roles.view',
       'admin.roles.edit',
       'content.projects.view',
-      'content.projects.edit'
+      'content.projects.edit',
+      // Buyer система права для админа
+      'admin.buyer.view',
+      'admin.buyer.edit',
+      'admin.buyer.projects.view',
+      'admin.buyer.projects.edit',
+      'admin.buyer.requests.approve',
+      'admin.buyer.bonus.manage',
+      'admin.buyer.sharedcosts.manage',
+      'admin.buyer.signals.view',
+      'admin.buyer.reports.view',
+      'finance.payouts.view',
+      'finance.payouts.process'
     ],
     isSystem: true
   },
@@ -176,6 +219,68 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
       'content.projects.view'
     ],
     isSystem: true
+  },
+  BUYER: {
+    role: 'BUYER',
+    displayName: 'Байер',
+    description: 'Специалист по закупке трафика и ведению проектов',
+    permissions: [
+      'buyer.projects.view',
+      'buyer.projects.create',
+      'buyer.projects.edit',
+      'buyer.dailylogs.view',
+      'buyer.dailylogs.create',
+      'buyer.dailylogs.edit',
+      'buyer.requests.view',
+      'buyer.requests.create',
+      'buyer.requests.edit',
+      'buyer.bonus.view',
+      'buyer.dashboard.view',
+      'content.projects.view'
+    ],
+    isSystem: true
+  },
+  LEAD_BUYER: {
+    role: 'LEAD_BUYER',
+    displayName: 'Лид Байер',
+    description: 'Руководитель группы байеров с правами локального аппрува',
+    permissions: [
+      'admin.access',
+      'buyer.projects.view',
+      'buyer.projects.create',
+      'buyer.projects.edit',
+      'buyer.dailylogs.view',
+      'buyer.dailylogs.create',
+      'buyer.dailylogs.edit',
+      'buyer.requests.view',
+      'buyer.requests.create',
+      'buyer.requests.edit',
+      'buyer.bonus.view',
+      'buyer.dashboard.view',
+      'leadbuyer.team.view',
+      'leadbuyer.approve.local',
+      'admin.buyer.view',
+      'admin.buyer.projects.view',
+      'admin.buyer.signals.view',
+      'content.projects.view'
+    ],
+    isSystem: true
+  },
+  FINANCE: {
+    role: 'FINANCE',
+    displayName: 'Финансы',
+    description: 'Специалист по финансовым операциям и выплатам',
+    permissions: [
+      'admin.access',
+      'admin.finance.view',
+      'admin.finance.stats',
+      'finance.payouts.view',
+      'finance.payouts.process',
+      'admin.buyer.view',
+      'admin.buyer.requests.approve',
+      'content.projects.view'
+    ],
+    isSystem: true
   }
 };
 
@@ -230,7 +335,39 @@ export const ALL_PERMISSIONS: { permission: Permission; displayName: string; des
   
   // Контент
   { permission: 'content.projects.view', displayName: 'Просмотр проектов', description: 'Просмотр проектов контента', category: 'Контент' },
-  { permission: 'content.projects.edit', displayName: 'Редактирование проектов', description: 'Создание и изменение проектов', category: 'Контент' }
+  { permission: 'content.projects.edit', displayName: 'Редактирование проектов', description: 'Создание и изменение проектов', category: 'Контент' },
+  
+  // Buyer система
+  { permission: 'buyer.projects.view', displayName: 'Просмотр проектов', description: 'Просмотр своих проектов байера', category: 'Байер' },
+  { permission: 'buyer.projects.create', displayName: 'Создание проектов', description: 'Создание новых проектов', category: 'Байер' },
+  { permission: 'buyer.projects.edit', displayName: 'Редактирование проектов', description: 'Редактирование своих проектов', category: 'Байер' },
+  { permission: 'buyer.dailylogs.view', displayName: 'Просмотр дневников', description: 'Просмотр дневных отчетов', category: 'Байер' },
+  { permission: 'buyer.dailylogs.create', displayName: 'Создание дневников', description: 'Создание дневных отчетов', category: 'Байер' },
+  { permission: 'buyer.dailylogs.edit', displayName: 'Редактирование дневников', description: 'Редактирование дневных отчетов', category: 'Байер' },
+  { permission: 'buyer.requests.view', displayName: 'Просмотр заявок', description: 'Просмотр своих заявок', category: 'Байер' },
+  { permission: 'buyer.requests.create', displayName: 'Создание заявок', description: 'Создание новых заявок', category: 'Байер' },
+  { permission: 'buyer.requests.edit', displayName: 'Редактирование заявок', description: 'Редактирование своих заявок', category: 'Байер' },
+  { permission: 'buyer.bonus.view', displayName: 'Просмотр бонусов', description: 'Просмотр своих бонусов и схем', category: 'Байер' },
+  { permission: 'buyer.dashboard.view', displayName: 'Dashboard байера', description: 'Доступ к личному кабинету байера', category: 'Байер' },
+  
+  // Lead Buyer
+  { permission: 'leadbuyer.team.view', displayName: 'Просмотр команды', description: 'Просмотр показателей своей группы', category: 'Лид Байер' },
+  { permission: 'leadbuyer.approve.local', displayName: 'Локальные аппрувы', description: 'Рекомендации для аппрува (финально аппрувит админ)', category: 'Лид Байер' },
+  
+  // Админ для buyer системы
+  { permission: 'admin.buyer.view', displayName: 'Просмотр всех байеров', description: 'Просмотр всех байеров в системе', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.edit', displayName: 'Редактирование байеров', description: 'Редактирование профилей байеров', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.projects.view', displayName: 'Просмотр всех проектов', description: 'Просмотр всех проектов байеров', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.projects.edit', displayName: 'Редактирование всех проектов', description: 'Редактирование любых проектов', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.requests.approve', displayName: 'Аппрув заявок', description: 'Утверждение заявок байеров', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.bonus.manage', displayName: 'Управление бонусами', description: 'Управление бонусными схемами', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.sharedcosts.manage', displayName: 'Управление общими расходами', description: 'Управление общими тратами и аллокацией', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.signals.view', displayName: 'Просмотр сигналов', description: 'Просмотр сигналов и алертов', category: 'Админ Buyer' },
+  { permission: 'admin.buyer.reports.view', displayName: 'Просмотр отчетов', description: 'Просмотр отчетов по buyer системе', category: 'Админ Buyer' },
+  
+  // Финансы
+  { permission: 'finance.payouts.view', displayName: 'Просмотр выплат', description: 'Просмотр запросов на выплаты', category: 'Финансы' },
+  { permission: 'finance.payouts.process', displayName: 'Обработка выплат', description: 'Обработка и отметка выплат как оплаченных', category: 'Финансы' }
 ];
 
 // Функции для работы с правами

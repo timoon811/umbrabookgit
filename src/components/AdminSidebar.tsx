@@ -15,6 +15,19 @@ const navigationSections = [
     ],
   },
   {
+    title: "BUYER СИСТЕМА",
+    items: [
+      { name: "Обзор Байеров", href: "/admin/buyer" },
+      { name: "Проекты", href: "/admin/buyer/projects" },
+      { name: "Дневники", href: "/admin/buyer/dailylogs" },
+      { name: "Заявки", href: "/admin/buyer/requests" },
+      { name: "Бонусы", href: "/admin/buyer/bonus" },
+      { name: "Общие расходы", href: "/admin/buyer/shared-costs" },
+      { name: "Сигналы", href: "/admin/buyer/signals" },
+      { name: "Отчеты", href: "/admin/buyer/reports" },
+    ],
+  },
+  {
     title: "ФИНАНСЫ",
     items: [
       { name: "Проекты", href: "/admin/finance/projects" },
