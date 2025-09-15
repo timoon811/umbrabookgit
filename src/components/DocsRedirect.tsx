@@ -17,11 +17,9 @@ export default function DocsRedirect({ fallbackSlug = "page-4" }: DocsRedirectPr
   useEffect(() => {
     async function redirectToFirstDoc() {
       try {
-        console.log('🔄 DocsRedirect: Поиск первой страницы документации...');
         
         // Сначала попробуем fallback, если он есть
         if (fallbackSlug) {
-          console.log(`🔄 DocsRedirect: Немедленный редирект на fallback /docs/${fallbackSlug}`);
           router.replace(`/docs/${fallbackSlug}`);
           return;
         }
@@ -34,14 +32,12 @@ export default function DocsRedirect({ fallbackSlug = "page-4" }: DocsRedirectPr
         }
 
         const data = await response.json();
-        console.log('📄 DocsRedirect: Получены данные:', data);
         setDebugData({ response: data, fallbackSlug });
 
         // Проверяем различные форматы данных
         if (data.documentation && Array.isArray(data.documentation) && data.documentation.length > 0) {
           const firstDoc = data.documentation[0];
           if (firstDoc && firstDoc.slug) {
-            console.log(`🔄 DocsRedirect: Клиентский редирект на /docs/${firstDoc.slug}`);
             router.replace(`/docs/${firstDoc.slug}`);
             return;
           }
@@ -49,10 +45,8 @@ export default function DocsRedirect({ fallbackSlug = "page-4" }: DocsRedirectPr
 
         // Если данных нет, пробуем редирект на известную страницу
         if (fallbackSlug) {
-          console.log(`🔄 DocsRedirect: Редирект на fallback /docs/${fallbackSlug}`);
           router.replace(`/docs/${fallbackSlug}`);
         } else {
-          console.log('⚠️ DocsRedirect: Документация не найдена');
           setError('Документация не найдена');
           setLoading(false);
         }

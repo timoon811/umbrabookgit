@@ -170,7 +170,7 @@ export default function TOCDiagnostics({ tocItems, activeId, enabled = false }: 
               </button>
               <button
                 onClick={() => {
-                  console.log('TOC Diagnostics Data:', {
+                  console.log({
                     headingsInfo,
                     activeId,
                     scrollPosition,

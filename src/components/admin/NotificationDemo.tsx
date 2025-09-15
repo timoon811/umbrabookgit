@@ -27,7 +27,6 @@ export default function NotificationDemo() {
     {
       label: 'Ошибка сети',
       icon: <AlertTriangle className="w-4 h-4" />,
-      action: () => showNetworkError('ЗП', () => console.log('Повторная попытка')),
       color: 'bg-red-100 text-red-800 hover:bg-red-200'
     },
     {

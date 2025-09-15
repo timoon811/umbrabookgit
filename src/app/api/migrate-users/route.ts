@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    console.log("🔄 Начинаем миграцию пользователей...");
 
     // Очищаем существующих пользователей
     await prisma.users.deleteMany({});
@@ -79,10 +78,8 @@ export async function GET() {
       await prisma.users.create({
         data: user
       });
-      console.log(`✅ Создан пользователь: ${user.email}`);
     }
 
-    console.log(`🎉 Миграция завершена! Создано ${users.length} пользователей`);
 
     return NextResponse.json({ 
       success: true, 

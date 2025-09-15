@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireProcessorAuth } from "@/lib/api-auth";
+import { requireManagerAuth } from "@/lib/api-auth";
 import {
   getCurrentUTC3Time,
   getCurrentDayStartUTC3,
@@ -11,7 +11,7 @@ import { maskUserName } from "@/utils/userUtils";
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
-  const authResult = await requireProcessorAuth(request);
+  const authResult = await requireManagerAuth(request);
   if ('error' in authResult) {
     return authResult.error;
   }
@@ -79,6 +79,17 @@ export async function GET(request: NextRequest) {
       orderBy: { minAmount: "asc" }
     });
 
+    // Определяем месячный бонус для текущего объема депозитов
+    const currentMonthVolume = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
+    const applicableMonthlyBonus = monthlyBonuses.find(bonus => 
+      currentMonthVolume >= bonus.minAmount
+    );
+    
+    // Определяем следующий месячный бонус (к чему стремиться)
+    const nextMonthlyBonus = monthlyBonuses.find(bonus => 
+      currentMonthVolume < bonus.minAmount
+    );
+
     // Получаем бонусные настройки
     const bonusSettings = await prisma.bonus_settings.findFirst({
       where: { isActive: true }
@@ -86,7 +97,15 @@ export async function GET(request: NextRequest) {
 
     const bonusGrids = await prisma.bonus_grid.findMany({
       where: { isActive: true },
-      orderBy: { minAmount: "asc" }
+      orderBy: { minAmount: "asc" },
+      select: {
+        id: true,
+        minAmount: true,
+        maxAmount: true,
+        bonusPercentage: true,
+        shiftType: true,
+        description: true
+      }
     });
 
     // Статистика за разные периоды
@@ -124,6 +143,45 @@ export async function GET(request: NextRequest) {
       })
     ]);
 
+    // Получаем информацию о текущей активной смене
+    const activeShift = await prisma.processor_shifts.findFirst({
+      where: {
+        processorId,
+        status: 'ACTIVE'
+      }
+    });
+
+    // Если есть активная смена, получаем депозиты за неё
+    let currentShiftSum = 0;
+    let currentShiftType = 'DAY'; // По умолчанию
+
+    if (activeShift) {
+      const shiftStart = activeShift.actualStart || activeShift.startTime;
+      if (shiftStart) {
+        const shiftDeposits = await prisma.processor_deposits.findMany({
+          where: {
+            processorId,
+            createdAt: {
+              gte: shiftStart,
+            },
+          },
+        });
+        currentShiftSum = shiftDeposits.reduce((sum, d) => sum + d.amount, 0);
+        currentShiftType = activeShift.shiftType;
+      }
+    } else {
+      // Если нет активной смены, используем тип смены по времени и депозиты за день
+      const currentHour = getCurrentUTC3Time().getHours();
+      if (currentHour >= 6 && currentHour < 14) {
+        currentShiftType = 'MORNING';
+      } else if (currentHour >= 14 && currentHour < 22) {
+        currentShiftType = 'DAY';
+      } else {
+        currentShiftType = 'NIGHT';
+      }
+      currentShiftSum = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
+    }
+
     // Рассчитываем рабочие часы
     const calculateWorkHours = (shifts: any[]) => {
       return shifts.reduce((total, shift) => {
@@ -136,36 +194,51 @@ export async function GET(request: NextRequest) {
       }, 0);
     };
 
-    // Функция для расчета бонусов по депозитной сетке (за смену)
-    const calculateShiftBonuses = (shifts: any[], deposits: any[]) => {
+    // Функция для расчета бонусов по сменам
+    const calculateShiftBasedBonuses = (shifts: any[], deposits: any[]) => {
       let totalBonuses = 0;
       
       for (const shift of shifts) {
-        if (!shift.actualStart || !shift.actualEnd) continue;
+        if (!shift.actualStart) continue; // Пропускаем смены без фактического начала
+        
+        const shiftStart = new Date(shift.actualStart);
+        const shiftEnd = shift.actualEnd ? new Date(shift.actualEnd) : new Date(); // Если смена активна, берем текущее время
         
         // Находим депозиты этой смены
-        const shiftStart = new Date(shift.actualStart);
-        const shiftEnd = new Date(shift.actualEnd);
-        
         const shiftDeposits = deposits.filter(d => {
           const depositTime = new Date(d.createdAt);
           return depositTime >= shiftStart && depositTime <= shiftEnd;
         });
         
+        if (shiftDeposits.length === 0) continue;
+        
         // Суммируем депозиты за смену
         const shiftSum = shiftDeposits.reduce((sum, d) => sum + d.amount, 0);
         
-        // Находим подходящий процент из депозитной сетки
-        let bonusPercent = 0;
-        for (const grid of depositGrid) {
-          if (shiftSum >= grid.minAmount) {
-            bonusPercent = grid.percentage;
+        // Находим подходящую бонусную сетку для этого типа смены и суммы
+        let applicableGrid = null;
+        for (const grid of bonusGrids) {
+          if (grid.shiftType === shift.shiftType && 
+              shiftSum >= grid.minAmount && 
+              (!grid.maxAmount || shiftSum <= grid.maxAmount)) {
+            applicableGrid = grid;
+            break;
           }
         }
         
-        // Рассчитываем бонус за эту смену
-        const shiftBonus = (shiftSum * bonusPercent) / 100;
-        totalBonuses += shiftBonus;
+        if (applicableGrid) {
+          // Рассчитываем бонус для каждого депозита в смене по ставке смены
+          for (const deposit of shiftDeposits) {
+            const depositBonus = (deposit.amount * applicableGrid.bonusPercentage) / 100;
+            totalBonuses += depositBonus;
+          }
+          
+          // Добавляем фиксированный бонус, если достигнут порог
+          if (applicableGrid.fixedBonus && applicableGrid.fixedBonusMin && 
+              shiftSum >= applicableGrid.fixedBonusMin) {
+            totalBonuses += applicableGrid.fixedBonus;
+          }
+        }
       }
       
       return totalBonuses;
@@ -182,9 +255,9 @@ export async function GET(request: NextRequest) {
     const weekBaseSalary = weekHours * hourlyRate;
     const monthBaseSalary = monthHours * hourlyRate;
     
-    const todayBonuses = calculateShiftBonuses(todayShifts, todayDeposits);
-    const weekBonuses = calculateShiftBonuses(weekShifts, weekDeposits);
-    const monthBonuses = calculateShiftBonuses(monthShifts, monthDeposits);
+    const todayBonuses = calculateShiftBasedBonuses(todayShifts, todayDeposits);
+    const weekBonuses = calculateShiftBasedBonuses(weekShifts, weekDeposits);
+    const monthBonuses = calculateShiftBasedBonuses(monthShifts, monthDeposits);
     
     const todayEarnings = todayBaseSalary + todayBonuses;
     const weekEarnings = weekBaseSalary + weekBonuses;
@@ -239,21 +312,58 @@ export async function GET(request: NextRequest) {
     const avgDailyEarnings = daysPassed > 0 ? monthEarnings / daysPassed : 0;
     const projectedMonthlyEarnings = avgDailyEarnings * daysInMonth;
 
-    // Цели на месяц из месячных планов админ панели
+    // Цели на месяц из настроенных планов
     const totalMonthDeposits = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
     
-    // Определяем ближайшую цель из месячных бонусов
-    let currentGoal = monthlyBonuses.find(bonus => totalMonthDeposits < bonus.minAmount);
-    if (!currentGoal && monthlyBonuses.length > 0) {
-      currentGoal = monthlyBonuses[monthlyBonuses.length - 1];
-    }
+    // Получаем активные месячные планы
+    const activeGoals = await prisma.user_goals.findMany({
+      where: {
+        isActive: true,
+        periodType: 'MONTHLY'
+      },
+      include: {
+        goalType: true,
+        stages: {
+          where: { isActive: true },
+          orderBy: { targetValue: 'desc' },
+          take: 1 // Берем максимальную цель
+        }
+      }
+    });
     
-    const monthlyGoals = {
-      earnings: currentGoal ? currentGoal.minAmount * 0.03 : 1000, // 3% от цели по депозитам
-      deposits: 100, // базовое количество депозитов
-      hours: 160, // базовые часы (20 дней по 8 часов)
-      depositVolume: currentGoal ? currentGoal.minAmount : 20000 // цель по объему депозитов
+    // Определяем цели по типам
+    let monthlyGoals = {
+      earnings: 1000, // дефолт
+      deposits: 100,  // дефолт
+      hours: 160,     // дефолт
+      depositVolume: 20000 // из месячных бонусов
     };
+    
+    // Цель по объему депозитов из месячных бонусов
+    let currentVolumeGoal = monthlyBonuses.find(bonus => totalMonthDeposits < bonus.minAmount);
+    if (!currentVolumeGoal && monthlyBonuses.length > 0) {
+      currentVolumeGoal = monthlyBonuses[monthlyBonuses.length - 1];
+    }
+    monthlyGoals.depositVolume = currentVolumeGoal ? currentVolumeGoal.minAmount : 20000;
+    
+    // Устанавливаем цели из настроенных планов
+    for (const goal of activeGoals) {
+      if (goal.stages.length > 0) {
+        const maxStage = goal.stages[0]; // Максимальная цель (сортировка по убыванию)
+        
+        switch (goal.goalType.type) {
+          case 'EARNINGS':
+            monthlyGoals.earnings = maxStage.targetValue;
+            break;
+          case 'DEPOSITS_COUNT':
+            monthlyGoals.deposits = maxStage.targetValue;
+            break;
+          case 'HOURS':
+            monthlyGoals.hours = maxStage.targetValue;
+            break;
+        }
+      }
+    }
 
     const progress = {
       earnings: Math.min((monthEarnings / monthlyGoals.earnings) * 100, 100),
@@ -261,6 +371,36 @@ export async function GET(request: NextRequest) {
       hours: Math.min((monthHours / monthlyGoals.hours) * 100, 100),
       depositVolume: Math.min((totalMonthDeposits / monthlyGoals.depositVolume) * 100, 100)
     };
+
+    // Формируем milestones для прогресс-баров
+    const goalMilestones = {
+      earnings: [],
+      deposits: [],
+      hours: []
+    };
+
+    for (const goal of activeGoals) {
+      if (goal.stages.length > 0) {
+        const milestones = goal.stages
+          .sort((a, b) => a.targetValue - b.targetValue)
+          .map(stage => ({
+            value: stage.targetValue,
+            label: `${stage.title}: ${stage.targetValue}${goal.goalType.unit}`
+          }));
+
+        switch (goal.goalType.type) {
+          case 'EARNINGS':
+            goalMilestones.earnings = milestones;
+            break;
+          case 'DEPOSITS_COUNT':
+            goalMilestones.deposits = milestones;
+            break;
+          case 'HOURS':
+            goalMilestones.hours = milestones;
+            break;
+        }
+      }
+    }
 
     const stats = {
       // Основные метрики
@@ -302,11 +442,7 @@ export async function GET(request: NextRequest) {
       goals: {
         monthly: monthlyGoals,
         progress: progress,
-        achievements: {
-          earningsAchieved: monthEarnings >= monthlyGoals.earnings,
-          depositsAchieved: monthDeposits.length >= monthlyGoals.deposits,
-          hoursAchieved: monthHours >= monthlyGoals.hours
-        }
+        milestones: goalMilestones,
       },
 
       // Рейтинг
@@ -319,13 +455,32 @@ export async function GET(request: NextRequest) {
         baseCommission: bonusSettings?.baseCommissionRate || 30.0,
         bonusGrids: bonusGrids,
         depositGrid: depositGrid,
-        monthlyBonuses: monthlyBonuses
+        monthlyBonuses: monthlyBonuses,
+        currentMonthlyBonus: applicableMonthlyBonus ? {
+          bonusPercent: applicableMonthlyBonus.bonusPercent,
+          minAmount: applicableMonthlyBonus.minAmount,
+          eligible: true
+        } : null,
+        nextMonthlyBonus: nextMonthlyBonus ? {
+          bonusPercent: nextMonthlyBonus.bonusPercent,
+          minAmount: nextMonthlyBonus.minAmount,
+          eligible: false
+        } : null
       },
 
       // Информация о периоде
       period: {
         type: period,
         isCurrentMonth: period === 'current'
+      },
+
+      // Данные о текущей смене
+      currentShift: {
+        currentSum: currentShiftSum,
+        shiftType: currentShiftType,
+        isActive: !!activeShift,
+        startTime: activeShift?.actualStart?.toISOString() || activeShift?.startTime?.toISOString(),
+        endTime: activeShift?.actualEnd?.toISOString()
       }
     };
 

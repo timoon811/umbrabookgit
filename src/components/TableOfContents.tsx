@@ -35,11 +35,6 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
               onClick={() => {
                 const articleContent = document.getElementById('article-content');
                 const headings = document.querySelectorAll('#article-content h1, #article-content h2, #article-content h3');
-                console.log('TOC Debug Info:');
-                console.log('- article-content элемент:', articleContent);
-                console.log('- найдено заголовков:', headings.length);
-                console.log('- content:', content);
-                headings.forEach((h, i) => console.log(`  ${i+1}. ${h.tagName}: "${h.textContent?.trim()}"`));
               }}
               className="text-xs bg-red-100 px-2 py-1 rounded hover:bg-red-200"
             >

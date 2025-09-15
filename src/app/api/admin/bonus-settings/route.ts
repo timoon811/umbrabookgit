@@ -101,10 +101,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Создание новой ступени единой бонусной сетки
+      // Создание новой ступени бонусной сетки
       const bonusGrid = await prisma.bonus_grid.create({
         data: {
-          shiftType: 'MORNING', // Единая сетка использует MORNING как стандартный тип
+          shiftType: settings.shiftType || null, // Используем переданный тип смены или null для всех смен
           minAmount: settings.minAmount,
           maxAmount: settings.maxAmount,
           bonusPercentage: settings.bonusPercentage,

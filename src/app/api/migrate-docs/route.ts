@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    console.log("🔄 Начинаем миграцию документации...");
 
     // Очищаем существующую документацию
     await prisma.documentation.deleteMany({});
@@ -100,7 +99,6 @@ export async function GET() {
       await prisma.documentation_sections.create({
         data: section
       });
-      console.log(`✅ Создан раздел: ${section.name}`);
     }
 
     // Создаем документы
@@ -147,10 +145,8 @@ export async function GET() {
       await prisma.documentation.create({
         data: doc
       });
-      console.log(`✅ Создан документ: ${doc.title}`);
     }
 
-    console.log(`🎉 Миграция документации завершена! Создано ${sections.length} разделов и ${docs.length} документов`);
 
     return NextResponse.json({ 
       success: true, 

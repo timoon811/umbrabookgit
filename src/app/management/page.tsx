@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import SalaryRequestModal from "@/components/modals/SalaryRequestModal";
 import DepositModal from "@/components/modals/DepositModal";
-import { MetricCard, ProgressBar, LeaderboardCard, ProjectionCard, PeriodSelector } from "@/components/ManagerStatsComponents";
-import GoalsSection from "@/components/GoalsSection";
+import { MetricCard, ProgressBar, LeaderboardCard, ProjectionCard, ShiftGoalsCard, PeriodSelector } from "@/components/ManagerStatsComponents";
 import SalaryStatsCard from "@/components/SalaryStatsCard";
 import WalletBalance from "@/components/WalletBalance";
 import { useAuth } from "@/hooks/useAuth";
@@ -260,11 +259,6 @@ interface DetailedStats {
       hours: number;
       depositVolume: number;
     };
-    achievements: {
-      earningsAchieved: boolean;
-      depositsAchieved: boolean;
-      hoursAchieved: boolean;
-    };
   };
   leaderboard: Array<{
     rank: number;
@@ -283,6 +277,7 @@ interface DetailedStats {
       minAmount: number;
       maxAmount?: number;
       bonusPercentage: number;
+      shiftType: string;
       description?: string;
     }>;
     depositGrid: Array<{
@@ -303,6 +298,13 @@ interface DetailedStats {
     type: string;
     isCurrentMonth: boolean;
   };
+  currentShift: {
+    currentSum: number;
+    shiftType: string;
+    isActive: boolean;
+    startTime?: string;
+    endTime?: string;
+  };
 }
 
 interface PeriodStats {
@@ -313,8 +315,9 @@ interface PeriodStats {
   avgPerHour: number;
 }
 
-export default function ProcessingPage() {
+function ProcessingPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showSuccess, showError, showWarning } = useToast();
   const { user } = useAuth();
 
@@ -346,7 +349,14 @@ export default function ProcessingPage() {
   const [customDateRange, setCustomDateRange] = useState<{start: string; end: string}>({ start: '', end: '' });
   const [deposits, setDeposits] = useState<ManagerDeposit[]>([]);
   const [salaryRequests, setSalaryRequests] = useState<SalaryRequest[]>([]);
-  const [activeTab, setActiveTab] = useState("shifts");
+  const [activeTab, setActiveTab] = useState(() => {
+    // Получаем вкладку из URL параметров
+    const tab = searchParams?.get('tab');
+    if (tab === 'stats' || tab === 'statistics') return 'statistics';
+    if (tab === 'deposits') return 'deposits';
+    if (tab === 'salary') return 'salary';
+    return 'shifts';
+  });
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
@@ -1466,6 +1476,9 @@ export default function ProcessingPage() {
                           value={detailedStats.performance.month.volume}
                           target={detailedStats.goals.monthly.depositVolume}
                           color="bg-gradient-to-r from-blue-500 to-blue-600"
+                          monthlyBonus={
+                            detailedStats.settings.currentMonthlyBonus || detailedStats.settings.nextMonthlyBonus
+                          }
                           unit="$"
                           milestones={detailedStats.settings.monthlyBonuses.map(bonus => ({
                             value: bonus.minAmount,
@@ -1479,6 +1492,7 @@ export default function ProcessingPage() {
                           target={detailedStats.goals.monthly.earnings}
                           color="bg-gradient-to-r from-emerald-500 to-emerald-600"
                           unit="$"
+                          milestones={detailedStats.goals.milestones?.earnings || []}
                         />
 
                         <ProgressBar
@@ -1486,6 +1500,7 @@ export default function ProcessingPage() {
                           value={detailedStats.performance.month.deposits}
                           target={detailedStats.goals.monthly.deposits}
                           color="bg-gradient-to-r from-purple-500 to-purple-600"
+                          milestones={detailedStats.goals.milestones?.deposits || []}
                         />
 
                         <ProgressBar
@@ -1494,42 +1509,18 @@ export default function ProcessingPage() {
                           target={detailedStats.goals.monthly.hours}
                           color="bg-gradient-to-r from-amber-500 to-amber-600"
                           unit="ч"
+                          milestones={detailedStats.goals.milestones?.hours || []}
                         />
                       </div>
 
-                      {/* Достижения */}
-                      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Достижения месяца</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {detailedStats.goals.achievements.earningsAchieved && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 text-sm rounded-full">
-                              🎯 Цель по заработку
-                            </span>
-                          )}
-                          {detailedStats.goals.achievements.depositsAchieved && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-sm rounded-full">
-                              📈 Цель по депозитам
-                            </span>
-                          )}
-                          {detailedStats.goals.achievements.hoursAchieved && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-sm rounded-full">
-                              ⏰ Цель по часам
-                            </span>
-                          )}
-                          {!detailedStats.goals.achievements.earningsAchieved && 
-                           !detailedStats.goals.achievements.depositsAchieved && 
-                           !detailedStats.goals.achievements.hoursAchieved && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              Пока нет достижений этого месяца
-                            </span>
-                          )}
-                        </div>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Прогноз заработка */}
-                  <ProjectionCard projections={detailedStats.projections} />
+                  {/* Цель на смену */}
+                  <ShiftGoalsCard 
+                    shiftData={detailedStats.currentShift}
+                    bonusGrid={detailedStats.settings.bonusGrids}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1611,8 +1602,6 @@ export default function ProcessingPage() {
                         </div>
                       )}
 
-                      {/* Пользовательские планы/цели */}
-                      <GoalsSection />
                     </div>
                   </div>
                 </div>
@@ -1835,5 +1824,18 @@ export default function ProcessingPage() {
         isLoading={submittingDeposit}
       />
     </div>
+  );
+}
+
+// Обертка с Suspense для решения проблемы useSearchParams
+export default function ProcessingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <ProcessingPageContent />
+    </Suspense>
   );
 }

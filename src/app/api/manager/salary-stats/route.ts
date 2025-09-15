@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireProcessorAuth } from "@/lib/api-auth";
+import { requireManagerAuth } from "@/lib/api-auth";
 import {
   getCurrentUTC3Time,
   getCurrentDayStartUTC3,
@@ -9,7 +9,7 @@ import {
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
-  const authResult = await requireProcessorAuth(request);
+  const authResult = await requireManagerAuth(request);
   if ('error' in authResult) {
     return authResult.error;
   }

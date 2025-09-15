@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    console.log("🌱 Начинаем заполнение базы данных...");
 
     // Создаем администратора
     const adminPassword = await bcrypt.hash("umbra2024", 10);
@@ -23,7 +22,6 @@ export async function GET() {
       },
     });
 
-    console.log("✅ Администратор готов:", admin.email);
 
     // Создаем пользователя
     const userPassword = await bcrypt.hash("user123", 10);
@@ -40,7 +38,6 @@ export async function GET() {
       },
     });
 
-    console.log("✅ Тестовый пользователь готов:", user.email);
 
     // Создаем разделы документации
     const documentationSections = [
@@ -77,7 +74,6 @@ export async function GET() {
         create: section,
       });
       createdSections.set(section.key, createdSection.id);
-      console.log(`✅ Раздел документации готов: ${section.name}`);
     }
 
     // Создаем страницы документации
@@ -147,10 +143,8 @@ export async function GET() {
         update: page,
         create: page,
       });
-      console.log(`✅ Страница документации готова: ${page.title}`);
     }
 
-    console.log("🎉 База данных успешно заполнена!");
 
     return NextResponse.json({ 
       success: true, 

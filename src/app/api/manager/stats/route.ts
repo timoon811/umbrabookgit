@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireProcessorAuth } from "@/lib/api-auth";
+import { requireManagerAuth } from "@/lib/api-auth";
 import {
   getCurrentUTC3Time,
   getCurrentDayStartUTC3,
@@ -10,7 +10,7 @@ import {
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
-  const authResult = await requireProcessorAuth(request);
+  const authResult = await requireManagerAuth(request);
   if ('error' in authResult) {
     return authResult.error;
   }
@@ -33,11 +33,6 @@ export async function GET(request: NextRequest) {
     const weekStart = weekPeriod.start;
     const monthStart = monthPeriod.start;
 
-    console.log(`📊 Расчет статистики менеджера:`);
-    console.log(`   - Текущее время UTC+3: ${utc3Now.toISOString()}`);
-    console.log(`   - Начало дня UTC+3: ${todayStart.toISOString()}`);
-    console.log(`   - Начало недели UTC+3: ${weekStart.toISOString()}`);
-    console.log(`   - Начало месяца UTC+3: ${monthStart.toISOString()}`);
 
     // Статистика за сегодня
     const todayDeposits = await prisma.processor_deposits.findMany({

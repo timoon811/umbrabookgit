@@ -162,7 +162,6 @@ export async function PATCH(
         projectId: updatedSource.projectId,
         isActive: updatedSource.isActive
       });
-      console.log(`✅ Источник ${updatedSource.name} обновлен в WebSocket клиенте`);
     } catch (wsError) {
       console.error(`❌ Ошибка обновления источника в WebSocket клиенте:`, wsError);
     }
@@ -198,7 +197,6 @@ export async function DELETE(
     try {
       const wsClient = getWebSocketClient();
       wsClient.removeSource(params.id);
-      console.log(`✅ Источник ${params.id} удален из WebSocket клиента`);
     } catch (wsError) {
       console.error(`❌ Ошибка удаления источника из WebSocket клиента:`, wsError);
     }

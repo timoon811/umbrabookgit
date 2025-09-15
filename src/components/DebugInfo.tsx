@@ -16,7 +16,6 @@ export default function DebugInfo({ title, data, error }: DebugInfoProps) {
     if (process.env.NODE_ENV === 'development') {
       console.group(`🐛 ${title} - ${timestamp}`);
       if (data) {
-        console.log('Data:', data);
       }
       if (error) {
         console.error('Error:', error);

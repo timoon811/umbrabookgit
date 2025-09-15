@@ -39,25 +39,13 @@ const protectedRoutes = [
 // Функция для проверки роли администратора
 async function checkAdminRole(token: string): Promise<boolean> {
   try {
-    // Сначала попробуем верифицировать токен
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
-        userId: string;
-        role: string;
-        exp: number;
-      };
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+      exp: number;
+    };
 
-      return hasAdminAccess(decoded.role as UserRole);
-    } catch (verifyError) {
-      // Fallback: декодируем без верификации
-      const decoded = jwt.decode(token) as any;
-
-      if (!decoded || !decoded.role) {
-        return false;
-      }
-
-      return hasAdminAccess(decoded.role as UserRole);
-    }
+    return hasAdminAccess(decoded.role as UserRole);
   } catch (error) {
     return false;
   }
@@ -66,25 +54,13 @@ async function checkAdminRole(token: string): Promise<boolean> {
 // Функция для получения роли пользователя
 async function getUserRole(token: string): Promise<string | null> {
   try {
-    // Сначала попробуем верифицировать токен
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
-        userId: string;
-        role: string;
-        exp: number;
-      };
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+      exp: number;
+    };
 
-      return decoded.role;
-    } catch (verifyError) {
-      // Fallback: декодируем без верификации
-      const decoded = jwt.decode(token) as any;
-
-      if (!decoded || !decoded.role) {
-        return null;
-      }
-
-      return decoded.role;
-    }
+    return decoded.role;
   } catch (error) {
     return null;
   }

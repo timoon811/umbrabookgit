@@ -30,7 +30,6 @@ export async function GET(
       fullPath = join(process.cwd(), 'public/uploads', directory, filename);
     }
     
-    console.log('Attempting to serve file:', fullPath);
 
     // Проверяем существование файла
     if (!existsSync(fullPath)) {

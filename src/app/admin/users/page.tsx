@@ -1725,7 +1725,7 @@ function EditUserModal({
   } | null>(null);
   const [shiftsLoading, setShiftsLoading] = useState(false);
 
-  // Загружаем смены при открытии модального окна
+  // Загружаем смены при открытии модального окна или изменении роли
   useEffect(() => {
     if (formData.role === 'PROCESSOR') {
       loadUserShifts();
@@ -1741,15 +1741,24 @@ function EditUserModal({
       const response = await fetch(`/api/admin/users/${user.id}/shifts`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Загружены смены для пользователя:', data);
         setShiftsData(data);
       } else {
         const errorData = await response.json();
         console.error('Ошибка API загрузки смен:', errorData);
-        setShiftsData({ shifts: [], assignedCount: 0 });
+        setShiftsData({ 
+          shifts: [], 
+          assignedCount: 0,
+          error: `Ошибка API: ${errorData.error || 'Неизвестная ошибка'}`
+        });
       }
     } catch (error) {
       console.error('Ошибка загрузки смен:', error);
-      setShiftsData({ shifts: [], assignedCount: 0 });
+      setShiftsData({ 
+        shifts: [], 
+        assignedCount: 0,
+        error: `Ошибка сети: ${error.message}`
+      });
     } finally {
       setShiftsLoading(false);
     }
@@ -1784,6 +1793,13 @@ function EditUserModal({
           .filter(shift => shift.isAssigned)
           .map(shift => shift.id);
 
+        console.log('Сохранение назначений смен:', {
+          userId: user.id,
+          role: formData.role,
+          assignedShiftIds,
+          totalShifts: shiftsData.shifts.length
+        });
+
         const shiftResponse = await fetch(`/api/admin/users/${user.id}/shifts`, {
           method: 'POST',
           headers: {
@@ -1794,13 +1810,21 @@ function EditUserModal({
           })
         });
 
-        if (!shiftResponse.ok) {
+        if (shiftResponse.ok) {
+          const responseData = await shiftResponse.json();
+          console.log('Смены успешно сохранены:', responseData);
+        } else {
           const errorData = await shiftResponse.json();
           console.error('Ошибка сохранения назначений смен:', errorData);
         }
       } catch (error) {
         console.error('Ошибка сохранения назначений смен:', error);
       }
+    } else {
+      console.log('Сохранение смен пропущено:', {
+        role: formData.role,
+        hasShiftsData: !!shiftsData
+      });
     }
   };
 
@@ -1885,16 +1909,30 @@ function EditUserModal({
             {/* Назначение смен для менеджеров */}
             {formData.role === 'PROCESSOR' && (
               <div>
-                <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed] mb-3">
-                  Назначенные смены
-                </label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-[#171717] dark:text-[#ededed]">
+                    Назначенные смены
+                  </label>
+                  <button
+                    type="button"
+                    onClick={loadUserShifts}
+                    disabled={shiftsLoading}
+                    className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400"
+                  >
+                    {shiftsLoading ? 'Загрузка...' : 'Обновить'}
+                  </button>
+                </div>
                 {shiftsLoading ? (
                   <div className="text-center py-4">
                     <div className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
                     <span className="ml-2 text-sm text-gray-500">Загрузка смен...</span>
                   </div>
                 ) : shiftsData ? (
-                  shiftsData.shifts.length > 0 ? (
+                  (shiftsData as any).error ? (
+                    <div className="text-center py-4 text-red-500 dark:text-red-400 text-sm">
+                      {(shiftsData as any).error}
+                    </div>
+                  ) : shiftsData.shifts.length > 0 ? (
                     <div className="space-y-2 max-h-40 overflow-y-auto border border-[#171717]/10 dark:border-[#ededed]/10 rounded-lg p-3">
                       {shiftsData.shifts.map((shift) => (
                         <label key={shift.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer">
@@ -1936,6 +1974,13 @@ function EditUserModal({
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Выберите смены, которые может начинать менеджер
                 </div>
+              </div>
+            )}
+
+            {/* Информация для других ролей */}
+            {formData.role !== 'PROCESSOR' && (
+              <div className="text-center py-3 text-gray-500 dark:text-gray-400 text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
+                Назначение смен доступно только для пользователей с ролью "Менеджер"
               </div>
             )}
           </div>

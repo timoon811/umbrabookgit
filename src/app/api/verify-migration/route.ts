@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    console.log("🔍 Проверяем результаты миграции...");
 
     // Подсчитываем количество записей
     const userCount = await prisma.users.count();
@@ -42,7 +41,6 @@ export async function GET() {
       }
     });
 
-    console.log(`✅ Найдено: ${userCount} пользователей, ${docsCount} документов, ${sectionsCount} разделов`);
 
     return NextResponse.json({ 
       success: true,

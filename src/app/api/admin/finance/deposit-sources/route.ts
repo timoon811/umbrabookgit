@@ -160,7 +160,6 @@ export async function POST(request: NextRequest) {
           projectId: depositSource.projectId,
           isActive: depositSource.isActive
         });
-        console.log(`✅ Источник ${depositSource.name} добавлен в WebSocket клиент`);
       } catch (wsError) {
         console.error(`❌ Ошибка добавления источника в WebSocket клиент:`, wsError);
       }

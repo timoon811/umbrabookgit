@@ -30,6 +30,7 @@ interface BonusGrid {
   fixedBonus?: number | null;
   fixedBonusMin?: number | null;
   description?: string;
+  shiftType?: string;
 }
 
 interface MonthlyBonus {
@@ -142,17 +143,14 @@ export default function SalarySettingsTab() {
 
   const loadPlatformCommission = async () => {
     try {
-      console.log('Загружаем настройки комиссии платформы...'); // Отладка
       const commissionResponse = await fetch('/api/admin/platform-commission', {
         credentials: 'include',
       });
 
       if (commissionResponse.ok) {
         const commissionData = await commissionResponse.json();
-        console.log('Загружены настройки комиссии:', commissionData); // Отладка
         if (commissionData.commission) {
           setPlatformCommission(commissionData.commission);
-          console.log('Установлены настройки комиссии в состояние:', commissionData.commission); // Отладка
         }
       } else {
         console.error('Ошибка загрузки настроек комиссии:', commissionResponse.status, commissionResponse.statusText);
@@ -175,12 +173,9 @@ export default function SalarySettingsTab() {
 
       if (salaryResponse.ok) {
         const salaryData = await salaryResponse.json();
-        console.log('Загружены настройки зарплаты:', salaryData.salarySettings); // Отладка
         setSalarySettings(salaryData.salarySettings);
-        console.log('Установлены настройки зарплаты в состояние:', salaryData.salarySettings); // Отладка
         
         // Загружаем месячные бонусы из правильного источника
-        console.log('Загружены месячные бонусы:', salaryData.monthlyBonuses);
         setMonthlyBonuses(salaryData.monthlyBonuses || []);
       } else {
         console.error('Ошибка загрузки настроек зарплаты:', salaryResponse.status, salaryResponse.statusText);
@@ -193,7 +188,6 @@ export default function SalarySettingsTab() {
 
       if (bonusResponse.ok) {
         const bonusData = await bonusResponse.json();
-        console.log('Загружены данные бонусов:', bonusData);
         setBonusGrid(bonusData.bonusGrids || []);
       } else {
         console.error('Ошибка загрузки бонусов:', bonusResponse.status, bonusResponse.statusText);
@@ -206,7 +200,6 @@ export default function SalarySettingsTab() {
 
       if (goalsResponse.ok) {
         const goalsData = await goalsResponse.json();
-        console.log('Загружены планы:', goalsData);
         setGoalTypes(goalsData.goalTypes || []);
         setUserGoals(goalsData.goals || []);
       } else {
@@ -264,7 +257,6 @@ export default function SalarySettingsTab() {
       const url = settingsData.id ? '/api/admin/salary-settings' : '/api/admin/salary-settings';
       const method = settingsData.id ? 'PUT' : 'POST';
 
-      console.log('Отправляем настройки зарплаты:', settingsData); // Отладка
 
       const response = await fetch(url, {
         method,
@@ -277,9 +269,7 @@ export default function SalarySettingsTab() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Получили ответ от сервера (зарплата):', data); // Отладка
         setSalarySettings(data);
-        console.log('Обновили состояние настроек зарплаты:', data); // Отладка
         showSuccess('Настройки зарплаты сохранены', 'Настройки успешно обновлены', 'ЗП');
         // Перезагружаем настройки для подтверждения
         setTimeout(() => {
@@ -316,11 +306,11 @@ export default function SalarySettingsTab() {
           id: bonusGridEntry.id,
           settings: bonusGridEntry.id ? undefined : {
             ...bonusGridEntry,
-            shiftType: 'MORNING' // Используем единую сетку для всех смен
+            shiftType: bonusGridEntry.shiftType || null // Используем переданный тип смены или null для всех смен
           },
           updates: bonusGridEntry.id ? {
             ...bonusGridEntry,
-            shiftType: 'MORNING' // Используем единую сетку для всех смен
+            shiftType: bonusGridEntry.shiftType || null // Используем переданный тип смены или null для всех смен
           } : undefined,
         }),
       });
@@ -367,7 +357,6 @@ export default function SalarySettingsTab() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Результат создания месячного бонуса:', result);
         showSuccess('Месячный бонус сохранен', 'Настройки успешно обновлены', 'ЗП');
         await loadSalarySettings();
         setShowMonthlyBonusModal(false);
@@ -504,7 +493,6 @@ export default function SalarySettingsTab() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Результат сохранения плана:', result);
         showSuccess(
           editingGoal ? 'План обновлен' : 'План создан',
           editingGoal ? 'План успешно обновлен' : 'План успешно создан',
@@ -536,7 +524,6 @@ export default function SalarySettingsTab() {
       const url = commissionData.id ? '/api/admin/platform-commission' : '/api/admin/platform-commission';
       const method = commissionData.id ? 'PUT' : 'POST';
 
-      console.log('Отправляем данные комиссии:', commissionData); // Отладка
 
       const response = await fetch(url, {
         method,
@@ -549,9 +536,7 @@ export default function SalarySettingsTab() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Получили ответ от сервера:', data); // Отладка
         setPlatformCommission(data.commission);
-        console.log('Обновили состояние комиссии после сохранения:', data.commission); // Отладка
         showSuccess('Настройки комиссии сохранены', 'Настройки успешно обновлены', 'ЗП');
         setShowCommissionModal(false);
         // Перезагружаем настройки для подтверждения
@@ -662,6 +647,7 @@ export default function SalarySettingsTab() {
                 <tr className="border-b border-[#171717]/5 dark:border-[#ededed]/10">
                   <th className="text-left py-2 px-3 text-[#171717]/70 dark:text-[#ededed]/70 font-medium">Сумма ($)</th>
                   <th className="text-left py-2 px-3 text-[#171717]/70 dark:text-[#ededed]/70 font-medium">Процент</th>
+                  <th className="text-left py-2 px-3 text-[#171717]/70 dark:text-[#ededed]/70 font-medium">Смена</th>
                   <th className="text-left py-2 px-3 text-[#171717]/70 dark:text-[#ededed]/70 font-medium">Фикс. бонус</th>
                   <th className="text-right py-2 px-3 text-[#171717]/70 dark:text-[#ededed]/70 font-medium">Действия</th>
                 </tr>
@@ -675,6 +661,22 @@ export default function SalarySettingsTab() {
                     </td>
                     <td className="py-2 px-3 text-[#171717] dark:text-[#ededed]">
                       {entry.bonusPercentage}%
+                    </td>
+                    <td className="py-2 px-3 text-[#171717] dark:text-[#ededed]">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        entry.shiftType === 'MORNING' 
+                          ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                          : entry.shiftType === 'DAY'
+                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                          : entry.shiftType === 'NIGHT'
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                          : 'bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {entry.shiftType === 'MORNING' ? '🌅 Утро'
+                         : entry.shiftType === 'DAY' ? '☀️ День' 
+                         : entry.shiftType === 'NIGHT' ? '🌙 Ночь'
+                         : '🔄 Все'}
+                      </span>
                     </td>
                     <td className="py-2 px-3 text-[#171717] dark:text-[#ededed]">
                       {entry.fixedBonus ? `$${entry.fixedBonus}` : '-'}
@@ -1105,6 +1107,7 @@ export default function SalarySettingsTab() {
                 fixedBonus: formData.get('fixedBonus') ? parseFloat(formData.get('fixedBonus') as string) : null,
                 fixedBonusMin: formData.get('fixedBonusMin') ? parseFloat(formData.get('fixedBonusMin') as string) : null,
                 description: formData.get('description') as string || undefined,
+                shiftType: formData.get('shiftType') as string || undefined,
               });
             }}>
               <div className="space-y-4">
@@ -1140,21 +1143,38 @@ export default function SalarySettingsTab() {
                   </div>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2">
-                    Процент бонуса (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="bonusPercentage"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    defaultValue={editingBonusGrid?.bonusPercentage || ''}
-                    className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="5.0"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2">
+                      Процент бонуса (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="bonusPercentage"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      defaultValue={editingBonusGrid?.bonusPercentage || ''}
+                      className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="5.0"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2">
+                      Тип смены
+                    </label>
+                    <select
+                      name="shiftType"
+                      defaultValue={editingBonusGrid?.shiftType || ''}
+                      className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">🔄 Все смены</option>
+                      <option value="MORNING">🌅 Утренняя (06:00-14:00)</option>
+                      <option value="DAY">☀️ Дневная (14:00-22:00)</option>
+                      <option value="NIGHT">🌙 Ночная (22:00-06:00)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

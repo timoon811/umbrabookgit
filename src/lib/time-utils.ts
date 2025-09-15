@@ -25,6 +25,12 @@ export function getCurrentUTC3Time(): Date {
 export function getCurrentDayStartUTC3(): Date {
   const utc3Now = getCurrentUTC3Time();
   const dayStart = new Date(utc3Now);
+  
+  // Если текущее время меньше 06:00, то берем вчерашний день
+  if (utc3Now.getUTCHours() < 6) {
+    dayStart.setUTCDate(utc3Now.getUTCDate() - 1);
+  }
+  
   dayStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
   return dayStart;
 }
@@ -88,19 +94,24 @@ export function getDayPeriod(date: Date): TimePeriod {
  */
 export function getCurrentWeekPeriod(): TimePeriod {
   const utc3Now = getCurrentUTC3Time();
-  const dayOfWeek = utc3Now.getUTCDay();
+  
+  // Сначала приводим к текущему дню (с учетом что день начинается в 06:00)
+  const currentDay = new Date(utc3Now);
+  if (utc3Now.getUTCHours() < 6) {
+    currentDay.setUTCDate(currentDay.getUTCDate() - 1);
+  }
+  
+  // Теперь находим понедельник этой недели
+  const dayOfWeek = currentDay.getUTCDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Сколько дней прошло с понедельника
 
-  // Понедельник = 1, воскресенье = 0
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-  const weekStart = new Date(utc3Now);
-  weekStart.setUTCDate(utc3Now.getUTCDate() - daysFromMonday);
-  weekStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3
+  const weekStart = new Date(currentDay);
+  weekStart.setUTCDate(currentDay.getUTCDate() - daysFromMonday);
+  weekStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3 в понедельник
 
   const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
-  weekEnd.setUTCDate(weekEnd.getUTCDate() + 1);
-  weekEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3 следующего дня
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 7); // Следующий понедельник
+  weekEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3
 
   return { start: weekStart, end: weekEnd, isCurrentPeriod: true };
 }
@@ -110,11 +121,22 @@ export function getCurrentWeekPeriod(): TimePeriod {
  */
 export function getCurrentMonthPeriod(): TimePeriod {
   const utc3Now = getCurrentUTC3Time();
+  let year = utc3Now.getUTCFullYear();
+  let month = utc3Now.getUTCMonth();
 
-  const monthStart = new Date(utc3Now.getUTCFullYear(), utc3Now.getUTCMonth(), 1);
+  // Если сейчас до 06:00 и мы в первый день месяца, берем предыдущий месяц
+  if (utc3Now.getUTCHours() < 6 && utc3Now.getUTCDate() === 1) {
+    month = month - 1;
+    if (month < 0) {
+      month = 11;
+      year = year - 1;
+    }
+  }
+
+  const monthStart = new Date(year, month, 1);
   monthStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3
 
-  const monthEnd = new Date(utc3Now.getUTCFullYear(), utc3Now.getUTCMonth() + 1, 0);
+  const monthEnd = new Date(year, month + 1, 0);
   monthEnd.setUTCDate(monthEnd.getUTCDate() + 1);
   monthEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3 следующего дня
 

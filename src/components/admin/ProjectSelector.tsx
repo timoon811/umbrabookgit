@@ -29,7 +29,6 @@ export default function ProjectSelector({
   const loadProjects = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Загружаем проекты контента...');
       const response = await fetch('/api/admin/content-projects', {
         method: 'GET',
         headers: {
@@ -37,18 +36,15 @@ export default function ProjectSelector({
         },
         credentials: 'include',
       });
-      console.log('📡 Ответ API:', response.status, response.statusText);
       
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
-          console.log('✅ Проекты загружены:', data);
           setProjects(Array.isArray(data) ? data : []);
           
           // Если нет выбранного проекта, выбираем первый доступный
           if (!selectedProject && Array.isArray(data) && data.length > 0) {
-            console.log('🎯 Автоматически выбираем первый проект:', data[0]);
             onProjectSelect(data[0]);
           }
         } else {
@@ -108,7 +104,6 @@ export default function ProjectSelector({
         // Вызываем коллбек если предоставлен
         onProjectDelete(projectId);
         
-        console.log('✅ Проект успешно удален');
       } else {
         const errorData = await response.json();
         alert(`Ошибка удаления проекта: ${errorData.error || 'Неизвестная ошибка'}`);

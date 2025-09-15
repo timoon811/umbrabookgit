@@ -4,7 +4,6 @@ import { getCurrentDayStartUTC3 } from "@/lib/time-utils";
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔥 Запуск обработки бонусов (сгорание и активация)...');
 
     const now = new Date();
     const todayStart = getCurrentDayStartUTC3();
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      console.log(`✅ Активировано ${expiredHolds.length} бонусов из холда`);
     }
 
     // 2. Проверяем условия сгорания для каждого менеджера
@@ -108,11 +106,6 @@ export async function POST(request: NextRequest) {
         burnedCount += yesterdayBonuses.length;
         const totalBurnedAmount = yesterdayBonuses.reduce((sum, b) => sum + b.amount, 0);
 
-        console.log(`🔥 Сгорели бонусы менеджера ${manager.name}:`);
-        console.log(`   - Вчерашний результат: $${yesterdaySum}`);
-        console.log(`   - Сегодняшний результат: $${todaySum}`);
-        console.log(`   - Сгорело бонусов: ${yesterdayBonuses.length} шт.`);
-        console.log(`   - Сумма сгорания: $${totalBurnedAmount}`);
       }
     }
 
@@ -123,7 +116,6 @@ export async function POST(request: NextRequest) {
       processedAt: now.toISOString()
     };
 
-    console.log('✅ Обработка бонусов завершена:', stats);
 
     return NextResponse.json({
       success: true,

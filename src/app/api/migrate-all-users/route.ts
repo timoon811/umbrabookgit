@@ -5,11 +5,9 @@ const prisma = new PrismaClient();
 
 export async function POST() {
   try {
-    console.log("🔄 Начинаем полную миграцию всех 117 пользователей...");
 
     // Очищаем существующих пользователей
     await prisma.users.deleteMany({});
-    console.log("✅ Очистили таблицу пользователей");
     
     const allUsers = [
       {
@@ -1418,7 +1416,6 @@ export async function POST() {
       }
 ];
 
-    console.log(`Создаем ${allUsers.length} пользователей...`);
 
     // Создаем пользователей батчами по 10
     const batchSize = 10;
@@ -1446,7 +1443,6 @@ export async function POST() {
           created++;
           
           if (created % 20 === 0) {
-            console.log(`✅ Создано ${created} пользователей...`);
           }
         } catch (error: any) {
           console.warn(`⚠️ Ошибка при создании пользователя ${user.email}:`, error.message);
@@ -1454,7 +1450,6 @@ export async function POST() {
       }
     }
 
-    console.log(`🎉 Миграция завершена! Создано ${created} из ${allUsers.length} пользователей`);
 
     return NextResponse.json({ 
       success: true, 

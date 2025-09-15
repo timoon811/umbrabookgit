@@ -91,7 +91,6 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    console.log(`✅ Депозит ${depositId} обновлен администратором ${authResult.user.email}`);
 
     return NextResponse.json({
       message: "Депозит успешно обновлен",
@@ -150,8 +149,6 @@ export async function DELETE(request: NextRequest) {
       where: { id: depositId }
     });
 
-    console.log(`🗑️ Депозит ${depositId} удален администратором ${authResult.user.email}`);
-    console.log(`   Сумма: $${existingDeposit.amount}, Менеджер: ${existingDeposit.processor.name}`);
 
     return NextResponse.json({
       message: "Депозит успешно удален"

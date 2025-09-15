@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    console.log("🌱 Начинаем заполнение базы данных...");
 
     // Создаем администратора
     const adminPassword = await bcrypt.hash("umbra2024", 10);
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("✅ Администратор готов:", admin.email);
 
     // Создаем пользователя
     const userPassword = await bcrypt.hash("user123", 10);
@@ -46,7 +44,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("✅ Тестовый пользователь готов:", user.email);
 
     // Создаем разделы документации
     const documentationSections = [
@@ -83,7 +80,6 @@ export async function POST(request: NextRequest) {
         create: section,
       });
       createdSections.set(section.key, createdSection.id);
-      console.log(`✅ Раздел документации готов: ${section.name}`);
     }
 
     // Создаем страницы документации
@@ -153,10 +149,8 @@ export async function POST(request: NextRequest) {
         update: page,
         create: page,
       });
-      console.log(`✅ Страница документации готова: ${page.title}`);
     }
 
-    console.log("🎉 База данных успешно заполнена!");
 
     return NextResponse.json({ 
       success: true, 

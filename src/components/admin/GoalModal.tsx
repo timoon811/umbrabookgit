@@ -66,11 +66,13 @@ export default function GoalModal({ isOpen, onClose, goal, goalTypes, onSave, is
       });
       setStages(goal.stages.sort((a, b) => a.stage - b.stage));
     } else {
+      // Выбираем первый доступный тип плана
+      const defaultGoalTypeId = goalTypes.length > 0 ? goalTypes.find(gt => gt.isActive)?.id || goalTypes[0]?.id || '' : '';
       setFormData({
         name: '',
         description: '',
-        goalTypeId: goalTypes[0]?.id || '',
-        periodType: 'DAILY'
+        goalTypeId: defaultGoalTypeId,
+        periodType: 'MONTHLY' // По умолчанию месячные планы
       });
       setStages([
         {
@@ -239,12 +241,24 @@ export default function GoalModal({ isOpen, onClose, goal, goalTypes, onSave, is
                 value={formData.goalTypeId}
                 onChange={(e) => setFormData({ ...formData, goalTypeId: e.target.value })}
                 className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                required
               >
-                {goalTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.name} ({type.unit})
+                {goalTypes.length === 0 ? (
+                  <option value="" disabled>
+                    Нет доступных типов планов
                   </option>
-                ))}
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      Выберите тип плана
+                    </option>
+                    {goalTypes.filter(type => type.isActive).map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.name} ({type.unit})
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 

@@ -6,11 +6,179 @@ import {
   getShiftType,
   validate24HourReset
 } from "@/lib/time-utils";
-import { requireProcessorAuth } from "@/lib/api-auth";
+import { requireManagerAuth } from "@/lib/api-auth";
+
+// Функция пересчета бонусов для всех депозитов в смене
+// Функция проверки достижения месячных планов
+async function checkMonthlyPlanAchievement(processorId: string) {
+  try {
+    
+    // Получаем начало текущего месяца
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    // Получаем все депозиты за текущий месяц
+    const monthDeposits = await prisma.processor_deposits.findMany({
+      where: {
+        processorId,
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        }
+      }
+    });
+
+    const totalMonthlyVolume = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
+
+    // Получаем активные месячные планы
+    const monthlyPlans = await prisma.salary_monthly_bonus.findMany({
+      where: { isActive: true },
+      orderBy: { minAmount: 'desc' } // От большего к меньшему
+    });
+
+    // Определяем подходящий план (наибольший достигнутый)
+    let applicablePlan = null;
+    for (const plan of monthlyPlans) {
+      if (totalMonthlyVolume >= plan.minAmount) {
+        applicablePlan = plan;
+        break; // Берем первый подходящий (самый высокий)
+      }
+    }
+
+    if (!applicablePlan) {
+      return;
+    }
+
+
+    // Проверяем, не начислялся ли уже бонус за этот план в этом месяце
+    const existingBonus = await prisma.bonus_payments.findFirst({
+      where: {
+        processorId,
+        type: 'ACHIEVEMENT_BONUS',
+        description: { contains: applicablePlan.name },
+        period: {
+          gte: startOfMonth,
+          lte: endOfMonth
+        },
+        status: { not: 'BURNED' }
+      }
+    });
+
+    if (existingBonus) {
+      return;
+    }
+
+    // Рассчитываем бонус
+    const monthlyBonusAmount = (totalMonthlyVolume * applicablePlan.bonusPercent) / 100;
+    
+    // Создаем запись о бонусе
+    await prisma.bonus_payments.create({
+      data: {
+        processorId,
+        type: 'ACHIEVEMENT_BONUS',
+        amount: monthlyBonusAmount,
+        description: `Месячный бонус за план "${applicablePlan.name}" (${applicablePlan.bonusPercent}% от $${totalMonthlyVolume.toLocaleString()})`,
+        period: now,
+        conditions: `Месячный план: минимум $${applicablePlan.minAmount.toLocaleString()}`,
+        status: 'APPROVED' // Автоматически одобряем месячные бонусы
+      }
+    });
+
+
+  } catch (error) {
+    console.error('Ошибка при проверке месячных планов:', error);
+  }
+}
+
+async function recalculateShiftBonuses(shiftId: string, processorId: string, shiftType: string) {
+  try {
+    
+    // Получаем активную смену
+    const shift = await prisma.processor_shifts.findUnique({
+      where: { id: shiftId }
+    });
+    
+    if (!shift) {
+      return;
+    }
+    
+    // Получаем все депозиты в смене
+    const shiftStart = new Date(shift.actualStart || shift.startTime);
+    const shiftDeposits = await prisma.processor_deposits.findMany({
+      where: {
+        processorId,
+        createdAt: {
+          gte: shiftStart,
+        },
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+    
+    if (shiftDeposits.length === 0) {
+      return;
+    }
+    
+    // Рассчитываем общую сумму смены
+    const totalShiftSum = shiftDeposits.reduce((sum, d) => sum + d.amount, 0);
+    
+    // Получаем актуальную бонусную сетку для новой суммы
+    const bonusGrid = await prisma.bonus_grid.findFirst({
+      where: {
+        isActive: true,
+        shiftType: shiftType,
+        minAmount: { lte: totalShiftSum },
+        OR: [
+          { maxAmount: { gte: totalShiftSum } },
+          { maxAmount: null }
+        ]
+      },
+      orderBy: { bonusPercentage: "desc" }
+    });
+    
+    if (!bonusGrid) {
+      // Обнуляем бонусы у всех депозитов
+      await prisma.processor_deposits.updateMany({
+        where: {
+          id: { in: shiftDeposits.map(d => d.id) }
+        },
+        data: {
+          bonusRate: 0,
+          bonusAmount: 0
+        }
+      });
+      return;
+    }
+    
+    
+    // Рассчитываем общий бонус за смену
+    const totalShiftBonus = (totalShiftSum * bonusGrid.bonusPercentage) / 100;
+    
+    // Пересчитываем бонус для каждого депозита пропорционально
+    for (const deposit of shiftDeposits) {
+      const depositShare = deposit.amount / totalShiftSum;
+      const newBonusAmount = totalShiftBonus * depositShare;
+      
+      // Обновляем депозит
+      await prisma.processor_deposits.update({
+        where: { id: deposit.id },
+        data: {
+          bonusRate: bonusGrid.bonusPercentage,
+          bonusAmount: newBonusAmount
+        }
+      });
+      
+    }
+    
+    
+  } catch (error) {
+    console.error(`❌ Ошибка пересчета бонусов смены:`, error);
+  }
+}
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
-  const authResult = await requireProcessorAuth(request);
+  const authResult = await requireManagerAuth(request);
   if ('error' in authResult) {
     return authResult.error;
   }
@@ -73,7 +241,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   // Проверяем авторизацию
-  const authResult = await requireProcessorAuth(request);
+  const authResult = await requireManagerAuth(request);
   if ('error' in authResult) {
     return authResult.error;
   }
@@ -155,7 +323,36 @@ export async function POST(request: NextRequest) {
     // Проверяем корректность 24-часового сброса
     const isResetValid = validate24HourReset();
 
-    // Получаем все депозиты за текущий день (UTC+3)
+    // Получаем активную смену процессора
+    const activeShift = await prisma.processor_shifts.findFirst({
+      where: {
+        processorId,
+        status: 'ACTIVE'
+      }
+    });
+
+    let shiftSum = data.amount; // По умолчанию только текущий депозит
+    let existingShiftSum = 0;
+
+    if (activeShift) {
+      // Получаем депозиты за текущую смену
+      const shiftStart = new Date(activeShift.actualStart || activeShift.startTime);
+      const shiftDeposits = await prisma.processor_deposits.findMany({
+        where: {
+          processorId,
+          createdAt: {
+            gte: shiftStart,
+          },
+        },
+      });
+
+      existingShiftSum = shiftDeposits.reduce((sum, d) => sum + d.amount, 0);
+      shiftSum = existingShiftSum + data.amount;
+      
+    } else {
+    }
+
+    // Также получаем все депозиты за день для общей статистики
     const todayDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
@@ -165,48 +362,43 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Рассчитываем сумму уже существующих депозитов за день
     const existingTodaySum = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
-    
-    // Общая сумма за день (существующие + новый депозит)
     const todaySum = existingTodaySum + data.amount;
     
-    console.log(`💰 Расчет бонусов для депозита $${data.amount}:`);
-    console.log(`   - Время UTC+3: ${utc3Now.toISOString()}`);
-    console.log(`   - Начало дня UTC+3: ${todayStart.toISOString()}`);
-    console.log(`   - Тип смены: ${currentShiftType}`);
-    console.log(`   - Существующие депозиты за день: $${existingTodaySum}`);
-    console.log(`   - Общая сумма за день: $${todaySum}`);
-    console.log(`   - 24-часовой сброс: ${isResetValid ? '✅ Корректно' : '❌ Некорректно'}`);
 
-    // Применяем единую сетку бонусов (не зависит от типа смены)
+    // Применяем бонусную сетку на основе суммы за СМЕНУ и типа смены
+    const effectiveShiftType = activeShift ? activeShift.shiftType : currentShiftType;
+    
     const bonusGrid = await prisma.bonus_grid.findFirst({
       where: {
         isActive: true,
-        minAmount: { lte: todaySum },
+        shiftType: effectiveShiftType,
+        minAmount: { lte: shiftSum },
         OR: [
-          { maxAmount: { gte: todaySum } },
+          { maxAmount: { gte: shiftSum } },
           { maxAmount: null }
         ]
       },
       orderBy: { bonusPercentage: "desc" }
     });
 
-    // Рассчитываем бонус только на основе сетки
+    // ИСПРАВЛЕНИЕ: Рассчитываем бонус от общей суммы за смену, а не от отдельного депозита
     let bonusAmount = 0;
     if (bonusGrid) {
       const bonusRate = bonusGrid.bonusPercentage;
-      bonusAmount = (data.amount * bonusRate) / 100;
-      console.log(`   - Применена бонусная сетка: ${bonusGrid.minAmount} - ${bonusGrid.maxAmount || '∞'} = ${bonusGrid.bonusPercentage}%`);
-      console.log(`   - Бонус за депозит: $${bonusAmount.toFixed(2)}`);
+      // Рассчитываем долю текущего депозита в общей сумме смены
+      const depositShare = data.amount / shiftSum;
+      // Общий бонус за всю смену
+      const totalShiftBonus = (shiftSum * bonusRate) / 100;
+      // Бонус за текущий депозит = доля депозита * общий бонус
+      bonusAmount = totalShiftBonus * depositShare;
+      
     } else {
-      console.log(`   - ❌ Сетка бонусов не найдена для суммы $${todaySum}, бонус = $0`);
     }
 
-    // Проверяем фиксированные бонусы за достижения
-    if (bonusGrid && bonusGrid.fixedBonus && bonusGrid.fixedBonusMin && todaySum >= bonusGrid.fixedBonusMin) {
+    // Проверяем фиксированные бонусы за достижения (по сумме за смену)
+    if (bonusGrid && bonusGrid.fixedBonus && bonusGrid.fixedBonusMin && shiftSum >= bonusGrid.fixedBonusMin) {
       bonusAmount += bonusGrid.fixedBonus;
-      console.log(`   - Фиксированный бонус: +$${bonusGrid.fixedBonus} (порог: $${bonusGrid.fixedBonusMin})`);
     }
 
     // Проверяем дополнительные мотивации
@@ -233,8 +425,13 @@ export async function POST(request: NextRequest) {
 
         if (shouldApply) {
           if (motivation.type === 'PERCENTAGE') {
-            bonusAmount += (data.amount * motivation.value) / 100;
+            // ИСПРАВЛЕНИЕ: Мотивационные бонусы тоже должны учитывать долю депозита в смене
+            const depositShare = data.amount / shiftSum;
+            const totalMotivationBonus = (shiftSum * motivation.value) / 100;
+            bonusAmount += totalMotivationBonus * depositShare;
           } else if (motivation.type === 'FIXED_AMOUNT') {
+            // Фиксированные мотивационные бонусы применяются полностью к первому депозиту смены
+            // или разделяются поровну между всеми депозитами (можно настроить)
             bonusAmount += motivation.value;
           }
         }
@@ -250,10 +447,6 @@ export async function POST(request: NextRequest) {
     const platformCommissionAmount = (data.amount * platformCommissionPercent) / 100;
     const processorEarnings = data.amount - platformCommissionAmount;
 
-    console.log(`💰 Расчет депозита ${data.amount} ${data.currency}:`);
-    console.log(`   - Комиссия платформы (${platformCommissionPercent}%): ${platformCommissionAmount}`);
-    console.log(`   - Заработок менеджера: ${processorEarnings}`);
-    console.log(`   - Бонус менеджера: ${bonusAmount}`);
 
     // Создаем депозит
     const deposit = await prisma.processor_deposits.create({
@@ -281,6 +474,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // КРИТИЧЕСКИ ВАЖНО: Пересчитываем бонусы для всех депозитов в смене
+    // так как новый депозит может изменить процентную сетку для всей смены
+    if (activeShift) {
+      await recalculateShiftBonuses(activeShift.id, processorId, effectiveShiftType);
+    }
+
+    // НОВОЕ: Проверяем достижение месячных планов
+    await checkMonthlyPlanAchievement(processorId);
+
     // Создаем запись о бонусе в холде (до следующего дня)
     if (bonusAmount > 0) {
       const holdUntil = new Date(todayStart);
@@ -300,7 +502,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`   - Бонус $${bonusAmount} помещен в холд до ${holdUntil.toISOString()}`);
     }
 
     return NextResponse.json(deposit, { status: 201 });

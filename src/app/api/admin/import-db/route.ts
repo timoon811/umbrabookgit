@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 Начинаем восстановление базы данных из дампа...");
 
     // Сначала очистим все таблицы
     await prisma.$executeRaw`TRUNCATE TABLE analytics RESTART IDENTITY CASCADE`;
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
     await prisma.$executeRaw`TRUNCATE TABLE articles RESTART IDENTITY CASCADE`;
     await prisma.$executeRaw`TRUNCATE TABLE users RESTART IDENTITY CASCADE`;
 
-    console.log("✅ Таблицы очищены");
 
     return NextResponse.json({ 
       success: true, 

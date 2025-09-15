@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log(`💰 Применен штраф -50$ для менеджера ${manager.name} за пропуск смены ${shiftType} ${shiftDate}`);
 
     return NextResponse.json(penalty, { status: 201 });
   } catch (error) {

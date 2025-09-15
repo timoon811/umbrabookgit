@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
 
     // Если проектов нет, создаем примеры по умолчанию
     if (projects.length === 0) {
-      console.log('📁 Проекты не найдены, создаем примеры по умолчанию...');
       
       const defaultProjects = [
         {
@@ -53,7 +52,6 @@ export async function GET(request: NextRequest) {
         )
       );
 
-      console.log('✅ Созданы проекты по умолчанию:', createdProjects.length);
       return NextResponse.json(createdProjects);
     }
 

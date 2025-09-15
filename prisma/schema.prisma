@@ -642,7 +642,7 @@ model bonus_grid {
   bonusPercentage Float
   fixedBonus      Float?
   fixedBonusMin   Float?
-  shiftType       ShiftType  @default(MORNING)
+  shiftType       ShiftType?
   description     String?
   isActive        Boolean    @default(true)
   createdAt       DateTime   @default(now())

@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
     const startOfMonth = new Date(targetYear, targetMonth, 1);
     const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59);
 
-    console.log(`🎯 Расчет месячных бонусов за ${startOfMonth.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`);
 
     // Получаем активные месячные планы
     const monthlyPlans = await prisma.salary_monthly_bonus.findMany({
@@ -78,13 +77,11 @@ export async function POST(request: NextRequest) {
         const bonusPayment = await prisma.bonus_payments.create({
           data: {
             processorId: manager.id,
-            type: 'MONTHLY_PLAN_BONUS',
+            type: 'ACHIEVEMENT_BONUS',
             amount: monthlyBonusAmount,
             description: `Месячный бонус за план "${applicablePlan.name}" ($${totalMonthlyVolume.toLocaleString()})`,
-            periodStart: startOfMonth,
-            periodEnd: endOfMonth,
-            bonusPercent: applicablePlan.bonusPercent,
-            isActive: true,
+            period: startOfMonth,
+            conditions: `Месячный план: минимум $${applicablePlan.minAmount.toLocaleString()}`,
             status: 'PENDING' // Требует подтверждения администратора
           }
         });
@@ -137,7 +134,6 @@ export async function POST(request: NextRequest) {
       dryRun
     };
 
-    console.log(`✅ Расчет завершен: ${eligibleManagers}/${managers.length} менеджеров получат бонусы на сумму $${totalBonusAmount.toFixed(2)}`);
 
     return NextResponse.json(summary);
 

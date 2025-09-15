@@ -11,14 +11,7 @@ export default function UserActions() {
   const { user, loading, mounted } = useAuth();
   const router = useRouter();
   
-  // Debug логирование состояния
-  console.log('UserActions render:', { 
-    mounted, 
-    loading, 
-    hasUser: !!user, 
-    userName: user?.name,
-    userType: typeof user?.name 
-  });
+  // Debug логирование состояния можно включить при необходимости
 
   const handleLogout = async () => {
     try {
