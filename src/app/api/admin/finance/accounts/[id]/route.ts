@@ -1,30 +1,6 @@
+import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
-
-// Проверка прав администратора
-async function checkAdminAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) {
-    throw new Error("Не авторизован");
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as {
-    userId: string;
-    role: string;
-  };
-
-  if (decoded.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
-}
 
 // GET /api/admin/finance/accounts/[id] - Получение счета по ID
 export async function GET(
@@ -32,7 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
 
     const account = await prisma.finance_accounts.findUnique({
       where: { id: params.id }
@@ -64,7 +40,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
 
     const body = await request.json();
     const { name, type, currency, balance, commission, cryptocurrencies } = body;
@@ -129,7 +105,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
 
     // Проверяем, существует ли счет
     const existingAccount = await prisma.finance_accounts.findUnique({

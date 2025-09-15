@@ -3,12 +3,9 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { loginSchema, validateSchema } from "@/lib/zod-schemas";
+import { getJwtSecret } from "@/lib/jwt";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required for production");
-}
+const JWT_SECRET = getJwtSecret();
 
 // OPTIONS менеджер для CORS
 export async function OPTIONS() {

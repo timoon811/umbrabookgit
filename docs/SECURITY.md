@@ -64,7 +64,7 @@ async function checkAdminAuth() {
 
 ```typescript
 // Условное отображение админ функций
-{hasAdminAccess(user) && (
+{user && hasAdminAccess(user.role as UserRole) && (
   <Link href="/admin">Админ панель</Link>
 )}
 ```

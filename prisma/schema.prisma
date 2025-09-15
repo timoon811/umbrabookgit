@@ -30,6 +30,9 @@ model users {
   assignedShifts        user_shift_assignments[]
   assignedByShifts      user_shift_assignments[] @relation("AssignedBy")
   goalAchievements      user_goal_achievements[]
+  earningsLog           salary_earnings_log[]    @relation("ProcessorEarningsLog")
+  requestsLog           salary_request_log[]     @relation("ProcessorRequestLog")
+  adminRequestsLog      salary_request_log[]     @relation("AdminRequestLog")
 
   @@index([email])
   @@index([role])
@@ -380,6 +383,16 @@ enum BonusStatus {
   HELD
 }
 
+enum EarningsType {
+  BASE_SALARY
+  DEPOSIT_COMMISSION
+  SHIFT_BONUS
+  MONTHLY_BONUS
+  ACHIEVEMENT_BONUS
+  OVERTIME_BONUS
+  MANUAL_ADJUSTMENT
+}
+
 enum ShiftType {
   MORNING
   DAY
@@ -441,6 +454,7 @@ model processor_deposits {
   createdAt                   DateTime      @default(now())
   updatedAt                   DateTime      @updatedAt
   processor         users         @relation(fields: [processorId], references: [id], onDelete: Cascade)
+  earningsLog       salary_earnings_log[]
 
   @@index([processorId])
   @@index([playerId])
@@ -465,12 +479,71 @@ model salary_requests {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   processor         users               @relation(fields: [processorId], references: [id], onDelete: Cascade)
+  earningsLog       salary_earnings_log[]
+  requestLog        salary_request_log[]
 
   @@index([processorId])
   @@index([status])
   @@index([periodStart])
   @@index([periodEnd])
   @@map("salary_requests")
+}
+
+model salary_earnings_log {
+  id                  String        @id @default(uuid())
+  processorId         String
+  shiftId             String?
+  depositId           String?
+  salaryRequestId     String?
+  type                EarningsType
+  description         String
+  amount              Float
+  baseAmount          Float?
+  percentage          Float?
+  calculationDetails  String?
+  metadata            String?
+  period              DateTime?
+  processedAt         DateTime?
+  isIncludedInSalary  Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  processor           users                @relation("ProcessorEarningsLog", fields: [processorId], references: [id], onDelete: Cascade)
+  shift               processor_shifts?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  deposit             processor_deposits?  @relation(fields: [depositId], references: [id], onDelete: SetNull)
+  salaryRequest       salary_requests?     @relation(fields: [salaryRequestId], references: [id], onDelete: SetNull)
+
+  @@index([processorId])
+  @@index([shiftId])
+  @@index([type])
+  @@index([period])
+  @@index([processedAt])
+  @@index([isIncludedInSalary])
+  @@map("salary_earnings_log")
+}
+
+model salary_request_log {
+  id               String    @id @default(uuid())
+  salaryRequestId  String
+  processorId      String
+  action           String
+  status           String
+  details          String?
+  amount           Float?
+  adminId          String?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+
+  salaryRequest    salary_requests  @relation(fields: [salaryRequestId], references: [id], onDelete: Cascade)
+  processor        users           @relation("ProcessorRequestLog", fields: [processorId], references: [id], onDelete: Cascade)
+  admin            users?          @relation("AdminRequestLog", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([salaryRequestId])
+  @@index([processorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("salary_request_log")
 }
 
 model bonus_payments {
@@ -529,6 +602,7 @@ model processor_shifts {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   processor      users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
+  earningsLog    salary_earnings_log[]
 
   @@index([processorId])
   @@index([shiftType])

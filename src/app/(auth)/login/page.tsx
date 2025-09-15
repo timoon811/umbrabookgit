@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import UmbraLogo from "@/components/UmbraLogo";
 import { loginSchema, validateSchema } from "@/lib/zod-schemas";
+import { notifyAuthLogin } from "@/lib/auth-events";
 
 function LoginForm() {
   const [formData, setFormData] = useState({
@@ -65,6 +66,9 @@ function LoginForm() {
 
       if (response.ok) {
         await response.json(); // Результат не используется
+
+        // Уведомляем систему о успешном входе
+        notifyAuthLogin();
 
         // Показываем уведомление об успешном входе
         setShowSuccess(true);
@@ -136,7 +140,12 @@ function LoginForm() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                      ✅ Успешный вход! Перенаправление...
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Успешный вход! Перенаправление...
+                      </div>
                     </p>
                   </div>
                 </div>

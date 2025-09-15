@@ -172,7 +172,7 @@ async function recalculateShiftBonuses(shiftId: string, processorId: string, shi
     
     
   } catch (error) {
-    console.error(`❌ Ошибка пересчета бонусов смены:`, error);
+    console.error(`[BONUS_CALC] ERROR: Ошибка пересчета бонусов смены:`, error);
   }
 }
 
@@ -506,8 +506,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(deposit, { status: 201 });
   } catch (error) {
-    console.error("❌ Подробная ошибка создания депозита:", error);
-    console.error("❌ Stack trace:", error.stack);
+    console.error("[DEPOSIT] ERROR: Подробная ошибка создания депозита:", error);
+    console.error("[DEPOSIT] ERROR: Stack trace:", error.stack);
     return NextResponse.json(
       { 
         error: "Внутренняя ошибка сервера",

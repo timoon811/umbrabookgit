@@ -1,54 +1,17 @@
 import React from 'react';
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { hasAdminAccess } from "@/lib/permissions";
 import AdminHeader from "@/components/AdminHeader";
 import AdminSidebar from "@/components/AdminSidebar";
-import { UserRole } from "@/types/roles";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Проверяем права администратора
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) {
-    redirect("/login");
-  }
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      role: string;
-    };
-
-    // Проверяем доступ к админ панели
-    if (!hasAdminAccess(decoded.role as UserRole)) {
-      redirect("/");
-    }
-
-    // Дополнительная проверка пользователя в базе данных
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-      },
-    });
-
-    if (!user || !hasAdminAccess(user.role as UserRole)) {
-      redirect("/");
-    }
-  } catch (error) {
+    await checkAdminAuth();
+  } catch {
     redirect("/login");
   }
 

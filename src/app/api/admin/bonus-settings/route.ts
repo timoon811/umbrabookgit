@@ -1,34 +1,11 @@
+import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
-
-// Проверка прав администратора
-async function checkAdminAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) {
-    throw new Error("Не авторизован");
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as {
-    userId: string;
-    role: string;
-  };
-
-  if (decoded.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
-}
 
 // GET /api/admin/bonus-settings - Получение всех настроек бонусов
 export async function GET() {
   try {
+    await checkAdminAuthUserId();
     const bonusSettings = await prisma.bonus_settings.findMany({
       orderBy: { createdAt: "desc" },
     });
@@ -58,7 +35,7 @@ export async function GET() {
 // POST /api/admin/bonus-settings - Создание новых настроек
 export async function POST(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
     const data = await request.json();
     const { type, settings } = data;
 
@@ -164,7 +141,7 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/bonus-settings - Обновление настроек
 export async function PUT(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
     const data = await request.json();
     const { type, id, updates } = data;
 
@@ -265,7 +242,7 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/admin/bonus-settings - Удаление настроек
 export async function DELETE(request: NextRequest) {
   try {
-    await checkAdminAuth();
+    await checkAdminAuthUserId();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
     const id = searchParams.get("id");

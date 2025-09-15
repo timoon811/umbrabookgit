@@ -1,40 +1,16 @@
+import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
 
-// Проверка админских прав
-async function checkAdminAuth(request: NextRequest) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  
-  if (!token) {
-    throw new Error("Не авторизован");
-  }
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-  
-  if (!decoded || !decoded.userId) {
-    throw new Error("Недействительный токен");
-  }
-
-  const user = await prisma.users.findUnique({
-    where: { id: decoded.userId },
-  });
-
-  if (!user || user.role !== "ADMIN") {
-    throw new Error("Недостаточно прав");
-  }
-
-  return decoded.userId;
-}
-
-// GET /api/admin/salary-deposit-grid - Получение сетки процентов по депозитам
+// GET /api/admin/salary-deposit-grid
 export async function GET(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    await checkAdminAuthUserId();
 
+    // Получаем депозитную сетку
     const depositGrid = await prisma.salary_deposit_grid.findMany({
       where: { isActive: true },
-      orderBy: { minAmount: 'asc' }
+      orderBy: { minAmount: "asc" }
     });
 
     return NextResponse.json({ depositGrid });
@@ -51,7 +27,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/salary-deposit-grid - Создание записи в сетке депозитов
 export async function POST(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    await checkAdminAuthUserId();
     const data = await request.json();
 
     const depositGridEntry = await prisma.salary_deposit_grid.create({
@@ -78,7 +54,7 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/salary-deposit-grid - Обновление записи в сетке депозитов
 export async function PUT(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    await checkAdminAuthUserId();
     const data = await request.json();
 
     if (!data.id) {
@@ -110,7 +86,7 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/admin/salary-deposit-grid - Удаление записи из сетки депозитов
 export async function DELETE(request: NextRequest) {
   try {
-    await checkAdminAuth(request);
+    await checkAdminAuthUserId();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

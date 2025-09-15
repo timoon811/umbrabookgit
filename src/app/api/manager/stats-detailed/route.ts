@@ -32,31 +32,35 @@ export async function GET(request: NextRequest) {
     let todayStart, weekPeriod, monthPeriod;
     
     if (period === 'previous') {
-      // Предыдущий месяц
-      const lastMonth = new Date(utc3Now.getFullYear(), utc3Now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(utc3Now.getFullYear(), utc3Now.getMonth(), 0);
-      monthPeriod = { start: lastMonth, end: lastMonthEnd };
+      // Предыдущий месяц с корректным расчетом по UTC+3
+      const currentMonth = getCurrentMonthPeriod();
+      const prevMonthStart = new Date(currentMonth.start);
+      prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+      const prevMonthEnd = new Date(currentMonth.start);
+      prevMonthEnd.setTime(prevMonthEnd.getTime() - 1); // Последняя миллисекунда прошлого месяца
       
-      // Предыдущая неделя
-      const lastWeekStart = new Date(utc3Now);
-      lastWeekStart.setDate(utc3Now.getDate() - 7 - utc3Now.getDay());
-      const lastWeekEnd = new Date(lastWeekStart);
-      lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
-      weekPeriod = { start: lastWeekStart, end: lastWeekEnd };
+      monthPeriod = { start: prevMonthStart, end: prevMonthEnd };
       
-      // Вчера
-      todayStart = new Date(utc3Now);
-      todayStart.setDate(utc3Now.getDate() - 1);
-      todayStart.setHours(0, 0, 0, 0);
+      // Последняя неделя прошлого месяца
+      const lastWeekStart = new Date(prevMonthEnd);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 6);
+      lastWeekStart.setUTCHours(6, 0, 0, 0);
+      weekPeriod = { start: lastWeekStart, end: prevMonthEnd };
+      
+      // Последний день прошлого месяца
+      todayStart = new Date(prevMonthEnd);
+      todayStart.setUTCHours(6, 0, 0, 0);
     } else if (period === 'custom' && customStart && customEnd) {
       // Кастомный период
       const startDate = new Date(customStart);
       const endDate = new Date(customEnd);
+      endDate.setUTCHours(23, 59, 59, 999); // Конец дня
+      
       monthPeriod = { start: startDate, end: endDate };
       weekPeriod = { start: startDate, end: endDate };
       todayStart = startDate;
     } else {
-      // Текущий период (по умолчанию)
+      // Текущий период (по умолчанию) - используем корректные UTC+3 периоды
       todayStart = getCurrentDayStartUTC3();
       weekPeriod = getCurrentWeekPeriod();
       monthPeriod = getCurrentMonthPeriod();
@@ -79,17 +83,6 @@ export async function GET(request: NextRequest) {
       orderBy: { minAmount: "asc" }
     });
 
-    // Определяем месячный бонус для текущего объема депозитов
-    const currentMonthVolume = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
-    const applicableMonthlyBonus = monthlyBonuses.find(bonus => 
-      currentMonthVolume >= bonus.minAmount
-    );
-    
-    // Определяем следующий месячный бонус (к чему стремиться)
-    const nextMonthlyBonus = monthlyBonuses.find(bonus => 
-      currentMonthVolume < bonus.minAmount
-    );
-
     // Получаем бонусные настройки
     const bonusSettings = await prisma.bonus_settings.findFirst({
       where: { isActive: true }
@@ -108,37 +101,80 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Статистика за разные периоды
+    // Корректные временные окончания для фильтрации
+    const todayEnd = period === 'current' ? new Date() : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const weekEnd = period === 'current' ? new Date() : weekPeriod.end || new Date();
+    const monthEnd = period === 'current' ? new Date() : monthPeriod.end || new Date();
+
+    // Статистика за разные периоды с корректными фильтрами
     const [todayDeposits, weekDeposits, monthDeposits] = await Promise.all([
       prisma.processor_deposits.findMany({
-        where: { processorId, createdAt: { gte: todayStart } }
+        where: { 
+          processorId, 
+          createdAt: { 
+            gte: todayStart,
+            lte: todayEnd
+          } 
+        }
       }),
       prisma.processor_deposits.findMany({
-        where: { processorId, createdAt: { gte: weekPeriod.start } }
+        where: { 
+          processorId, 
+          createdAt: { 
+            gte: weekPeriod.start,
+            lte: weekEnd
+          } 
+        }
       }),
       prisma.processor_deposits.findMany({
-        where: { processorId, createdAt: { gte: monthPeriod.start } }
+        where: { 
+          processorId, 
+          createdAt: { 
+            gte: monthPeriod.start,
+            lte: monthEnd
+          } 
+        }
       })
     ]);
 
-    // Статистика смен
+    // Определяем месячный бонус для текущего объема депозитов
+    const currentMonthVolume = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
+    const applicableMonthlyBonus = monthlyBonuses.find(bonus => 
+      currentMonthVolume >= bonus.minAmount
+    );
+    
+    // Определяем следующий месячный бонус (к чему стремиться)
+    const nextMonthlyBonus = monthlyBonuses.find(bonus => 
+      currentMonthVolume < bonus.minAmount
+    );
+
+    // Статистика смен с корректными фильтрами
     const [todayShifts, weekShifts, monthShifts] = await Promise.all([
       prisma.processor_shifts.findMany({
         where: { 
           processorId, 
-          shiftDate: { gte: todayStart }
+          shiftDate: { 
+            gte: todayStart,
+            lte: todayEnd
+          }
         }
       }),
       prisma.processor_shifts.findMany({
         where: { 
           processorId, 
-          shiftDate: { gte: weekPeriod.start }
+          shiftDate: { 
+            gte: weekPeriod.start,
+            lte: weekEnd
+          }
         }
       }),
       prisma.processor_shifts.findMany({
         where: { 
           processorId, 
-          shiftDate: { gte: monthPeriod.start }
+          shiftDate: { 
+            gte: monthPeriod.start,
+            lte: monthEnd
+          }
         }
       })
     ]);
@@ -194,52 +230,82 @@ export async function GET(request: NextRequest) {
       }, 0);
     };
 
-    // Функция для расчета бонусов по сменам
-    const calculateShiftBasedBonuses = (shifts: any[], deposits: any[]) => {
+    // Функция для расчета ВСЕХ видов бонусов за период
+    const calculateAllBonuses = async (deposits: any[], periodStart: Date, periodEnd: Date) => {
       let totalBonuses = 0;
       
-      for (const shift of shifts) {
-        if (!shift.actualStart) continue; // Пропускаем смены без фактического начала
-        
-        const shiftStart = new Date(shift.actualStart);
-        const shiftEnd = shift.actualEnd ? new Date(shift.actualEnd) : new Date(); // Если смена активна, берем текущее время
-        
-        // Находим депозиты этой смены
-        const shiftDeposits = deposits.filter(d => {
-          const depositTime = new Date(d.createdAt);
-          return depositTime >= shiftStart && depositTime <= shiftEnd;
-        });
-        
-        if (shiftDeposits.length === 0) continue;
-        
-        // Суммируем депозиты за смену
-        const shiftSum = shiftDeposits.reduce((sum, d) => sum + d.amount, 0);
-        
-        // Находим подходящую бонусную сетку для этого типа смены и суммы
-        let applicableGrid = null;
-        for (const grid of bonusGrids) {
-          if (grid.shiftType === shift.shiftType && 
-              shiftSum >= grid.minAmount && 
-              (!grid.maxAmount || shiftSum <= grid.maxAmount)) {
-            applicableGrid = grid;
-            break;
+      // 1. Депозитные бонусы, уже записанные в базе (bonusAmount в processor_deposits)
+      const depositBonuses = deposits.reduce((sum, d) => sum + (d.bonusAmount || 0), 0);
+      totalBonuses += depositBonuses;
+      
+      // 2. Дополнительные бонусы из таблицы bonus_payments за период
+      const additionalBonuses = await prisma.bonus_payments.findMany({
+        where: {
+          processorId,
+          status: 'PAID',
+          paidAt: {
+            gte: periodStart,
+            lte: periodEnd
           }
         }
-        
-        if (applicableGrid) {
-          // Рассчитываем бонус для каждого депозита в смене по ставке смены
-          for (const deposit of shiftDeposits) {
-            const depositBonus = (deposit.amount * applicableGrid.bonusPercentage) / 100;
-            totalBonuses += depositBonus;
-          }
-          
-          // Добавляем фиксированный бонус, если достигнут порог
-          if (applicableGrid.fixedBonus && applicableGrid.fixedBonusMin && 
-              shiftSum >= applicableGrid.fixedBonusMin) {
-            totalBonuses += applicableGrid.fixedBonus;
-          }
+      });
+      const additionalBonusAmount = additionalBonuses.reduce((sum, b) => sum + b.amount, 0);
+      totalBonuses += additionalBonusAmount;
+      
+      // 3. Зарплатные бонусы по депозитной сетке (salary_deposit_grid)
+      const totalDepositAmount = deposits.reduce((sum, d) => sum + d.amount, 0);
+      if (totalDepositAmount > 0) {
+        const applicableSalaryGrid = depositGrid.find(grid => 
+          totalDepositAmount >= grid.minAmount && 
+          (!grid.maxAmount || totalDepositAmount <= grid.maxAmount)
+        );
+        if (applicableSalaryGrid) {
+          const salaryGridBonus = (totalDepositAmount * applicableSalaryGrid.percentage) / 100;
+          totalBonuses += salaryGridBonus;
         }
       }
+      
+      // 4. Месячные бонусы за план (только для месячного периода)
+      if (period === 'current' && periodStart.getMonth() === monthPeriod.start.getMonth()) {
+        if (applicableMonthlyBonus) {
+          const monthlyBonusAmount = (totalDepositAmount * applicableMonthlyBonus.bonusPercent) / 100;
+          totalBonuses += monthlyBonusAmount;
+        }
+      }
+      
+      // 5. Мотивационные бонусы (bonus_motivations) - активные для текущего периода
+      const motivationBonuses = await prisma.bonus_motivations.findMany({
+        where: { isActive: true }
+      });
+      
+      for (const motivation of motivationBonuses) {
+        if (motivation.type === 'PERCENTAGE') {
+          // Процентный бонус от общего объема депозитов
+          const motivationAmount = (totalDepositAmount * motivation.value) / 100;
+          totalBonuses += motivationAmount;
+        } else if (motivation.type === 'FIXED_AMOUNT') {
+          // Фиксированный бонус (если условия выполнены)
+          // TODO: Добавить логику проверки условий из motivation.conditions
+          totalBonuses += motivation.value;
+        }
+      }
+      
+      const motivationBonusAmount = motivationBonuses.reduce((sum, m) => {
+        if (m.type === 'PERCENTAGE') {
+          return sum + (totalDepositAmount * m.value) / 100;
+        } else {
+          return sum + m.value;
+        }
+      }, 0);
+      
+      console.log(`[BONUS_CALC] Расчет бонусов за период ${periodStart.toISOString()} - ${periodEnd.toISOString()}:`, {
+        depositBonuses,
+        additionalBonusAmount,
+        salaryGridBonus: totalDepositAmount > 0 ? 'calculated' : 0,
+        monthlyBonus: applicableMonthlyBonus ? 'calculated' : 0,
+        motivationBonusAmount,
+        totalBonuses
+      });
       
       return totalBonuses;
     };
@@ -248,26 +314,30 @@ export async function GET(request: NextRequest) {
     const weekHours = calculateWorkHours(weekShifts);
     const monthHours = calculateWorkHours(monthShifts);
 
-    // Заработок: базовая зарплата + бонусы по депозитной сетке
+    // Заработок: базовая зарплата + ВСЕ виды бонусов
     const hourlyRate = salarySettings?.hourlyRate || 2.0;
     
     const todayBaseSalary = todayHours * hourlyRate;
     const weekBaseSalary = weekHours * hourlyRate;
     const monthBaseSalary = monthHours * hourlyRate;
     
-    const todayBonuses = calculateShiftBasedBonuses(todayShifts, todayDeposits);
-    const weekBonuses = calculateShiftBasedBonuses(weekShifts, weekDeposits);
-    const monthBonuses = calculateShiftBasedBonuses(monthShifts, monthDeposits);
+    // Рассчитываем ВСЕ виды бонусов за каждый период
+    const todayBonuses = await calculateAllBonuses(todayDeposits, todayStart, todayEnd);
+    const weekBonuses = await calculateAllBonuses(weekDeposits, weekPeriod.start, weekEnd);
+    const monthBonuses = await calculateAllBonuses(monthDeposits, monthPeriod.start, monthEnd);
     
     const todayEarnings = todayBaseSalary + todayBonuses;
     const weekEarnings = weekBaseSalary + weekBonuses;
     const monthEarnings = monthBaseSalary + monthBonuses;
 
-    // Рейтинг менеджеров (топ по месяцу)
+    // Рейтинг менеджеров (топ по выбранному периоду)
     const topManagers = await prisma.processor_deposits.groupBy({
       by: ['processorId'],
       where: {
-        createdAt: { gte: monthPeriod.start }
+        createdAt: { 
+          gte: monthPeriod.start,
+          lte: monthEnd
+        }
       },
       _sum: {
         amount: true,
@@ -306,11 +376,21 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Прогноз зарплаты на основе текущих показателей
-    const daysInMonth = new Date(utc3Now.getFullYear(), utc3Now.getMonth() + 1, 0).getDate();
-    const daysPassed = period === 'current' ? utc3Now.getDate() : daysInMonth;
-    const avgDailyEarnings = daysPassed > 0 ? monthEarnings / daysPassed : 0;
-    const projectedMonthlyEarnings = avgDailyEarnings * daysInMonth;
+    // Прогноз зарплаты на основе текущих показателей (только для текущего периода)
+    let projectedMonthlyEarnings = monthEarnings; // По умолчанию используем фактические данные
+    
+    if (period === 'current') {
+      const daysInMonth = new Date(utc3Now.getFullYear(), utc3Now.getMonth() + 1, 0).getDate();
+      const daysPassed = utc3Now.getDate();
+      
+      if (daysPassed > 0 && daysPassed < daysInMonth) {
+        const avgDailyEarnings = monthEarnings / daysPassed;
+        projectedMonthlyEarnings = avgDailyEarnings * daysInMonth;
+      } else if (daysPassed === 0) {
+        // Первый день месяца - прогноз на основе вчерашнего дня
+        projectedMonthlyEarnings = todayEarnings * daysInMonth;
+      }
+    }
 
     // Цели на месяц из настроенных планов
     const totalMonthDeposits = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
@@ -402,6 +482,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Отладочная информация
+    console.log(`[STATS] Статистика для пользователя ${processorId}, период: ${period}`);
+    console.log(`[STATS] Периоды:`, {
+      today: { start: todayStart, end: todayEnd },
+      week: weekPeriod,
+      month: monthPeriod
+    });
+    console.log(`[STATS] Депозиты:`, {
+      today: { count: todayDeposits.length, sum: todayDeposits.reduce((sum, d) => sum + d.amount, 0) },
+      week: { count: weekDeposits.length, sum: weekDeposits.reduce((sum, d) => sum + d.amount, 0) },
+      month: { count: monthDeposits.length, sum: monthDeposits.reduce((sum, d) => sum + d.amount, 0) }
+    });
+    console.log(`[STATS] Заработок (базовая ставка + ВСЕ бонусы):`, { 
+      today: { base: todayBaseSalary, bonuses: todayBonuses, total: todayEarnings },
+      week: { base: weekBaseSalary, bonuses: weekBonuses, total: weekEarnings },
+      month: { base: monthBaseSalary, bonuses: monthBonuses, total: monthEarnings }
+    });
+
     const stats = {
       // Основные метрики
       performance: {
@@ -428,12 +526,17 @@ export async function GET(request: NextRequest) {
         }
       },
 
-      // Прогнозы
+      // Прогнозы (только для текущего периода)
       projections: {
         monthlyEarnings: projectedMonthlyEarnings,
-        remainingDays: Math.max(0, daysInMonth - daysPassed),
-        dailyTarget: (daysInMonth - daysPassed) > 0 
-          ? (monthlyGoals.earnings - monthEarnings) / (daysInMonth - daysPassed)
+        remainingDays: period === 'current' ? Math.max(0, new Date(utc3Now.getFullYear(), utc3Now.getMonth() + 1, 0).getDate() - utc3Now.getDate()) : 0,
+        dailyTarget: period === 'current' 
+          ? (() => {
+              const daysInMonth = new Date(utc3Now.getFullYear(), utc3Now.getMonth() + 1, 0).getDate();
+              const daysPassed = utc3Now.getDate();
+              const remainingDays = daysInMonth - daysPassed;
+              return remainingDays > 0 ? (monthlyGoals.earnings - monthEarnings) / remainingDays : 0;
+            })()
           : 0,
         onTrack: projectedMonthlyEarnings >= monthlyGoals.earnings * 0.9
       },

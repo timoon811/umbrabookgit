@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import NotificationIcon from "@/components/admin/NotificationIcon";
 import { getUserInitial } from "@/utils/userUtils";
+import { hasAdminAccess } from "@/lib/permissions";
+import { UserRole } from "@/types/roles";
+import { clearAuthState } from "@/lib/auth-events";
 
 export default function UserActions() {
   const { user, loading, mounted } = useAuth();
@@ -16,9 +19,13 @@ export default function UserActions() {
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      // Уведомляем систему о выходе
+      clearAuthState();
       router.push("/login");
     } catch (error) {
       console.error("Ошибка при выходе:", error);
+      // В любом случае очищаем состояние и редиректим
+      clearAuthState();
       router.push("/login");
     }
   };
@@ -66,8 +73,8 @@ export default function UserActions() {
   // Показываем действия авторизованного пользователя
   return (
     <div className="flex items-center gap-2">
-      {/* Админ панель (только для администраторов) */}
-      {user.role === "ADMIN" && (
+      {/* Админ панель (для всех ролей с админ доступом) */}
+      {hasAdminAccess(user.role as UserRole) && (
         <Link
           href="/admin"
           className="p-2 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all duration-200 group"

@@ -52,13 +52,13 @@ export const blockTypes: BlockType[] = [
   { type: 'list', title: 'Список', description: 'Маркированный список', icon: '•', category: 'structure' },
   { type: 'numbered-list', title: 'Нумерованный список', description: 'Пронумерованный список', icon: '1.', category: 'structure' },
   { type: 'quote', title: 'Цитата', description: 'Выделенная цитата', icon: '❝', category: 'structure' },
-  { type: 'callout', title: 'Выноска', description: 'Важная информация', icon: '💡', category: 'structure' },
+  { type: 'callout', title: 'Выноска', description: 'Важная информация', icon: 'info', category: 'structure' },
   { type: 'divider', title: 'Разделитель', description: 'Горизонтальная линия', icon: '—', category: 'structure' },
 
   // Media
-  { type: 'image', title: 'Изображение', description: 'Картинка или фото', icon: '🖼', category: 'media' },
-  { type: 'file', title: 'Файл', description: 'Документ, архив или другой файл', icon: '📎', category: 'media' },
-  { type: 'youtube', title: 'YouTube', description: 'Видео с YouTube', icon: '📺', category: 'media' },
+  { type: 'image', title: 'Изображение', description: 'Картинка или фото', icon: 'img', category: 'media' },
+  { type: 'file', title: 'Файл', description: 'Документ, архив или другой файл', icon: 'file', category: 'media' },
+  { type: 'youtube', title: 'YouTube', description: 'Видео с YouTube', icon: 'yt', category: 'media' },
 
   // Advanced
   { type: 'code', title: 'Код', description: 'Блок кода с подсветкой', icon: '</>', category: 'advanced' },

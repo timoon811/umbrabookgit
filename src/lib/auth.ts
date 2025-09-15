@@ -3,12 +3,9 @@ import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { hasAdminAccess } from "./permissions";
 import { UserRole } from "@/types/roles";
+import { getJwtSecret } from "@/lib/jwt";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required for production");
-}
+const JWT_SECRET = getJwtSecret();
 
 export async function verifyToken(token: string) {
   try {
@@ -63,7 +60,7 @@ export async function requireAdmin(requestOrToken: NextRequest | string) {
       role: string;
     };
 
-    if (!hasAdminAccess({ role: decoded.role })) {
+    if (!hasAdminAccess(decoded.role as UserRole)) {
       throw new Error("Недостаточно прав");
     }
 
@@ -91,12 +88,12 @@ export async function requireAdmin(requestOrToken: NextRequest | string) {
 
 // Функция для проверки роли администратора на клиенте
 export function isAdminRole(role: string): boolean {
-  return role === "ADMIN";
+  return hasAdminAccess(role as UserRole);
 }
 
 // Функция для проверки прав администратора на клиенте
-export function hasAdminAccess(user: { role: string } | null): boolean {
-  return user !== null && user.role === "ADMIN";
+export function hasClientAdminAccess(user: { role: string } | null): boolean {
+  return user !== null && hasAdminAccess(user.role as UserRole);
 }
 
 // Утилиты для проверки аутентификации в API маршрутах
@@ -110,29 +107,35 @@ export async function getCurrentUser(request: NextRequest) {
   return await verifyToken(token);
 }
 
-export async function requireAuth(request: NextRequest) {
-  const user = await getCurrentUser(request);
-  
-  if (!user) {
-    throw new Error("Не авторизован");
-  }
-
-  return user;
-}
+// Функция requireAuth перенесена в api-auth.ts для API роутов
+// Для серверных компонентов используйте getCurrentUser
 
 export async function getAuthenticatedUserFromCookies() {
   if (typeof window !== 'undefined') {
-    // На клиенте используем document.cookie
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('auth-token='))
-      ?.split('=')[1];
-    
-    if (!token) {
-      return null;
-    }
+    // На клиенте НЕ МОЖЕМ читать httpOnly cookies
+    // Вместо этого используем API /auth/me
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+      });
 
-    return await verifyToken(token);
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role,
+        };
+      }
+    } catch (error) {
+      console.error("Ошибка получения пользователя:", error);
+    }
+    return null;
   } else {
     // На сервере используем cookies() из next/headers
     const { cookies } = await import("next/headers");

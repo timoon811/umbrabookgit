@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import SalaryRequestModal from "@/components/modals/SalaryRequestModal";
 import DepositModal from "@/components/modals/DepositModal";
+import EarningsBreakdown from "@/components/EarningsBreakdown";
 import { MetricCard, ProgressBar, LeaderboardCard, ProjectionCard, ShiftGoalsCard, PeriodSelector } from "@/components/ManagerStatsComponents";
 import SalaryStatsCard from "@/components/SalaryStatsCard";
 import WalletBalance from "@/components/WalletBalance";
@@ -25,7 +26,7 @@ function ShiftManagementControls({
     description: string;
     isCurrent: boolean;
     isActive: boolean;
-    isAvailableForProcessor: boolean;
+    isAvailableForManager: boolean;
     status: 'current' | 'available' | 'disabled' | 'inactive';
     icon: string;
     startTime: { hour: number; minute: number };
@@ -42,7 +43,7 @@ function ShiftManagementControls({
   useEffect(() => {
     const updateTimer = () => {
       // Находим ближайшую доступную смену
-      const availableShifts = allShifts.filter(s => s.isAvailableForProcessor);
+      const availableShifts = allShifts.filter(s => s.isAvailableForManager);
       if (availableShifts.length === 0) return;
 
       const now = new Date(currentTime);
@@ -103,7 +104,7 @@ function ShiftManagementControls({
     return () => clearInterval(interval);
   }, [allShifts, currentTime]);
 
-  const availableShifts = allShifts.filter(s => s.isAvailableForProcessor);
+  const availableShifts = allShifts.filter(s => s.isAvailableForManager);
 
   if (availableShifts.length === 0) {
     return (
@@ -359,6 +360,7 @@ function ProcessingPageContent() {
   });
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [showEarningsBreakdown, setShowEarningsBreakdown] = useState(false);
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
 
   // Состояния для истории действий
@@ -398,7 +400,7 @@ function ProcessingPageContent() {
     description: string;
     isCurrent: boolean;
     isActive: boolean;
-    isAvailableForProcessor: boolean;
+    isAvailableForManager: boolean;
     status: 'current' | 'available' | 'disabled' | 'inactive';
     icon: string;
     startTime: { hour: number; minute: number };
@@ -446,7 +448,20 @@ function ProcessingPageContent() {
               const detailedStatsResponse = await fetch(url);
               if (detailedStatsResponse.ok) {
                 const detailedStatsData = await detailedStatsResponse.json();
+                console.log('Детальная статистика загружена:', detailedStatsData);
                 setDetailedStats(detailedStatsData);
+              } else {
+                console.error('Ошибка загрузки детальной статистики:', {
+                  status: detailedStatsResponse.status,
+                  statusText: detailedStatsResponse.statusText,
+                  url: url
+                });
+                try {
+                  const errorData = await detailedStatsResponse.json();
+                  console.error('Детали ошибки:', errorData);
+                } catch (e) {
+                  console.error('Не удалось разобрать ошибку:', e);
+                }
               }
 
               // Загружаем данные смены
@@ -482,6 +497,9 @@ function ProcessingPageContent() {
                 setActionLogs(historyData.logs);
               }
 
+              // Загружаем зарплатные заявки
+              await loadSalaryRequests();
+
               // Загружаем статистику зарплаты
               await loadSalaryStats();
             } catch (error) {
@@ -502,7 +520,7 @@ function ProcessingPageContent() {
     if (user) {
       checkAuth();
     }
-  }, [user, router, selectedPeriod]);
+  }, [user, router, selectedPeriod, loadSalaryRequests, loadSalaryStats]);
 
   // Обновление текущего времени каждую секунду
   useEffect(() => {
@@ -537,6 +555,21 @@ function ProcessingPageContent() {
     }
   }, [salaryStats, isShiftActive, loadSalaryStats]);
 
+  // Загрузка зарплатных заявок
+  const loadSalaryRequests = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/manager/salary-requests?page=1&limit=50`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSalaryRequests(data.salaryRequests || []);
+      } else {
+        console.error("Ошибка загрузки зарплатных заявок:", data.error);
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки зарплатных заявок:", error);
+    }
+  }, []);
 
   // Отдельная функция для загрузки детальной статистики с параметрами
   const loadDetailedStats = useCallback(async (period = selectedPeriod, startDate?: string, endDate?: string) => {
@@ -874,12 +907,13 @@ function ProcessingPageContent() {
       if (response.ok) {
         showSuccess("Заявка отправлена", "Заявка на выплату зарплаты успешно создана");
         setShowSalaryModal(false);
-        // Перезагружаем статистику
+        // Перезагружаем статистику и зарплатные заявки
         const statsResponse = await fetch("/api/manager/stats");
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
         }
+        await loadSalaryRequests();
       } else {
         const errorData = await response.json();
         showError("Ошибка отправки", errorData.error || "Не удалось создать заявку");
@@ -1376,7 +1410,7 @@ function ProcessingPageContent() {
             )}
 
             {/* Таб Статистика */}
-            {activeTab === "statistics" && detailedStats && (
+            {activeTab === "statistics" && (
               <div className="space-y-6">
                 {/* Заголовок и селектор периода */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
@@ -1385,7 +1419,7 @@ function ProcessingPageContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Статистика и аналитика</h2>
-                    {!detailedStats.period.isCurrentMonth && (
+                    {detailedStats && !detailedStats.period.isCurrentMonth && (
                       <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-xs rounded-full">
                         Архивные данные
                       </span>
@@ -1403,208 +1437,237 @@ function ProcessingPageContent() {
                   </div>
                 </div>
 
-                {/* Основные метрики производительности */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard
-                    title="Сегодня"
-                    value={`$${detailedStats.performance.today.earnings.toFixed(2)}`}
-                    subtitle={`${detailedStats.performance.today.deposits} депозитов • ${detailedStats.performance.today.hours.toFixed(1)}ч`}
-                    icon={
-                      <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    }
-                    gradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800"
-                  />
-
-                  <MetricCard
-                    title="Неделя"
-                    value={`$${detailedStats.performance.week.earnings.toFixed(2)}`}
-                    subtitle={`${detailedStats.performance.week.deposits} депозитов • ${detailedStats.performance.week.hours.toFixed(1)}ч`}
-                    icon={
-                      <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    }
-                    gradient="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800"
-                  />
-
-                  <MetricCard
-                    title="Месяц"
-                    value={`$${detailedStats.performance.month.earnings.toFixed(2)}`}
-                    subtitle={`${detailedStats.performance.month.deposits} депозитов • ${detailedStats.performance.month.hours.toFixed(1)}ч`}
-                    icon={
-                      <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    }
-                    gradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800"
-                  />
-
-                  <MetricCard
-                    title="Прогноз на месяц"
-                    value={`$${detailedStats.projections.monthlyEarnings.toFixed(2)}`}
-                    subtitle={`Оклад + бонусы • ${detailedStats.projections.remainingDays} дней осталось`}
-                    icon={
-                      <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    }
-                    gradient="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800"
-                  />
-                </div>
-
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Прогресс к целям */}
-                  <div className="lg:col-span-2">
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                      <div className="flex items-center gap-2 mb-6">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          Прогресс к месячным целям
-                        </h3>
-                      </div>
-
-                      <div className="space-y-6">
-                        <ProgressBar
-                          label="Объем депозитов (месячный план)"
-                          value={detailedStats.performance.month.volume}
-                          target={detailedStats.goals.monthly.depositVolume}
-                          color="bg-gradient-to-r from-blue-500 to-blue-600"
-                          monthlyBonus={
-                            detailedStats.settings.currentMonthlyBonus || detailedStats.settings.nextMonthlyBonus
-                          }
-                          unit="$"
-                          milestones={detailedStats.settings.monthlyBonuses.map(bonus => ({
-                            value: bonus.minAmount,
-                            label: `${bonus.name}: $${bonus.minAmount.toLocaleString()}`
-                          }))}
-                        />
-
-                        <ProgressBar
-                          label="Заработок"
-                          value={detailedStats.performance.month.earnings}
-                          target={detailedStats.goals.monthly.earnings}
-                          color="bg-gradient-to-r from-emerald-500 to-emerald-600"
-                          unit="$"
-                          milestones={detailedStats.goals.milestones?.earnings || []}
-                        />
-
-                        <ProgressBar
-                          label="Депозиты (количество)"
-                          value={detailedStats.performance.month.deposits}
-                          target={detailedStats.goals.monthly.deposits}
-                          color="bg-gradient-to-r from-purple-500 to-purple-600"
-                          milestones={detailedStats.goals.milestones?.deposits || []}
-                        />
-
-                        <ProgressBar
-                          label="Рабочие часы"
-                          value={detailedStats.performance.month.hours}
-                          target={detailedStats.goals.monthly.hours}
-                          color="bg-gradient-to-r from-amber-500 to-amber-600"
-                          unit="ч"
-                          milestones={detailedStats.goals.milestones?.hours || []}
-                        />
-                      </div>
-
+                {/* Состояние загрузки */}
+                {loading && !detailedStats && (
+                  <div className="flex items-center justify-center p-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Загрузка статистики...</p>
                     </div>
                   </div>
+                )}
 
-                  {/* Цель на смену */}
-                  <ShiftGoalsCard 
-                    shiftData={detailedStats.currentShift}
-                    bonusGrid={detailedStats.settings.bonusGrids}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Рейтинг менеджеров */}
-                  <LeaderboardCard 
-                    leaderboard={detailedStats.leaderboard}
-                    currentUserRank={detailedStats.currentUserRank}
-                  />
-
-                  {/* Настройки бонусов */}
-                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                        <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Система бонусов
-                      </h3>
-                    </div>
-
-                    <div className="space-y-4">
-
+                {/* Ошибка загрузки */}
+                {!loading && !detailedStats && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          Проценты от депозитов (за смену)
-                        </h4>
-                        <div className="space-y-2">
-                          {detailedStats.settings.depositGrid.slice(0, 5).map((grid) => (
-                            <div key={grid.id} className="flex justify-between items-center text-sm p-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
-                              <span className="text-gray-600 dark:text-gray-400">
-                                ${grid.minAmount.toLocaleString()}+ депозитов
-                              </span>
-                              <span className="font-semibold text-green-700 dark:text-green-300">
-                                {grid.percentage}%
-                              </span>
-                            </div>
-                          ))}
-                          {detailedStats.settings.depositGrid.length > 5 && (
-                            <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2">
-                              +{detailedStats.settings.depositGrid.length - 5} уровней
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <div className="text-xs text-amber-700 dark:text-amber-300">
-                            <strong>Важно:</strong> Бонусы рассчитываются за каждую смену отдельно. В каждую новую смену расчет начинается с нуля.
-                          </div>
-                        </div>
+                        <h3 className="text-lg font-medium text-red-800 dark:text-red-200">Не удалось загрузить статистику</h3>
+                        <p className="text-red-600 dark:text-red-300">Проверьте консоль для подробностей ошибки.</p>
                       </div>
-
-                      {/* Месячные планы */}
-                      {detailedStats.settings.monthlyBonuses && detailedStats.settings.monthlyBonuses.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            Месячные планы (дополнительный бонус)
-                          </h4>
-                          <div className="space-y-2">
-                            {detailedStats.settings.monthlyBonuses.map((plan) => (
-                              <div key={plan.id} className="flex justify-between items-center text-sm p-2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg">
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  {plan.name}: ${plan.minAmount.toLocaleString()}
-                                </span>
-                                <span className="font-semibold text-purple-700 dark:text-purple-300">
-                                  +{plan.bonusPercent}% от всех депозитов
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-                            <div className="text-xs text-purple-700 dark:text-purple-300">
-                              <strong>Важно:</strong> Месячные планы действуют прогрессивно. При достижении большего плана, процент заменяется на более высокий (не суммируется).
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Основные метрики производительности */}
+                {detailedStats && (
+                  <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                     <MetricCard
+                       title="Сегодня"
+                       value={`$${detailedStats.performance.today.earnings.toFixed(2)}`}
+                       subtitle={`${detailedStats.performance.today.deposits} депозитов • ${detailedStats.performance.today.hours.toFixed(1)}ч`}
+                       icon={
+                         <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                         </svg>
+                       }
+                       gradient="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800"
+                       />
+
+                       <MetricCard
+                         title="Неделя"
+                         value={`$${detailedStats.performance.week.earnings.toFixed(2)}`}
+                         subtitle={`${detailedStats.performance.week.deposits} депозитов • ${detailedStats.performance.week.hours.toFixed(1)}ч`}
+                         icon={
+                         <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2z" />
+                         </svg>
+                         }
+                         gradient="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800"
+                         />
+
+                         <MetricCard
+                           title="Месяц"
+                           value={`$${detailedStats.performance.month.earnings.toFixed(2)}`}
+                           subtitle={`${detailedStats.performance.month.deposits} депозитов • ${detailedStats.performance.month.hours.toFixed(1)}ч`}
+                           icon={
+                           <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                           </svg>
+                           }
+                           gradient="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800"
+                           />
+
+                           <MetricCard
+                             title="Прогноз на месяц"
+                             value={`$${detailedStats.projections.monthlyEarnings.toFixed(2)}`}
+                             subtitle={`Оклад + бонусы • ${detailedStats.projections.remainingDays} дней осталось`}
+                             icon={
+                             <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2z" />
+                             </svg>
+                             }
+                             gradient="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800"
+                             />
+                           </div>
+
+
+                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                             {/* Прогресс к целям */}
+                             <div className="lg:col-span-2">
+                               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                                 <div className="flex items-center gap-2 mb-6">
+                                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                     <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                     </svg>
+                                   </div>
+                                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                     Прогресс к месячным целям
+                                   </h3>
+                                 </div>
+
+                                 <div className="space-y-6">
+                                   <ProgressBar
+                                     label="Объем депозитов (месячный план)"
+                                     value={detailedStats.performance.month.volume}
+                                     target={detailedStats.goals.monthly.depositVolume}
+                                     color="bg-gradient-to-r from-blue-500 to-blue-600"
+                                     monthlyBonus={
+                                     detailedStats.settings.currentMonthlyBonus || detailedStats.settings.nextMonthlyBonus
+                                     }
+                                     unit="$"
+                                     milestones={detailedStats.settings.monthlyBonuses.map(bonus => ({
+                                     value: bonus.minAmount,
+                                     label: `${bonus.name}: $${bonus.minAmount.toLocaleString()}`
+                                     }))}
+                                     />
+
+                                     <ProgressBar
+                                       label="Заработок"
+                                       value={detailedStats.performance.month.earnings}
+                                       target={detailedStats.goals.monthly.earnings}
+                                       color="bg-gradient-to-r from-emerald-500 to-emerald-600"
+                                       unit="$"
+                                       milestones={detailedStats.goals.milestones?.earnings || []}
+                                       />
+
+                                       <ProgressBar
+                                         label="Депозиты (количество)"
+                                         value={detailedStats.performance.month.deposits}
+                                         target={detailedStats.goals.monthly.deposits}
+                                         color="bg-gradient-to-r from-purple-500 to-purple-600"
+                                         milestones={detailedStats.goals.milestones?.deposits || []}
+                                         />
+
+                                         <ProgressBar
+                                           label="Рабочие часы"
+                                           value={detailedStats.performance.month.hours}
+                                           target={detailedStats.goals.monthly.hours}
+                                           color="bg-gradient-to-r from-amber-500 to-amber-600"
+                                           unit="ч"
+                                           milestones={detailedStats.goals.milestones?.hours || []}
+                                           />
+                                         </div>
+
+                                       </div>
+                                     </div>
+
+                                     {/* Цель на смену */}
+                                     <ShiftGoalsCard
+                                       shiftData={detailedStats.currentShift}
+                                       bonusGrid={detailedStats.settings.bonusGrids}
+                                       />
+                                     </div>
+
+                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                       {/* Рейтинг менеджеров */}
+                                       <LeaderboardCard
+                                         leaderboard={detailedStats.leaderboard}
+                                         currentUserRank={detailedStats.currentUserRank}
+                                         />
+
+                                         {/* Настройки бонусов */}
+                                         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                                           <div className="flex items-center gap-2 mb-6">
+                                             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                               <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                               </svg>
+                                             </div>
+                                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                               Система бонусов
+                                             </h3>
+                                           </div>
+
+                                           <div className="space-y-4">
+
+                                             <div>
+                                               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                 Проценты от депозитов (за смену)
+                                               </h4>
+                                               <div className="space-y-2">
+                                                 {detailedStats.settings.depositGrid.slice(0, 5).map((grid) => (
+                                                 <div key={grid.id} className="flex justify-between items-center text-sm p-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+                                                   <span className="text-gray-600 dark:text-gray-400">
+                                                     ${grid.minAmount.toLocaleString()}+ депозитов
+                                                   </span>
+                                                   <span className="font-semibold text-green-700 dark:text-green-300">
+                                                     {grid.percentage}%
+                                                   </span>
+                                                 </div>
+                                                 ))}
+                                                 {detailedStats.settings.depositGrid.length > 5 && (
+                                                 <div className="text-center text-xs text-gray-500 dark:text-gray-400 pt-2">
+                                                   +{detailedStats.settings.depositGrid.length - 5} уровней
+                                                 </div>
+                                                 )}
+                                               </div>
+                                               
+                                               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                                 <div className="text-xs text-amber-700 dark:text-amber-300">
+                                                   <strong>Важно:</strong> Бонусы рассчитываются за каждую смену отдельно. В каждую новую смену расчет начинается с нуля.
+                                                 </div>
+                                               </div>
+                                             </div>
+
+                                             {/* Месячные планы */}
+                                             {detailedStats.settings.monthlyBonuses && detailedStats.settings.monthlyBonuses.length > 0 && (
+                                               <div>
+                                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                   Месячные планы (дополнительный бонус)
+                                                 </h4>
+                                                 <div className="space-y-2">
+                                                   {detailedStats.settings.monthlyBonuses.map((plan) => (
+                                                     <div key={plan.id} className="flex justify-between items-center text-sm p-2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg">
+                                                       <span className="text-gray-600 dark:text-gray-400">
+                                                         {plan.name}: ${plan.minAmount.toLocaleString()}
+                                                       </span>
+                                                       <span className="font-semibold text-purple-700 dark:text-purple-300">
+                                                         +{plan.bonusPercent}% от всех депозитов
+                                                       </span>
+                                                     </div>
+                                                   ))}
+                                                 </div>
+                                                 
+                                                 <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                                                   <div className="text-xs text-purple-700 dark:text-purple-300">
+                                                     <strong>Важно:</strong> Месячные планы действуют прогрессивно. При достижении большего плана, процент заменяется на более высокий (не суммируется).
+                                                   </div>
+                                                 </div>
+                                               </div>
+                                             )}
+
+                                           </div>
+                                         </div>
+                                       </div>
++                  </>
+                 )}
               </div>
             )}
 
@@ -1628,8 +1691,11 @@ function ProcessingPageContent() {
                           Добавить депозит
                         </button>
                       ) : (
-                        <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800">
-                          🚫 Начните смену для добавления депозитов
+                        <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18 12M5.636 5.636L12 12" />
+                          </svg>
+                          Начните смену для добавления депозитов
                         </div>
                       )}
                     </div>
@@ -1691,115 +1757,108 @@ function ProcessingPageContent() {
             {/* Таб Зарплата */}
             {activeTab === "salary" && (
               <div className="space-y-6">
-                {!isShiftActive ? (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-10 h-10 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                {/* Кнопка создания заявки */}
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+                    Заявки на зарплату
+                  </h3>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowEarningsBreakdown(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Детализация заработков
+                    </button>
+                    <button
+                      onClick={() => setShowSalaryModal(true)}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Подать заявку
+                    </button>
+                  </div>
+                </div>
+
+                {/* Информация о доступной сумме */}
+                {stats && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-200 dark:bg-green-800 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800 dark:text-green-200">
+                          Доступно к выводу: ${stats.balance.available}
+                        </p>
+                        <p className="text-sm text-green-700 dark:text-green-300">
+                          Общий заработок: ${stats.balance.earned} | Выплачено: ${stats.balance.paid}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {salaryRequests.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-semibold text-amber-800 dark:text-amber-200 mb-2">
-                      Зарплатные заявки недоступны
-                    </h3>
-                    <p className="text-amber-600 dark:text-amber-300 mb-4">
-                      Начните рабочую смену для подачи заявок на зарплату
-                    </p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Нет заявок на зарплату</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Подайте заявку на выплату заработанных средств</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Кнопка создания заявки */}
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-                        Заявки на зарплату
-                      </h3>
-                      <button
-                        onClick={() => setShowSalaryModal(true)}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Подать заявку
-                      </button>
+                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Дата заявки</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Период</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сумма</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Статус</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {salaryRequests.map((request) => (
+                            <tr key={request.id} className="border-b border-gray-100 dark:border-gray-800">
+                              <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                                {new Date(request.createdAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                                {new Date(request.periodStart).toLocaleDateString('ru-RU')} - {new Date(request.periodEnd).toLocaleDateString('ru-RU')}
+                              </td>
+                              <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                ${request.calculatedAmount || request.requestedAmount}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                  request.status === "PAID" 
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
+                                    : request.status === "APPROVED"
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : request.status === "REJECTED"
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                }`}>
+                                  {request.status === "PAID" ? "Выплачена" : 
+                                   request.status === "APPROVED" ? "Одобрена" :
+                                   request.status === "REJECTED" ? "Отклонена" : "В обработке"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-
-                    {/* Информация о доступной сумме */}
-                    {stats && (
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-200 dark:bg-green-800 rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-green-800 dark:text-green-200">
-                              Доступно к выводу: ${stats.balance.available}
-                            </p>
-                            <p className="text-sm text-green-700 dark:text-green-300">
-                              Общий заработок: ${stats.balance.earned} | Выплачено: ${stats.balance.paid}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {salaryRequests.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Нет заявок на зарплату</h3>
-                        <p className="text-gray-500 dark:text-gray-400">Подайте заявку на выплату заработанных средств</p>
-                      </div>
-                    ) : (
-                      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-gray-50 dark:bg-gray-700">
-                              <tr>
-                                <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Дата заявки</th>
-                                <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Период</th>
-                                <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Сумма</th>
-                                <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Статус</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {salaryRequests.map((request) => (
-                                <tr key={request.id} className="border-b border-gray-100 dark:border-gray-800">
-                                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                                    {new Date(request.createdAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}
-                                  </td>
-                                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                                    {new Date(request.periodStart).toLocaleDateString('ru-RU')} - {new Date(request.periodEnd).toLocaleDateString('ru-RU')}
-                                  </td>
-                                  <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    ${request.calculatedAmount || request.requestedAmount}
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                      request.status === "PAID" 
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
-                                        : request.status === "APPROVED"
-                                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                        : request.status === "REJECTED"
-                                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    }`}>
-                                      {request.status === "PAID" ? "Выплачена" : 
-                                       request.status === "APPROVED" ? "Одобрена" :
-                                       request.status === "REJECTED" ? "Отклонена" : "В обработке"}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1822,6 +1881,11 @@ function ProcessingPageContent() {
         onSubmit={handleSalaryRequest}
         availableAmount={stats?.balance.available || 0}
         isLoading={submittingDeposit}
+      />
+
+      <EarningsBreakdown
+        isOpen={showEarningsBreakdown}
+        onClose={() => setShowEarningsBreakdown(false)}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
+import { SalaryLogger } from "@/lib/salary-logger";
 
 // GET /api/admin/salary-requests - Получение всех заявок на зарплату
 export async function GET(request: NextRequest) {
@@ -228,6 +229,19 @@ export async function PUT(request: NextRequest) {
           },
         },
       },
+    });
+
+    // Логируем действие администратора
+    await SalaryLogger.logSalaryRequestAction({
+      salaryRequestId: id,
+      processorId: currentRequest.processorId,
+      action: action || status.toUpperCase(),
+      status: status,
+      details: `Администратор изменил статус заявки на "${status}"${adminComment ? `. Комментарий: ${adminComment}` : ''}`,
+      amount: updatedRequest.calculatedAmount || updatedRequest.requestedAmount,
+      adminId: authResult.user.userId,
+      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
     });
 
     return NextResponse.json(updatedRequest);

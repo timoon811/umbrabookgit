@@ -672,10 +672,10 @@ export default function SalarySettingsTab() {
                           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
                           : 'bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400'
                       }`}>
-                        {entry.shiftType === 'MORNING' ? '🌅 Утро'
-                         : entry.shiftType === 'DAY' ? '☀️ День' 
-                         : entry.shiftType === 'NIGHT' ? '🌙 Ночь'
-                         : '🔄 Все'}
+                        {entry.shiftType === 'MORNING' ? 'Утро'
+                         : entry.shiftType === 'DAY' ? 'День' 
+                         : entry.shiftType === 'NIGHT' ? 'Ночь'
+                         : 'Все'}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-[#171717] dark:text-[#ededed]">
@@ -1169,10 +1169,10 @@ export default function SalarySettingsTab() {
                       defaultValue={editingBonusGrid?.shiftType || ''}
                       className="w-full px-3 py-2 border border-[#171717]/10 dark:border-[#ededed]/20 rounded-lg bg-white dark:bg-gray-800 text-[#171717] dark:text-[#ededed] focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     >
-                      <option value="">🔄 Все смены</option>
-                      <option value="MORNING">🌅 Утренняя (06:00-14:00)</option>
-                      <option value="DAY">☀️ Дневная (14:00-22:00)</option>
-                      <option value="NIGHT">🌙 Ночная (22:00-06:00)</option>
+                      <option value="">Все смены</option>
+                      <option value="MORNING">Утренняя (06:00-14:00)</option>
+                      <option value="DAY">Дневная (14:00-22:00)</option>
+                      <option value="NIGHT">Ночная (22:00-06:00)</option>
                     </select>
                   </div>
                 </div>

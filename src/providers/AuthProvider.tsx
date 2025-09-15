@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   mounted: boolean;
   refreshUser: () => Promise<void>;
+  forceRefresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +35,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       const response = await fetch("/api/auth/me", {
         credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       });
 
       if (response.ok) {
@@ -69,26 +74,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [mounted]);
 
-  // Добавляем слушатель для обновления пользователя при изменении storage
+  // Добавляем слушатель для обновления пользователя при возвращении фокуса
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'auth-token') {
-          fetchUser();
-        }
-      };
-
       const handleFocus = () => {
         // Обновляем данные пользователя при возвращении фокуса на страницу
         fetchUser();
       };
 
-      window.addEventListener('storage', handleStorageChange);
+      // Слушаем события кастомного обновления аутентификации
+      const handleAuthUpdate = (event: CustomEvent) => {
+        console.log('AuthProvider: получено событие обновления аутентификации', event.detail);
+        // Принудительно обновляем состояние пользователя с показом лоадера
+        const eventType = event.detail?.type;
+        if (eventType === 'login') {
+          setLoading(true);
+          // Небольшая задержка для завершения установки cookies
+          setTimeout(() => {
+            fetchUser();
+          }, 100);
+        } else {
+          fetchUser();
+        }
+      };
+
       window.addEventListener('focus', handleFocus);
+      window.addEventListener('auth-update', handleAuthUpdate as EventListener);
 
       return () => {
-        window.removeEventListener('storage', handleStorageChange);
         window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('auth-update', handleAuthUpdate);
       };
     }
   }, []);
@@ -97,8 +112,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await fetchUser();
   };
 
+  const forceRefresh = async () => {
+    console.log('AuthProvider: принудительное обновление данных пользователя');
+    setLoading(true);
+    await fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, mounted, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, mounted, refreshUser, forceRefresh }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { hasAdminAccess } from "@/lib/auth";
+import { hasAdminAccess } from "@/lib/permissions";
 import { getRoleDisplayName } from "@/types/roles";
 import type { UserRole } from "@/types/roles";
 import WalletsTab from "@/components/WalletsTab";
@@ -289,7 +289,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Быстрые действия */}
-              {hasAdminAccess(user) && (
+              {user && hasAdminAccess(user.role as UserRole) && (
                 <div className="p-4 sm:p-6 border border-black/5 dark:border-white/10 rounded-lg">
                   <h3 className="text-lg font-semibold text-black/90 dark:text-white/90 mb-4">
                     Административные функции

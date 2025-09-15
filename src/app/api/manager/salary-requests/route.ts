@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
+import { SalaryLogger } from "@/lib/salary-logger";
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
@@ -169,6 +170,26 @@ export async function POST(request: NextRequest) {
         status: "PENDING",
       },
     });
+
+    // Логируем создание заявки
+    await SalaryLogger.logSalaryRequestAction({
+      salaryRequestId: salaryRequest.id,
+      processorId,
+      action: 'CREATED',
+      status: 'PENDING',
+      details: `Создана заявка на выплату зарплаты за период ${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
+      amount: salaryRequest.requestedAmount,
+      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+    });
+
+    // Помечаем заработки как включенные в заявку
+    await SalaryLogger.markEarningsAsIncludedInSalary(
+      processorId,
+      periodStart,
+      periodEnd,
+      salaryRequest.id
+    );
 
     return NextResponse.json(salaryRequest, { status: 201 });
   } catch (error) {

@@ -6,8 +6,9 @@ import { logger } from "@/lib/logger";
 import { hasAdminAccess } from "@/lib/permissions";
 import { UserRole } from "@/types/roles";
 import { getDisplayName } from "@/utils/userUtils";
+import { getJwtSecret } from "@/lib/jwt";
 
-const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
+const JWT_SECRET = getJwtSecret();
 
 export interface AuthUser {
   userId: string;

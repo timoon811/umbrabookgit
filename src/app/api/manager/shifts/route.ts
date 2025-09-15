@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { getCurrentUTC3Time, getShiftType, getShiftStartTime, getShiftEndTime } from "@/lib/time-utils";
 import { ProcessorLogger } from "@/lib/processor-logger";
+import { SalaryLogger } from "@/lib/salary-logger";
 
 export async function GET(request: NextRequest) {
   // Проверяем авторизацию
@@ -51,6 +52,9 @@ export async function GET(request: NextRequest) {
           thirtyMinutesAfterEnd.getTime() - new Date(currentShift.actualStart!).getTime(), 
           request, true // автозавершение
         );
+
+        // Рассчитываем и логируем все заработки за автозавершенную смену
+        await calculateAndLogShiftEarnings(user.userId, currentShift.id, autoEndedShift);
 
         return NextResponse.json({ 
           shift: autoEndedShift, 
@@ -241,6 +245,9 @@ export async function POST(request: NextRequest) {
       // Логируем завершение смены
       await ProcessorLogger.logShiftEnd(user.userId, shift.shiftType, duration, request);
 
+      // Рассчитываем и логируем все заработки за смену
+      await calculateAndLogShiftEarnings(user.userId, shift.id, shift);
+
       return NextResponse.json({
         shift: updatedShift,
         isActive: false,
@@ -258,5 +265,158 @@ export async function POST(request: NextRequest) {
       { error: "Внутренняя ошибка сервера" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Рассчитывает и логирует все заработки за завершенную смену
+ */
+async function calculateAndLogShiftEarnings(
+  processorId: string, 
+  shiftId: string, 
+  shift: any
+) {
+  try {
+    console.log(`[SHIFT_EARNINGS] Начинаем расчет заработков за смену ${shiftId} для процессора ${processorId}`);
+
+    // 1. Рассчитываем часовую оплату
+    if (shift.actualStart && shift.actualEnd) {
+      const shiftDurationMs = new Date(shift.actualEnd).getTime() - new Date(shift.actualStart).getTime();
+      const shiftHours = shiftDurationMs / (1000 * 60 * 60);
+
+      // Получаем настройки зарплаты для процессора
+      const salarySettings = await prisma.salary_settings.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const hourlyRate = salarySettings?.hourlyRate || 10; // Дефолтная ставка $10/час
+
+      if (shiftHours > 0) {
+        const hourlyPayment = shiftHours * hourlyRate;
+        await SalaryLogger.logShiftHourlyPay(
+          processorId,
+          shiftId,
+          shiftHours,
+          hourlyRate,
+          hourlyPayment
+        );
+      }
+    }
+
+    // 2. Рассчитываем заработки от депозитов за смену
+    const shiftDeposits = await prisma.processor_deposits.findMany({
+      where: {
+        processorId,
+        status: 'APPROVED',
+        createdAt: {
+          gte: shift.actualStart,
+          lte: shift.actualEnd || new Date(),
+        },
+      },
+    });
+
+    console.log(`[SHIFT_DEPOSITS] Найдено ${shiftDeposits.length} одобренных депозитов за смену`);
+
+    // Логируем заработки от каждого депозита
+    for (const deposit of shiftDeposits) {
+      if (deposit.processorEarnings > 0) {
+        await SalaryLogger.logDepositEarnings(
+          processorId,
+          deposit.id,
+          shiftId,
+          deposit.processorEarnings,
+          deposit.amount,
+          deposit.commissionRate,
+          deposit.bonusAmount
+        );
+      }
+    }
+
+    // 3. Рассчитываем бонусы за объем депозитов в смене
+    const shiftVolume = shiftDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+    
+    if (shiftVolume > 0) {
+      // Получаем настройки бонусной сетки для типа смены
+      const bonusGrids = await prisma.bonus_grid.findMany({
+        where: {
+          shiftType: shift.shiftType,
+          isActive: true,
+        },
+        orderBy: { minAmount: 'desc' },
+      });
+
+      // Находим подходящий бонус
+      const applicableBonus = bonusGrids.find(grid => shiftVolume >= grid.minAmount);
+      
+      if (applicableBonus && applicableBonus.bonusPercentage > 0) {
+        const shiftBonusAmount = (shiftVolume * applicableBonus.bonusPercentage) / 100;
+        
+        await SalaryLogger.logEarnings({
+          processorId,
+          shiftId,
+          type: 'SHIFT_BONUS',
+          description: `Бонус за объем депозитов в смене: $${shiftVolume.toLocaleString()}`,
+          amount: shiftBonusAmount,
+          baseAmount: shiftVolume,
+          percentage: applicableBonus.bonusPercentage,
+          calculationDetails: `$${shiftVolume.toLocaleString()} * ${applicableBonus.bonusPercentage}% = $${shiftBonusAmount.toFixed(2)}`,
+          metadata: {
+            shiftVolume,
+            bonusPercentage: applicableBonus.bonusPercentage,
+            gridName: applicableBonus.description,
+          },
+        });
+      }
+    }
+
+    // 4. Проверяем месячные бонусы (если это конец месяца)
+    const today = new Date();
+    const isEndOfMonth = today.getDate() === new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    
+    if (isEndOfMonth) {
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      const monthlyDeposits = await prisma.processor_deposits.findMany({
+        where: {
+          processorId,
+          status: 'APPROVED',
+          createdAt: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+      });
+
+      const monthlyVolume = monthlyDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+
+      // Получаем месячные планы
+      const monthlyBonuses = await prisma.monthly_bonus.findMany({
+        where: { isActive: true },
+        orderBy: { minAmount: 'desc' },
+      });
+
+      const applicableMonthlyBonus = monthlyBonuses.find(bonus => monthlyVolume >= bonus.minAmount);
+
+      if (applicableMonthlyBonus && applicableMonthlyBonus.bonusPercent > 0) {
+        const monthlyBonusAmount = (monthlyVolume * applicableMonthlyBonus.bonusPercent) / 100;
+        
+        await SalaryLogger.logMonthlyBonus(
+          processorId,
+          monthlyVolume,
+          applicableMonthlyBonus.bonusPercent,
+          monthlyBonusAmount,
+          applicableMonthlyBonus.name,
+          monthEnd
+        );
+      }
+    }
+
+    console.log(`[SHIFT_EARNINGS] ✓ Завершен расчет заработков за смену ${shiftId}`);
+
+  } catch (error) {
+    console.error(`[SHIFT_EARNINGS] ERROR: Ошибка при расчете заработков за смену ${shiftId}:`, error);
+    // Не прерываем завершение смены из-за ошибок в логировании
   }
 }
