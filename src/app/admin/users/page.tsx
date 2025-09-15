@@ -1497,65 +1497,85 @@ function ViewUserModal({
   getStatusBadge: (status: string, isBlocked?: boolean) => React.ReactElement;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-[#0a0a0a] rounded-lg border border-[#171717]/10 dark:border-[#ededed]/10 w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b border-[#171717]/10 dark:border-[#ededed]/10">
-          <h2 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
-            Информация о пользователе
-          </h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-[#171717]/10 dark:border-[#ededed]/10 shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-100">
+        {/* Header с улучшенным дизайном */}
+        <div className="flex items-center justify-between p-6 border-b border-[#171717]/10 dark:border-[#ededed]/10 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900/50 dark:to-gray-800/50 rounded-t-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-[#171717] dark:text-[#ededed]">
+              Информация о пользователе
+            </h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-[#171717]/40 dark:text-[#ededed]/40 hover:text-[#171717] dark:hover:text-[#ededed] transition-colors"
+            className="p-2 rounded-lg text-[#171717]/40 dark:text-[#ededed]/40 hover:text-[#171717] dark:hover:text-[#ededed] hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-all duration-200"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         
+        {/* Content с улучшенным дизайном */}
         <div className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center">
-              <span className="text-xl font-medium text-white">
-                          {'Y'}
+          {/* Профильная карточка пользователя */}
+          <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800/50 dark:to-blue-900/20 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600 flex items-center justify-center shadow-lg">
+              <span className="text-xl font-bold text-white">
+                {user.name.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div>
-              <h3 className="text-xl font-medium text-[#171717] dark:text-[#ededed]">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-[#171717] dark:text-[#ededed] mb-1">
                 {user.name}
               </h3>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2">
                 {getRoleBadge(user.role)}
                 {getStatusBadge(user.status, user.isBlocked)}
               </div>
             </div>
           </div>
           
+          {/* Информационные поля */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-1">
+            <div className="group">
+              <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
                 Email
               </label>
-              <div className="text-sm text-[#171717] dark:text-[#ededed]">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm text-[#171717] dark:text-[#ededed] border border-gray-200/50 dark:border-gray-700/50">
                 {user.email}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-1">
+            
+            <div className="group">
+              <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
                 Telegram
               </label>
-              <div className="text-sm text-[#171717] dark:text-[#ededed]">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm text-[#171717] dark:text-[#ededed] border border-gray-200/50 dark:border-gray-700/50 font-mono">
                 {user.telegram}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 mb-1">
+            
+            <div className="group">
+              <label className="block text-sm font-medium text-[#171717]/70 dark:text-[#ededed]/70 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
                 Дата регистрации
               </label>
-              <div className="text-sm text-[#171717] dark:text-[#ededed]">
-                {new Date(user.createdAt).toLocaleDateString("ru", {
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-sm text-[#171717] dark:text-[#ededed] border border-gray-200/50 dark:border-gray-700/50">
+                {new Date(user.createdAt).toLocaleDateString("ru-RU", {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
@@ -1565,15 +1585,6 @@ function ViewUserModal({
               </div>
             </div>
           </div>
-        </div>
-        
-        <div className="flex justify-end gap-3 p-6 border-t border-[#171717]/10 dark:border-[#ededed]/10">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-[#171717]/60 dark:text-[#ededed]/60 hover:text-[#171717] dark:hover:text-[#ededed] hover:bg-[#171717]/5 dark:hover:bg-[#ededed]/5 transition-colors"
-          >
-            Закрыть
-          </button>
         </div>
       </div>
     </div>

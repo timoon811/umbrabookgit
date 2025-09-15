@@ -16,7 +16,7 @@ interface ContentProject {
   updatedAt: string;
 }
 
-interface UserRole {
+interface User {
   id: string;
   name: string;
   email: string;
@@ -42,7 +42,7 @@ export default function ProjectManagementModal({
 }: ProjectManagementModalProps) {
   const [activeTab, setActiveTab] = useState<'projects' | 'permissions'>('projects');
   const [projects, setProjects] = useState<ContentProject[]>([]);
-  const [users, setUsers] = useState<UserRole[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<ProjectPermission[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -219,6 +219,21 @@ export default function ProjectManagementModal({
   };
 
   const handleSavePermissions = async () => {
+    // Валидация на клиенте
+    const validationErrors = [];
+    
+    // Проверяем, что каждый проект имеет хотя бы одну роль
+    for (const permission of permissions) {
+      if (!permission.allowedRoles || permission.allowedRoles.length === 0) {
+        validationErrors.push(`Проект "${permission.projectName}" должен иметь хотя бы одну роль`);
+      }
+    }
+    
+    if (validationErrors.length > 0) {
+      alert(`Ошибки валидации:\n${validationErrors.join('\n')}`);
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch('/api/admin/project-permissions', {
@@ -230,16 +245,21 @@ export default function ProjectManagementModal({
       });
 
       if (response.ok) {
+        const result = await response.json();
         alert('Права доступа успешно сохранены');
+        console.log('Сохраненные права:', result.savedPermissions);
+        
         // Перезагружаем данные для подтверждения сохранения
-        loadData();
+        await loadData();
       } else {
         const errorData = await response.json();
-        alert(`Ошибка сохранения прав доступа: ${errorData.error || 'Неизвестная ошибка'}`);
+        const errorMessage = errorData.error || 'Неизвестная ошибка';
+        alert(`Ошибка сохранения прав доступа: ${errorMessage}`);
+        console.error('Детали ошибки:', errorData);
       }
     } catch (error) {
       console.error('Ошибка сохранения прав доступа:', error);
-      alert('Произошла ошибка при сохранении прав доступа');
+      alert('Произошла ошибка при сохранении прав доступа. Проверьте подключение к интернету.');
     } finally {
       setSaving(false);
     }

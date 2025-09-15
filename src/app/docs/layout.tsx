@@ -12,8 +12,31 @@ interface DocsLayoutProps {
 }
 
 export default async function DocsLayout({ children }: DocsLayoutProps) {
-  // Получаем навигацию для документации
-  const nav = await getDocsNav('docs');
+  // Получаем первый активный проект по умолчанию для навигации
+  let activeProjectId: string | undefined;
+  
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    const firstProject = await prisma.content_projects.findFirst({
+      where: {
+        isActive: true,
+        type: 'documentation'
+      },
+      select: {
+        id: true
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+    
+    activeProjectId = firstProject?.id;
+  } catch (error) {
+    console.error('Ошибка получения активного проекта:', error);
+  }
+
+  // Получаем навигацию для документации с учетом активного проекта
+  const nav = await getDocsNav('docs', activeProjectId);
 
   return (
     <AuthGuard>

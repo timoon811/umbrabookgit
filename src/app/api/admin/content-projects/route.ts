@@ -28,33 +28,6 @@ export async function GET(request: NextRequest) {
       ]
     });
 
-    // Если проектов нет, создаем примеры по умолчанию
-    if (projects.length === 0) {
-      
-      const defaultProjects = [
-        {
-          name: 'Основная документация',
-          description: 'Главная документация платформы',
-          type: 'documentation',
-          isActive: true
-        },
-        {
-          name: 'Учебные материалы',
-          description: 'Обучающие курсы и материалы',
-          type: 'courses', 
-          isActive: true
-        }
-      ];
-
-      const createdProjects = await Promise.all(
-        defaultProjects.map(project => 
-          prisma.content_projects.create({ data: project })
-        )
-      );
-
-      return NextResponse.json(createdProjects);
-    }
-
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Ошибка получения проектов контента:', error);
@@ -107,6 +80,52 @@ export async function POST(request: NextRequest) {
         type,
         isActive: true
       }
+    });
+
+    // Создаем дефолтные разделы для нового проекта
+    const defaultSections = [
+      {
+        name: 'Введение',
+        key: `${project.id}-introduction`,
+        description: 'Вводная информация',
+        order: 1,
+        isVisible: true,
+        projectId: project.id
+      },
+      {
+        name: 'Основы',
+        key: `${project.id}-basics`, 
+        description: 'Основные понятия и принципы',
+        order: 2,
+        isVisible: true,
+        projectId: project.id
+      },
+      {
+        name: 'Примеры',
+        key: `${project.id}-examples`,
+        description: 'Практические примеры',
+        order: 3,
+        isVisible: true,
+        projectId: project.id
+      }
+    ];
+
+    // Создаем разделы и права доступа в транзакции
+    await prisma.$transaction(async (tx) => {
+      // Создаем разделы
+      for (const section of defaultSections) {
+        await tx.documentation_sections.create({
+          data: section
+        });
+      }
+
+      // Создаем дефолтные права доступа (только для ADMIN)
+      await tx.project_permissions.create({
+        data: {
+          projectId: project.id,
+          role: 'ADMIN'
+        }
+      });
     });
 
     return NextResponse.json(project, { status: 201 });

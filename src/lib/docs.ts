@@ -19,6 +19,7 @@ interface SectionItem {
   id: string;
   key: string;
   name: string;
+  projectId?: string | null;
 }
 
 // Получаем название для раздела
@@ -54,9 +55,9 @@ export function getSectionInfo(sectionKey: string): { name: string; description:
 }
 
 // Функция получения навигации для документации из базы данных
-export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
+export async function getDocsNav(workspaceKey?: string, projectId?: string): Promise<NavSection[]> {
   try {
-    console.log('🔍 getDocsNav: Начинаем получение навигации для workspace:', workspaceKey);
+    console.log('🔍 getDocsNav: Начинаем получение навигации для workspace:', workspaceKey, 'project:', projectId);
 
     // Импортируем prisma только на сервере
     const { prisma } = await import('@/lib/prisma');
@@ -64,10 +65,41 @@ export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
     // Принудительно обновляем кэш для получения актуальных данных
     await prisma.$queryRaw`SELECT 1`;
 
-    // Получаем все опубликованные документы
+    // Получаем информацию о разделах с учетом проекта
+    const sectionsWhere: any = {
+      isVisible: true
+    };
+    
+    if (projectId) {
+      sectionsWhere.projectId = projectId;
+    }
+
+    const sections = await prisma.documentation_sections.findMany({
+      where: sectionsWhere,
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        projectId: true,
+      }
+    });
+
+    // Если нет разделов для конкретного проекта, возвращаем пустую навигацию
+    if (projectId && sections.length === 0) {
+      console.log('⚠️ getDocsNav: Нет разделов для проекта', projectId);
+      return [];
+    }
+
+    // Получаем ID разделов для фильтрации документов
+    const sectionIds = sections.map(s => s.id);
+
+    // Получаем документы только из разделов этого проекта
     const docs = await prisma.documentation.findMany({
       where: {
         isPublished: true,
+        sectionId: {
+          in: sectionIds
+        }
       },
       select: {
         id: true,
@@ -81,15 +113,6 @@ export async function getDocsNav(workspaceKey?: string): Promise<NavSection[]> {
         { order: 'asc' },
         { createdAt: 'asc' },
       ],
-    });
-
-    // Получаем информацию о разделах
-    const sections = await prisma.documentation_sections.findMany({
-      select: {
-        id: true,
-        key: true,
-        name: true,
-      }
     });
 
     // Создаем мапу разделов для быстрого доступа

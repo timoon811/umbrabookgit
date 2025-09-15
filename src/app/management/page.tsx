@@ -469,6 +469,21 @@ function ProcessingPageContent() {
               if (statsResponse.ok) {
                 const statsData = await statsResponse.json();
                 setStats(statsData);
+              } else {
+                console.error('Ошибка загрузки основной статистики:', {
+                  status: statsResponse.status,
+                  statusText: statsResponse.statusText
+                });
+                
+                // Проверяем, не проблема ли авторизации
+                if (statsResponse.status === 401) {
+                  showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
+                  router.push("/login");
+                  return;
+                } else if (statsResponse.status === 403) {
+                  showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
+                  return;
+                }
               }
 
               // Загружаем детальную статистику
@@ -484,11 +499,24 @@ function ProcessingPageContent() {
                   statusText: detailedStatsResponse.statusText,
                   url: url
                 });
+                
+                // Проверяем, не проблема ли авторизации
+                if (detailedStatsResponse.status === 401) {
+                  showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
+                  router.push("/login");
+                  return;
+                } else if (detailedStatsResponse.status === 403) {
+                  showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
+                  return;
+                }
+                
                 try {
                   const errorData = await detailedStatsResponse.json();
                   console.error('Детали ошибки:', errorData);
+                  showError("Ошибка загрузки статистики", errorData.error || errorData.message || "Не удалось загрузить статистику");
                 } catch (e) {
                   console.error('Не удалось разобрать ошибку:', e);
+                  showError("Ошибка сервера", "Не удалось загрузить статистику. Попробуйте позже.");
                 }
               }
 
@@ -614,11 +642,35 @@ function ProcessingPageContent() {
       if (detailedStatsResponse.ok) {
         const detailedStatsData = await detailedStatsResponse.json();
         setDetailedStats(detailedStatsData);
+      } else {
+        console.error('Ошибка загрузки детальной статистики:', {
+          status: detailedStatsResponse.status,
+          statusText: detailedStatsResponse.statusText,
+          url: url
+        });
+        
+        // Проверяем, не проблема ли авторизации
+        if (detailedStatsResponse.status === 401) {
+          showError("Ошибка авторизации", "Пожалуйста, войдите в систему заново");
+          router.push("/login");
+          return;
+        } else if (detailedStatsResponse.status === 403) {
+          showError("Доступ запрещен", "У вас нет прав для просмотра статистики");
+          return;
+        }
+        
+        try {
+          const errorData = await detailedStatsResponse.json();
+          showError("Ошибка загрузки статистики", errorData.error || errorData.message || "Не удалось загрузить статистику");
+        } catch (e) {
+          showError("Ошибка сервера", "Не удалось загрузить статистику. Попробуйте позже.");
+        }
       }
     } catch (error) {
       console.error("Ошибка загрузки детальной статистики:", error);
+      showError("Ошибка сети", "Проблема с подключением к серверу");
     }
-  }, [selectedPeriod]);
+  }, [selectedPeriod, showError, router]);
 
   // Функция для изменения периода
   const handlePeriodChange = async (period: 'current' | 'previous' | 'custom') => {
@@ -1512,7 +1564,19 @@ function ProcessingPageContent() {
                       </svg>
                       <div>
                         <h3 className="text-lg font-medium text-red-800 dark:text-red-200">Не удалось загрузить статистику</h3>
-                        <p className="text-red-600 dark:text-red-300">Проверьте консоль для подробностей ошибки.</p>
+                        <p className="text-red-600 dark:text-red-300 mb-2">Возможные причины:</p>
+                        <ul className="text-sm text-red-600 dark:text-red-300 list-disc list-inside space-y-1">
+                          <li>Проблемы с авторизацией - попробуйте войти заново</li>
+                          <li>Недостаточно прав доступа</li>
+                          <li>Проблемы с подключением к серверу</li>
+                          <li>Временные неполадки сервиса</li>
+                        </ul>
+                        <button 
+                          onClick={() => window.location.reload()} 
+                          className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                        >
+                          Обновить страницу
+                        </button>
                       </div>
                     </div>
                   </div>

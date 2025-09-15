@@ -588,10 +588,39 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(stats);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Ошибка получения детальной статистики:", error);
+    
+    // Более детальная обработка ошибок
+    if (error.name === 'PrismaClientKnownRequestError') {
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { error: "Нарушение уникальности данных" },
+          { status: 400 }
+        );
+      } else if (error.code === 'P2025') {
+        return NextResponse.json(
+          { error: "Запрашиваемые данные не найдены" },
+          { status: 404 }
+        );
+      }
+    } else if (error.name === 'PrismaClientValidationError') {
+      return NextResponse.json(
+        { error: "Ошибка валидации данных запроса" },
+        { status: 400 }
+      );
+    } else if (error.name === 'PrismaClientUnknownRequestError') {
+      return NextResponse.json(
+        { error: "Ошибка подключения к базе данных" },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "Внутренняя ошибка сервера" },
+      { 
+        error: "Внутренняя ошибка сервера", 
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      },
       { status: 500 }
     );
   }
