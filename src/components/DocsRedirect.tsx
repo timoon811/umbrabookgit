@@ -8,7 +8,7 @@ interface DocsRedirectProps {
   fallbackSlug?: string;
 }
 
-export default function DocsRedirect({ fallbackSlug = "page-4" }: DocsRedirectProps) {
+export default function DocsRedirect({ fallbackSlug = "page-1" }: DocsRedirectProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
