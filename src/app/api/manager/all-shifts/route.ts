@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
         isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < actualEndMinutes);
       } else if (isEarlyMorningShift) {
         // Раннеутренняя "ночная" смена (00:00-08:00)
-        // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
-        const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+        // Активна за 30 минут до начала (23:30) до конца смены (08:01)
+        const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30; // Для 00:01 = 23:31
         isCurrent = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
       } else {
         // Обычная смена в пределах одного дня
