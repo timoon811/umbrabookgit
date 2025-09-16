@@ -73,8 +73,8 @@ function ShiftManagementControls({
           isCurrentShift = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else if (isEarlyMorningShift) {
           // Раннеутренняя "ночная" смена (00:00-08:00)
-          // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
-          const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+          // Активна за 30 минут до начала до конца смены
+          const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30;
           isCurrentShift = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else {
           // Обычная смена в рамках одного дня
@@ -134,8 +134,8 @@ function ShiftManagementControls({
           canStart = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else if (isEarlyMorningShift) {
           // Раннеутренняя "ночная" смена (00:00-08:00)
-          // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
-          const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+          // Активна за 30 минут до начала до конца смены
+          const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30;
           canStart = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else {
           // Обычная смена в рамках одного дня
