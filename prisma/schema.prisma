@@ -143,17 +143,18 @@ model documentation {
 }
 
 model finance_accounts {
-  id               String                 @id @default(uuid())
-  name             String
-  type             String                 @default("OTHER")
-  currency         String                 @default("USD")
-  balance          Float                  @default(0)
-  commission       Float                  @default(0)
-  cryptocurrencies String?
-  isArchived       Boolean                @default(false)
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  transactions     finance_transactions[]
+  id                   String                 @id @default(uuid())
+  name                 String
+  type                 String                 @default("OTHER")
+  currency             String                 @default("USD")
+  balance              Float                  @default(0)
+  commission           Float                  @default(0)
+  cryptocurrencies     String?
+  isArchived           Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  transactions         finance_transactions[]
+  transfersTo          finance_transactions[] @relation("TransactionToAccount")
 
   @@map("finance_accounts")
 }
@@ -223,10 +224,18 @@ model finance_transactions {
   date              DateTime                @default(now())
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
+  // Поля для переводов и обменов
+  toAccountId       String?
+  exchangeRate      Float?
+  fromCurrency      String?
+  toCurrency        String?
+  toAmount          Float?
+  
   project           finance_projects?       @relation(fields: [projectId], references: [id])
   category          finance_categories?     @relation(fields: [categoryId], references: [id])
   counterparty      finance_counterparties? @relation(fields: [counterpartyId], references: [id])
   account           finance_accounts        @relation(fields: [accountId], references: [id])
+  toAccount         finance_accounts?       @relation("TransactionToAccount", fields: [toAccountId], references: [id])
 
   @@index([accountId])
   @@index([categoryId])
@@ -234,6 +243,7 @@ model finance_transactions {
   @@index([projectKey])
   @@index([date])
   @@index([type])
+  @@index([toAccountId])
   @@map("finance_transactions")
 }
 
@@ -370,6 +380,7 @@ enum TransactionType {
   INCOME
   EXPENSE
   TRANSFER
+  EXCHANGE
 }
 
 enum DepositStatus {
