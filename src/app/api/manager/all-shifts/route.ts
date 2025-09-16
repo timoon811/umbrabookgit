@@ -48,31 +48,34 @@ export async function GET(request: NextRequest) {
       
       // Формируем отображение времени
       const startTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-      let endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      
+      // Правильная обработка времени окончания для ночных смен
+      let displayEndHour = endHour;
+      if (endHour >= 24) {
+        displayEndHour = endHour - 24; // 30 -> 6, 25 -> 1, etc.
+      }
+      let endTime = `${displayEndHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
       // Обработка ночных смен (переход через полночь)
       let timeDisplay = `${startTime} - ${endTime}`;
-      if (endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
+      if (endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
         timeDisplay = `${startTime} - ${endTime} (+1)`;
       }
 
       // Определяем, является ли смена текущей по времени
       const shiftStartMinutes = startHour * 60 + startMinute;
-      let shiftEndMinutes = endHour * 60 + endMinute;
-      
-      // Обработка ночных смен
-      if (shiftEndMinutes <= shiftStartMinutes) {
-        shiftEndMinutes += 24 * 60;
-      }
+      const shiftEndMinutes = endHour * 60 + endMinute;
       
       let isCurrent = false;
-      if (shiftStartMinutes < shiftEndMinutes) {
+      
+      // Проверяем тип смены
+      if (endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute)) {
+        // Ночная смена через полночь (например 22:00-06:00, где endHour=30 или endHour=6)
+        const actualEndMinutes = endHour >= 24 ? (endHour - 24) * 60 + endMinute : shiftEndMinutes;
+        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < actualEndMinutes);
+      } else {
         // Обычная смена в пределах одного дня
         isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
-      } else {
-        // Ночная смена через полночь
-        isCurrent = currentTotalMinutes >= shiftStartMinutes || 
-                   currentTotalMinutes < (shiftEndMinutes - 24 * 60);
       }
 
       // Определяем доступность смены для менеджера (должна быть активна и назначена пользователю)
@@ -95,7 +98,7 @@ export async function GET(request: NextRequest) {
                       shiftType === 'DAY' ? 'Дневная смена' : 'Ночная смена'),
         timeDisplay,
         startTime: { hour: startHour, minute: startMinute },
-        endTime: { hour: endHour, minute: endMinute },
+        endTime: { hour: endHour >= 24 ? endHour - 24 : endHour, minute: endMinute },
         description: description || (shiftType === 'MORNING' ? 'Утренняя смена для ранних пташек' :
                     shiftType === 'DAY' ? 'Дневная смена - основное рабочее время' :
                     'Ночная смена для работы в темное время суток'),

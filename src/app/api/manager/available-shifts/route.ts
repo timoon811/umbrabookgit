@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
       
       // Формируем время начала и окончания для отображения
       const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-      const endTimeStr = `${(endHour >= 24 ? endHour - 24 : endHour).toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      const displayEndHour = endHour >= 24 ? endHour - 24 : endHour;
+      const endTimeStr = `${displayEndHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
       let timeDisplay = `${startTimeStr} - ${endTimeStr}`;
       if (endHour >= 24) {
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
                       shiftType === 'DAY' ? 'Дневная смена' : 'Ночная смена'),
         timeDisplay,
         startTime: { hour: startHour, minute: startMinute },
-        endTime: { hour: endHour, minute: endMinute },
+        endTime: { hour: endHour >= 24 ? endHour - 24 : endHour, minute: endMinute },
         description: description || (shiftType === 'MORNING' ? 'Утренняя смена для ранних пташек' :
                     shiftType === 'DAY' ? 'Дневная смена - основное рабочее время' :
                     'Ночная смена для работы в темное время суток'),
