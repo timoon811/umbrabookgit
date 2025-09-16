@@ -10,7 +10,7 @@ export default function MigratePage() {
   const checkMigrationStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/test-migrate', {
+      const response = await fetch('/api/admin/full-migrate', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -30,13 +30,14 @@ export default function MigratePage() {
   const applyMigration = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/test-migrate', {
+      const response = await fetch('/api/admin/full-migrate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          secret: 'migrate_2025'
+          secret: 'migrate_2025_full',
+          action: 'apply_all_migrations'
         }),
       });
       
@@ -74,7 +75,7 @@ export default function MigratePage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Проверка статуса миграций
+              🔍 Полный аудит базы данных
             </h2>
             
             <button
@@ -96,17 +97,18 @@ export default function MigratePage() {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Применение миграции для колонок Platform Commission
+              🚀 Применение полной миграции схемы базы данных
             </h2>
             
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
               <p className="text-yellow-800 dark:text-yellow-200">
-                <strong>Внимание:</strong> Эта операция добавит отсутствующие колонки в таблицу processor_deposits:
+                <strong>Внимание:</strong> Эта операция применит все отсутствующие миграции:
               </p>
               <ul className="list-disc list-inside mt-2 text-yellow-700 dark:text-yellow-300">
-                <li>platformCommissionPercent</li>
-                <li>platformCommissionAmount</li>
-                <li>processorEarnings</li>
+                <li>Добавит отсутствующие колонки в processor_deposits</li>
+                <li>Создаст недостающие таблицы (user_goals, goal_types, и др.)</li>
+                <li>Установит правильные индексы и внешние ключи</li>
+                <li>Применит все ожидающие миграции схемы</li>
               </ul>
             </div>
 

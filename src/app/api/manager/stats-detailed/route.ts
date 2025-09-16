@@ -395,21 +395,37 @@ export async function GET(request: NextRequest) {
     // Цели на месяц из настроенных планов
     const totalMonthDeposits = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
     
-    // Получаем активные месячные планы
-    const activeGoals = await prisma.user_goals.findMany({
-      where: {
-        isActive: true,
-        periodType: 'MONTHLY'
-      },
-      include: {
-        goalType: true,
-        stages: {
-          where: { isActive: true },
-          orderBy: { targetValue: 'desc' },
-          take: 1 // Берем максимальную цель
-        }
+    // Получаем активные месячные планы (с проверкой существования таблицы)
+    let activeGoals = [];
+    try {
+      // Проверяем существование таблицы user_goals
+      const tableExists = await prisma.$queryRaw`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_goals'
+      ` as Array<{ table_name: string }>;
+
+      if (tableExists.length > 0) {
+        activeGoals = await prisma.user_goals.findMany({
+          where: {
+            isActive: true,
+            periodType: 'MONTHLY'
+          },
+          include: {
+            goalType: true,
+            stages: {
+              where: { isActive: true },
+              orderBy: { targetValue: 'desc' },
+              take: 1 // Берем максимальную цель
+            }
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.log("Таблица user_goals не найдена, используем дефолтные цели");
+      activeGoals = [];
+    }
     
     // Определяем цели по типам
     let monthlyGoals = {
