@@ -136,15 +136,10 @@ export async function POST(
 
     // Транзакция для обновления назначений
     await prisma.$transaction(async (tx) => {
-      // Деактивируем все текущие назначения
-      await tx.user_shift_assignments.updateMany({
+      // Удаляем все существующие назначения пользователя
+      await tx.user_shift_assignments.deleteMany({
         where: {
-          userId,
-          isActive: true
-        },
-        data: {
-          isActive: false,
-          updatedAt: new Date()
+          userId
         }
       });
 
@@ -156,8 +151,7 @@ export async function POST(
             shiftSettingId: shiftId,
             assignedBy: authResult.user.userId,
             isActive: true
-          })),
-          skipDuplicates: true
+          }))
         });
       }
     });
