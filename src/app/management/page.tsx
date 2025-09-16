@@ -64,9 +64,18 @@ function ShiftManagementControls({
         let isCurrentShift = false;
         const canStartAtMinutes = shiftStartMinutes - 30;
         
-        if (shiftEndMinutes < shiftStartMinutes) {
-          // Ночная смена через полночь
+        // Определяем тип смены
+        const isNightShiftThroughMidnight = shiftEndMinutes < shiftStartMinutes;
+        const isEarlyMorningShift = shift.type === 'NIGHT' && shift.startTime.hour < 12; // Смены типа 00:00-08:00
+        
+        if (isNightShiftThroughMidnight) {
+          // Обычная ночная смена через полночь (22:00-06:00)
           isCurrentShift = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
+        } else if (isEarlyMorningShift) {
+          // Раннеутренняя "ночная" смена (00:00-08:00)
+          // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
+          const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+          isCurrentShift = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else {
           // Обычная смена в рамках одного дня
           isCurrentShift = currentTotalMinutes >= canStartAtMinutes && currentTotalMinutes < shiftEndMinutes;
@@ -107,10 +116,19 @@ function ShiftManagementControls({
         
         let canStart = false;
         // Проверяем возможность начать смену за 30 минут до начала или во время смены
-        if (shiftEndMinutes < shiftStartMinutes) {
-          // Ночная смена через полночь (например 22:00-06:00)
-          // Можно начать: с 21:30 до 06:00 следующего дня
+        
+        // Определяем тип смены для логики начала
+        const isNightShiftThroughMidnight = shiftEndMinutes < shiftStartMinutes;
+        const isEarlyMorningShift = nearestShift.type === 'NIGHT' && nearestShift.startTime.hour < 12;
+        
+        if (isNightShiftThroughMidnight) {
+          // Обычная ночная смена через полночь (22:00-06:00)
           canStart = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
+        } else if (isEarlyMorningShift) {
+          // Раннеутренняя "ночная" смена (00:00-08:00)
+          // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
+          const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+          canStart = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else {
           // Обычная смена в рамках одного дня
           // Можно начать: с (начало-30мин) до конца смены
@@ -123,14 +141,21 @@ function ShiftManagementControls({
 
         if (canStart) {
           // Определяем статус относительно времени смены
-          if (shiftEndMinutes < shiftStartMinutes) {
-            // Ночная смена
+          if (isNightShiftThroughMidnight) {
+            // Обычная ночная смена через полночь
             if (currentTotalMinutes >= shiftStartMinutes) {
               setTimeToNextShift("Можно начать смену (смена уже началась)");
             } else if (currentTotalMinutes < shiftEndMinutes) {
               setTimeToNextShift("Можно начать смену (смена продолжается)");
             } else {
               setTimeToNextShift("Можно начать смену (за 30 мин до начала)");
+            }
+          } else if (isEarlyMorningShift) {
+            // Раннеутренняя "ночная" смена (00:00-08:00)
+            if (currentTotalMinutes >= (24 * 60) - 30) {
+              setTimeToNextShift("Можно начать смену (за 30 мин до начала)");
+            } else if (currentTotalMinutes < shiftEndMinutes) {
+              setTimeToNextShift("Можно начать смену (смена продолжается)");
             }
           } else {
             // Обычная смена

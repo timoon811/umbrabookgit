@@ -64,12 +64,23 @@ export async function GET(request: NextRequest) {
       const shiftEndMinutes = endHour * 60 + endMinute;
       
       let isCurrent = false;
-      if (endHour < 24) {
-        // Смена в пределах одного дня
-        isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
+      
+      // Проверяем тип смены
+      const isNightShiftThroughMidnight = endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute);
+      const isEarlyMorningShift = shiftType === 'NIGHT' && startHour < 12; // Смены типа 00:00-08:00
+      
+      if (isNightShiftThroughMidnight) {
+        // Обычная ночная смена через полночь (22:00-06:00)
+        const actualEndMinutes = endHour >= 24 ? (endHour - 24) * 60 + endMinute : shiftEndMinutes;
+        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < actualEndMinutes);
+      } else if (isEarlyMorningShift) {
+        // Раннеутренняя "ночная" смена (00:00-08:00)
+        // Можно начать за 30 минут до начала (23:30) до конца смены (08:00)
+        const canStartFromMinutes = (24 * 60) - 30; // 23:30 предыдущего дня
+        isCurrent = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
       } else {
-        // Смена переходит на следующий день
-        isCurrent = currentTotalMinutes >= shiftStartMinutes || currentTotalMinutes < (shiftEndMinutes - 24 * 60);
+        // Обычная смена в пределах одного дня
+        isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
       }
       
       return {
