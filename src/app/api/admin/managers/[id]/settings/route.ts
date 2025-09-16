@@ -2,8 +2,73 @@ import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Проверка прав администратора
+// GET /api/admin/managers/[id]/settings - Получение настроек менеджера
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await checkAdminAuthUserId();
+    const { id: processorId } = await params;
 
+    // Получаем данные пользователя
+    const user = await prisma.users.findUnique({
+      where: { id: processorId },
+      include: {
+        assignedShifts: {
+          include: {
+            shiftSetting: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Пользователь не найден" },
+        { status: 404 }
+      );
+    }
+
+    // Получаем настройки бонусов (можно использовать дефолтные)
+    const bonusSettings = await prisma.bonus_settings.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const settings = {
+      baseRate: 5.0, // Базовая ставка (можно добавить в схему пользователя)
+      bonusPercentage: bonusSettings ? JSON.parse(bonusSettings.tiers || '[]')[0]?.percentage || 0 : 0,
+      fixedBonus: 0, // Фиксированный бонус
+      customBonusRules: bonusSettings?.description || "",
+      commissionRate: 30.0, // Default commission rate
+      shiftTypes: user.assignedShifts.map(assignment => ({
+        type: assignment.shiftSetting.shiftType,
+        name: assignment.shiftSetting.name,
+        startTime: `${String(assignment.shiftSetting.startHour).padStart(2, '0')}:${String(assignment.shiftSetting.startMinute).padStart(2, '0')}`,
+        endTime: `${String(assignment.shiftSetting.endHour).padStart(2, '0')}:${String(assignment.shiftSetting.endMinute).padStart(2, '0')}`,
+        isActive: assignment.isActive
+      })),
+      userInfo: {
+        name: user.name,
+        email: user.email,
+        telegram: user.telegram,
+        role: user.role,
+        status: user.status,
+        isBlocked: user.isBlocked
+      }
+    };
+
+    return NextResponse.json(settings);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
+    console.error("Ошибка получения настроек менеджера:", error);
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: errorMessage === "Не авторизован" ? 401 : errorMessage === "Недостаточно прав" ? 403 : 500 }
+    );
+  }
+}
 
 // PUT /api/admin/managers/[id]/settings - Обновление настроек менеджера
 export async function PUT(

@@ -2,8 +2,67 @@ import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Проверка прав администратора
+// GET /api/admin/managers/[id]/salary - Получение данных о зарплате менеджера
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await checkAdminAuthUserId();
+    const { id: processorId } = await params;
 
+    // Получаем данные пользователя и его зарплатную информацию
+    const user = await prisma.users.findUnique({
+      where: { id: processorId },
+      include: {
+        salaryRequests: {
+          where: { status: "PAID" },
+          orderBy: { paidAt: "desc" },
+          take: 1,
+        },
+        processorDeposits: {
+          where: { 
+            createdAt: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Пользователь не найден" },
+        { status: 404 }
+      );
+    }
+
+    // Рассчитываем статистику зарплаты
+    const monthlyEarnings = user.processorDeposits.reduce((sum, d) => sum + d.processorEarnings, 0);
+    const lastPaidRequest = user.salaryRequests[0];
+    const totalPaid = user.salaryRequests.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0);
+
+    const salaryData = {
+      baseSalary: 0, // Base hourly rate (можно добавить в схему)
+      commissionRate: 30.0, // Default commission rate
+      bonusMultiplier: 1.0,
+      monthlyEarnings: Math.round(monthlyEarnings * 100) / 100,
+      lastPaid: lastPaidRequest?.paidAt || null,
+      lastPaidAmount: lastPaidRequest ? (lastPaidRequest.calculatedAmount || lastPaidRequest.requestedAmount) : 0,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      availableForPayout: Math.round(monthlyEarnings * 100) / 100,
+    };
+
+    return NextResponse.json(salaryData);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
+    console.error("Ошибка получения данных о зарплате:", error);
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: errorMessage === "Не авторизован" ? 401 : errorMessage === "Недостаточно прав" ? 403 : 500 }
+    );
+  }
+}
 
 // PUT /api/admin/managers/[id]/salary - Обновление данных о зарплате менеджера
 export async function PUT(
