@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { AdminHeader } from '@/components/AdminHeader';
 
 export default function MigratePage() {
   const [loading, setLoading] = useState(false);
@@ -11,7 +10,7 @@ export default function MigratePage() {
   const checkMigrationStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/migrate', {
+      const response = await fetch('/api/admin/test-migrate', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -31,13 +30,13 @@ export default function MigratePage() {
   const applyMigration = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/migrate', {
+      const response = await fetch('/api/admin/test-migrate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'apply_platform_commission_columns'
+          secret: 'migrate_2025'
         }),
       });
       
@@ -58,13 +57,20 @@ export default function MigratePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <AdminHeader />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-            Применение миграций базы данных
+      {/* Простой заголовок без зависимостей */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 mb-8">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            🔧 Миграция базы данных
           </h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            Применение отсутствующих колонок в PostgreSQL
+          </p>
+        </div>
+      </header>
+      
+      <div className="container mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto">
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
