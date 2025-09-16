@@ -83,9 +83,17 @@ function ShiftManagementControls({
         
         if (isCurrentShift) {
           // Если это текущая смена, делаем её приоритетной
-          nearestShift = shift;
-          minTimeDiff = 0;
-          break;
+          // Дополнительная проверка: если уже есть текущая смена, выбираем более подходящую
+          if (!nearestShift || minTimeDiff > 0) {
+            nearestShift = shift;
+            minTimeDiff = 0;
+          }
+          // Для ночных смен (NIGHT) - всегда приоритет в ночное время
+          if (shift.type === 'NIGHT' && (currentTotalMinutes < 360 || currentTotalMinutes >= 1410)) {
+            nearestShift = shift;
+            minTimeDiff = 0;
+            break; // Принудительно выбираем ночную смену в ночное время
+          }
         }
         
         // Ищем ближайшую будущую смену

@@ -119,8 +119,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Определяем текущую смену из доступных
-    const currentShift = shifts.find(shift => shift.isCurrent);
+    // Определяем текущую смену из доступных с приоритетом для ночных смен
+    const currentShifts = shifts.filter(shift => shift.isCurrent && shift.isAvailableForManager);
+    let currentShift = null;
+    
+    if (currentShifts.length > 1) {
+      // Если несколько текущих смен, приоритет ночным сменам в ночное время
+      const isNightTime = currentTotalMinutes < 360 || currentTotalMinutes >= 1410; // 00:00-06:00 или 23:30-24:00
+      const nightShift = currentShifts.find(s => s.type === 'NIGHT');
+      
+      if (isNightTime && nightShift) {
+        currentShift = nightShift;
+      } else {
+        currentShift = currentShifts[0];
+      }
+    } else {
+      currentShift = currentShifts[0] || null;
+    }
+    
     const currentShiftType = currentShift?.type || null;
     
     return NextResponse.json({
