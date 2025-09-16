@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, slug, content, sectionId, order = 0, isPublished = false, parentId } = body;
+    const { title, description, slug, content, sectionId, order = 0, isPublished = true, parentId } = body;
     
     if (!title) {
       return NextResponse.json({ error: "Название страницы обязательно" }, { status: 400 });
