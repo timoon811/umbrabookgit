@@ -40,6 +40,7 @@ const navigationSections = [
     title: "СИСТЕМА",
     items: [
       { name: "Настройки", href: "/admin/settings" },
+      { name: "База данных", href: "/admin/database" },
     ],
   },
 ];

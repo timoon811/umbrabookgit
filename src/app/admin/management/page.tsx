@@ -91,6 +91,7 @@ interface ManagerFilters {
 
 export default function AdminManagementPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [activeShiftSubTab, setActiveShiftSubTab] = useState("logs"); // logs или settings
   const [activeSalarySubTab, setActiveSalarySubTab] = useState("requests"); // requests или settings
@@ -141,7 +142,6 @@ export default function AdminManagementPage() {
   useEffect(() => {
     loadData();
     loadManagers();
-    loadManagers();
   }, []);
 
   useEffect(() => {
@@ -170,9 +170,13 @@ export default function AdminManagementPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('Инициализация страницы управления...');
       // Здесь может быть дополнительная логика загрузки при необходимости
     } catch (error) {
       console.error("Ошибка загрузки данных:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка загрузки данных';
+      setError(errorMessage);
+      toast.error("Ошибка загрузки данных");
     } finally {
       setLoading(false);
     }
@@ -322,15 +326,34 @@ export default function AdminManagementPage() {
   // Функции для управления менеджерами
   const loadManagers = async () => {
     try {
+      console.log('Загружаю менеджеров...');
       const response = await fetch('/api/admin/users?role=PROCESSOR');
-      if (response.ok) {
-        const users = await response.json();
-        
-        // Преобразуем пользователей в менеджеров с дополнительными данными
-        const managersData = await Promise.all(
-          users.users.map(async (user: { id: string; name: string; email: string; telegram?: string; isBlocked: boolean; createdAt: string; updatedAt: string }) => {
-            // Получаем статистику менеджера
-            const statsResponse = await fetch(`/api/admin/managers/${user.id}/stats`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const users = await response.json();
+      console.log('Получены пользователи:', users);
+      
+      if (!users.users || !Array.isArray(users.users)) {
+        console.warn('Некорректный формат данных пользователей');
+        setManagers([]);
+        return;
+      }
+      
+      // Преобразуем пользователей в менеджеров с дополнительными данными
+      const managersData = await Promise.all(
+        users.users.map(async (user: { id: string; name: string; email: string; telegram?: string; isBlocked: boolean; createdAt: string; updatedAt: string }) => {
+          try {
+            // Получаем статистику менеджера с тайм-аутом
+            const statsController = new AbortController();
+            const statsTimeout = setTimeout(() => statsController.abort(), 5000);
+            
+            const statsResponse = await fetch(`/api/admin/managers/${user.id}/stats`, {
+              signal: statsController.signal
+            });
+            clearTimeout(statsTimeout);
+            
             const stats = statsResponse.ok ? await statsResponse.json() : {
               totalDeposits: 0,
               totalAmount: 0,
@@ -342,13 +365,27 @@ export default function AdminManagementPage() {
             };
 
             // Получаем настройки менеджера
-            const settingsResponse = await fetch(`/api/admin/managers/${user.id}/settings`);
+            const settingsController = new AbortController();
+            const settingsTimeout = setTimeout(() => settingsController.abort(), 5000);
+            
+            const settingsResponse = await fetch(`/api/admin/managers/${user.id}/settings`, {
+              signal: settingsController.signal
+            });
+            clearTimeout(settingsTimeout);
+            
             const settings = settingsResponse.ok ? await settingsResponse.json() : {
               customBonusRules: ''
             };
 
             // Получаем данные о зарплате
-            const salaryResponse = await fetch(`/api/admin/managers/${user.id}/salary`);
+            const salaryController = new AbortController();
+            const salaryTimeout = setTimeout(() => salaryController.abort(), 5000);
+            
+            const salaryResponse = await fetch(`/api/admin/managers/${user.id}/salary`, {
+              signal: salaryController.signal
+            });
+            clearTimeout(salaryTimeout);
+            
             const salary = salaryResponse.ok ? await salaryResponse.json() : {
               baseSalary: 0,
               commissionRate: 0,
@@ -363,13 +400,42 @@ export default function AdminManagementPage() {
               settings,
               salary
             };
-          })
-        );
+          } catch (error) {
+            console.error(`Ошибка загрузки данных менеджера ${user.id}:`, error);
+            return {
+              ...user,
+              stats: {
+                totalDeposits: 0,
+                totalAmount: 0,
+                totalBonuses: 0,
+                avgBonusRate: 0,
+                thisMonthDeposits: 0,
+                thisMonthAmount: 0,
+                thisMonthBonuses: 0
+              },
+              settings: {
+                customBonusRules: ''
+              },
+              salary: {
+                baseSalary: 0,
+                commissionRate: 0,
+                bonusMultiplier: 1.0,
+                lastPaid: null,
+                totalPaid: 0
+              }
+            };
+          }
+        })
+      );
 
-        setManagers(managersData);
-      }
+      console.log('Загружены менеджеры:', managersData);
+      setManagers(managersData);
     } catch (error) {
-      console.error("Ошибка загрузки менеджеров:", error);
+      console.error('Ошибка загрузки менеджеров:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка загрузки менеджеров';
+      toast.error('Ошибка загрузки менеджеров');
+      setError(errorMessage);
+      setManagers([]);
     }
   };
 
@@ -398,6 +464,28 @@ export default function AdminManagementPage() {
     }
   };
 
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4 text-lg font-medium">Ошибка загрузки страницы</div>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button 
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              loadData();
+              loadManagers();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
