@@ -46,9 +46,11 @@ function ShiftManagementControls({
       const availableShifts = allShifts.filter(s => s.isAvailableForManager);
       if (availableShifts.length === 0) return;
 
-      const now = new Date(currentTime);
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
+      // Используем время в UTC+3 для корректной работы с графиком смен
+      const utcTime = new Date(currentTime);
+      const utc3Time = new Date(utcTime.getTime() + (utcTime.getTimezoneOffset() * 60000) + (3 * 60 * 60 * 1000));
+      const currentHour = utc3Time.getUTCHours();
+      const currentMinute = utc3Time.getUTCMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
 
       let nearestShift = null;
@@ -56,17 +58,34 @@ function ShiftManagementControls({
 
       for (const shift of availableShifts) {
         const shiftStartMinutes = shift.startTime.hour * 60 + shift.startTime.minute;
+        const shiftEndMinutes = shift.endTime.hour * 60 + shift.endTime.minute;
         
-        // Время когда можно начать смену (за 30 минут до начала)
-        const canStartAt = shiftStartMinutes - 30;
+        // Проверяем, является ли смена текущей (активной для запуска)
+        let isCurrentShift = false;
+        const canStartAtMinutes = shiftStartMinutes - 30;
         
-        // Рассчитываем разность времени
+        if (shiftEndMinutes < shiftStartMinutes) {
+          // Ночная смена через полночь
+          isCurrentShift = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
+        } else {
+          // Обычная смена в рамках одного дня
+          isCurrentShift = currentTotalMinutes >= canStartAtMinutes && currentTotalMinutes < shiftEndMinutes;
+        }
+        
+        if (isCurrentShift) {
+          // Если это текущая смена, делаем её приоритетной
+          nearestShift = shift;
+          minTimeDiff = 0;
+          break;
+        }
+        
+        // Ищем ближайшую будущую смену
         let timeDiff;
-        if (canStartAt > currentTotalMinutes) {
-          timeDiff = canStartAt - currentTotalMinutes;
+        if (canStartAtMinutes > currentTotalMinutes) {
+          timeDiff = canStartAtMinutes - currentTotalMinutes;
         } else {
           // Смена на следующий день
-          timeDiff = (24 * 60) - currentTotalMinutes + canStartAt;
+          timeDiff = (24 * 60) - currentTotalMinutes + canStartAtMinutes;
         }
 
         if (timeDiff < minTimeDiff) {
@@ -78,19 +97,49 @@ function ShiftManagementControls({
       if (nearestShift) {
         setNextShift(nearestShift);
         
-        // Проверяем, можно ли уже начать смену (за 30 минут до начала)
+        // Проверяем, можно ли начать смену
+        // Менеджер может начать смену:
+        // 1. За 30 минут до начала смены
+        // 2. В любое время до окончания смены (даже если опоздал)
         const shiftStartMinutes = nearestShift.startTime.hour * 60 + nearestShift.startTime.minute;
+        const shiftEndMinutes = nearestShift.endTime.hour * 60 + nearestShift.endTime.minute;
         const canStartAtMinutes = shiftStartMinutes - 30;
         
         let canStart = false;
-        if (canStartAtMinutes <= currentTotalMinutes && currentTotalMinutes < shiftStartMinutes) {
-          canStart = true;
+        // Проверяем возможность начать смену за 30 минут до начала или во время смены
+        if (shiftEndMinutes < shiftStartMinutes) {
+          // Ночная смена через полночь (например 22:00-06:00)
+          // Можно начать: с 21:30 до 06:00 следующего дня
+          canStart = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
+        } else {
+          // Обычная смена в рамках одного дня
+          // Можно начать: с (начало-30мин) до конца смены
+          if (canStartAtMinutes <= currentTotalMinutes) {
+            canStart = currentTotalMinutes < shiftEndMinutes;
+          }
         }
         
         setCanStartShift(canStart);
 
         if (canStart) {
-          setTimeToNextShift("Можно начать смену");
+          // Определяем статус относительно времени смены
+          if (shiftEndMinutes < shiftStartMinutes) {
+            // Ночная смена
+            if (currentTotalMinutes >= shiftStartMinutes) {
+              setTimeToNextShift("Можно начать смену (смена уже началась)");
+            } else if (currentTotalMinutes < shiftEndMinutes) {
+              setTimeToNextShift("Можно начать смену (смена продолжается)");
+            } else {
+              setTimeToNextShift("Можно начать смену (за 30 мин до начала)");
+            }
+          } else {
+            // Обычная смена
+            if (currentTotalMinutes >= shiftStartMinutes) {
+              setTimeToNextShift("Можно начать смену (смена уже началась)");
+            } else {
+              setTimeToNextShift("Можно начать смену (за 30 мин до начала)");
+            }
+          }
         } else {
           const hours = Math.floor(minTimeDiff / 60);
           const minutes = minTimeDiff % 60;
@@ -155,7 +204,7 @@ function ShiftManagementControls({
           <div className="text-xs text-gray-600 dark:text-gray-400">
             {canStartShift ? (
               <span className="text-green-600 dark:text-green-400 font-medium">
-                ✓ Можно начать смену &quot;{nextShift.name}&quot;
+                ✓ {timeToNextShift} &quot;{nextShift.name}&quot;
               </span>
             ) : (
               <span>
