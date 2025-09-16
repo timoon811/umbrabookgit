@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentUTC3Time, getShiftType, getShiftStartTime, getShiftEndTime } from "@/lib/time-utils";
+import { getCurrentUTC3Time } from "@/lib/time-utils";
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 
@@ -125,6 +125,22 @@ export async function POST(request: NextRequest) {
       if (!shiftSetting) {
         return NextResponse.json(
           { error: "Данный тип смены недоступен. Обратитесь к администратору." },
+          { status: 403 }
+        );
+      }
+
+      // Проверяем, что смена назначена текущему пользователю
+      const userAssignment = await prisma.user_shift_assignments.findFirst({
+        where: {
+          userId: user.userId,
+          shiftSettingId: shiftSetting.id,
+          isActive: true
+        }
+      });
+
+      if (!userAssignment) {
+        return NextResponse.json(
+          { error: "Данная смена не назначена вам администратором. Обратитесь к администратору для назначения смены." },
           { status: 403 }
         );
       }
@@ -394,12 +410,12 @@ async function calculateAndLogShiftEarnings(
       const monthlyVolume = monthlyDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
 
       // Получаем месячные планы
-      const monthlyBonuses = await prisma.monthly_bonus.findMany({
+      const monthlyBonuses = await prisma.salary_monthly_bonus.findMany({
         where: { isActive: true },
         orderBy: { minAmount: 'desc' },
       });
 
-      const applicableMonthlyBonus = monthlyBonuses.find(bonus => monthlyVolume >= bonus.minAmount);
+      const applicableMonthlyBonus = monthlyBonuses.find((bonus: any) => monthlyVolume >= bonus.minAmount);
 
       if (applicableMonthlyBonus && applicableMonthlyBonus.bonusPercent > 0) {
         const monthlyBonusAmount = (monthlyVolume * applicableMonthlyBonus.bonusPercent) / 100;

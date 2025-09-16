@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getShiftType, getShiftStartTime, getShiftEndTime, getCurrentUTC3Time } from "@/lib/time-utils";
+import { getCurrentUTC3Time } from "@/lib/time-utils";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -10,12 +10,27 @@ export async function GET(request: NextRequest) {
     return authResult.error;
   }
 
+  const { user } = authResult;
+
   try {
     const now = getCurrentUTC3Time();
     
-    // Получаем активные настройки смен из базы данных
+    // Получаем назначенные смены для текущего пользователя
+    const userAssignments = await prisma.user_shift_assignments.findMany({
+      where: {
+        userId: user.userId,
+        isActive: true
+      }
+    });
+
+    const assignedShiftIds = new Set(userAssignments.map(a => a.shiftSettingId));
+    
+    // Получаем только те настройки смен, которые назначены пользователю и активны
     const shiftSettings = await prisma.shift_settings.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        id: { in: Array.from(assignedShiftIds) }
+      },
       orderBy: { startHour: 'asc' }
     });
 
@@ -24,7 +39,7 @@ export async function GET(request: NextRequest) {
         availableShifts: [],
         currentShiftType: null,
         currentTime: now.toISOString(),
-        message: "Нет доступных смен. Обратитесь к администратору."
+        message: "Вам не назначены смены. Обратитесь к администратору для назначения смен."
       });
     }
     
