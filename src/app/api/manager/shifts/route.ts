@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Получаем текущую смену или последнюю завершенную
     const now = getCurrentUTC3Time();
     const todayStart = new Date(now);
-    todayStart.setUTCHours(6, 0, 0, 0); // Начало дня по UTC+3
+    todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
 
     const currentShift = await prisma.processor_shifts.findFirst({
       where: {
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     const now = getCurrentUTC3Time();
     const todayStart = new Date(now);
-    todayStart.setUTCHours(6, 0, 0, 0);
+    todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
 
     if (action === 'create') {
       // Создаем новую смену с проверкой доступности
@@ -160,16 +160,36 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Создаем смену на основе настроек
+      // Создаем смену на основе настроек (ВАЖНО: используем UTC+3 время!)
       const scheduledStart = new Date(todayStart);
-      scheduledStart.setUTCHours(shiftSetting.startHour, shiftSetting.startMinute, 0, 0);
+      // Конвертируем UTC+3 часы в UTC для корректного сохранения
+      const startHourUTC = shiftSetting.startHour - 3; // UTC+3 -> UTC
+      if (startHourUTC < 0) {
+        // Если время переходит на предыдущий день (например 00:00 UTC+3 = 21:00 UTC)
+        scheduledStart.setUTCDate(scheduledStart.getUTCDate() - 1);
+        scheduledStart.setUTCHours(startHourUTC + 24, shiftSetting.startMinute, 0, 0);
+      } else {
+        scheduledStart.setUTCHours(startHourUTC, shiftSetting.startMinute, 0, 0);
+      }
 
       const scheduledEnd = new Date(todayStart);
       if (shiftSetting.endHour >= 24) {
         scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-        scheduledEnd.setUTCHours(shiftSetting.endHour - 24, shiftSetting.endMinute, 0, 0);
+        const endHourUTC = (shiftSetting.endHour - 24) - 3; // UTC+3 -> UTC
+        if (endHourUTC < 0) {
+          scheduledEnd.setUTCHours(endHourUTC + 24, shiftSetting.endMinute, 0, 0);
+        } else {
+          scheduledEnd.setUTCHours(endHourUTC, shiftSetting.endMinute, 0, 0);
+        }
       } else {
-        scheduledEnd.setUTCHours(shiftSetting.endHour, shiftSetting.endMinute, 0, 0);
+        const endHourUTC = shiftSetting.endHour - 3; // UTC+3 -> UTC
+        if (endHourUTC < 0) {
+          // Переход на следующий день
+          scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
+          scheduledEnd.setUTCHours(endHourUTC + 24, shiftSetting.endMinute, 0, 0);
+        } else {
+          scheduledEnd.setUTCHours(endHourUTC, shiftSetting.endMinute, 0, 0);
+        }
       }
 
       const newShift = await prisma.processor_shifts.create({
@@ -292,7 +312,7 @@ export async function POST(request: NextRequest) {
 async function calculateAndLogShiftEarnings(
   processorId: string, 
   shiftId: string, 
-  shift: any
+  shift: { actualStart?: Date | null; actualEnd?: Date | null; shiftType: string; [key: string]: unknown }
 ) {
   try {
     console.log(`[SHIFT_EARNINGS] Начинаем расчет заработков за смену ${shiftId} для процессора ${processorId}`);
@@ -328,7 +348,7 @@ async function calculateAndLogShiftEarnings(
         processorId,
         status: 'APPROVED',
         createdAt: {
-          gte: shift.actualStart,
+          gte: shift.actualStart || undefined,
           lte: shift.actualEnd || new Date(),
         },
       },
@@ -358,7 +378,7 @@ async function calculateAndLogShiftEarnings(
       // Получаем настройки бонусной сетки для типа смены
       const bonusGrids = await prisma.bonus_grid.findMany({
         where: {
-          shiftType: shift.shiftType,
+          shiftType: shift.shiftType as 'MORNING' | 'DAY' | 'NIGHT',
           isActive: true,
         },
         orderBy: { minAmount: 'desc' },
@@ -415,7 +435,7 @@ async function calculateAndLogShiftEarnings(
         orderBy: { minAmount: 'desc' },
       });
 
-      const applicableMonthlyBonus = monthlyBonuses.find((bonus: any) => monthlyVolume >= bonus.minAmount);
+      const applicableMonthlyBonus = monthlyBonuses.find((bonus: { minAmount: number; [key: string]: unknown }) => monthlyVolume >= bonus.minAmount);
 
       if (applicableMonthlyBonus && applicableMonthlyBonus.bonusPercent > 0) {
         const monthlyBonusAmount = (monthlyVolume * applicableMonthlyBonus.bonusPercent) / 100;

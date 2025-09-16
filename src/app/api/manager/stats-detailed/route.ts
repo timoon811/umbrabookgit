@@ -44,17 +44,17 @@ export async function GET(request: NextRequest) {
       // Последняя неделя прошлого месяца
       const lastWeekStart = new Date(prevMonthEnd);
       lastWeekStart.setDate(lastWeekStart.getDate() - 6);
-      lastWeekStart.setUTCHours(6, 0, 0, 0);
+      lastWeekStart.setUTCHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
       weekPeriod = { start: lastWeekStart, end: prevMonthEnd };
       
       // Последний день прошлого месяца
       todayStart = new Date(prevMonthEnd);
-      todayStart.setUTCHours(6, 0, 0, 0);
+      todayStart.setUTCHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
     } else if (period === 'custom' && customStart && customEnd) {
       // Кастомный период
       const startDate = new Date(customStart);
       const endDate = new Date(customEnd);
-      endDate.setUTCHours(23, 59, 59, 999); // Конец дня
+      endDate.setUTCHours(20, 59, 59, 999); // Конец дня UTC+3 = 23:59 UTC+3 = 20:59 UTC
       
       monthPeriod = { start: startDate, end: endDate };
       weekPeriod = { start: startDate, end: endDate };
