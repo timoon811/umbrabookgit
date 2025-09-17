@@ -1,40 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from '@/lib/api-auth';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-  
-
-    const authResult = await requireAuth(request);
-  
-    if ('error' in authResult) {
-    return authResult.error;
-  }
-  
-  const { user } = authResult;
-
-
-    // Создаем ответ
+    // Создаем ответ с успешным выходом
     const response = NextResponse.json({
       message: "Успешный выход",
+      success: true
     });
 
-    // Правильно удаляем cookie токена
+    // Правильно удаляем cookie токена со всеми параметрами
     response.cookies.set("auth-token", "", {
       path: "/",
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       maxAge: 0,
       expires: new Date(0),
-      sameSite: "lax",
     });
+
+    // Устанавливаем заголовки для предотвращения кэширования
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
 
     return response;
   } catch (error) {
     console.error("Ошибка выхода:", error);
-    return NextResponse.json(
-      { message: "Внутренняя ошибка сервера" },
-      { status: 500 }
+    
+    // Даже при ошибке пытаемся очистить cookie
+    const response = NextResponse.json(
+      { message: "Выход выполнен", success: true },
+      { status: 200 }
     );
+    
+    response.cookies.set("auth-token", "", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      expires: new Date(0),
+    });
+
+    return response;
   }
 }
 

@@ -59,6 +59,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         console.log('AuthProvider: response not ok, setting user to null');
         setUser(null);
+        
+        // Если получили 403 (заблокирован/удален) или 401 (неавторизован), 
+        // принудительно очищаем сессию и перенаправляем на логин
+        if (response.status === 403 || response.status === 401) {
+          console.log('AuthProvider: получен статус', response.status, '- очищаем сессию');
+          
+          try {
+            // Попытаемся выполнить logout для очистки cookie
+            await fetch("/api/auth/logout", { 
+              method: "POST",
+              credentials: "include"
+            });
+          } catch (logoutError) {
+            console.error("Ошибка при очистке сессии:", logoutError);
+          }
+          
+          // Перенаправляем на страницу входа
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }
       }
     } catch (error) {
       console.error("Ошибка сети при получении данных пользователя:", error);
