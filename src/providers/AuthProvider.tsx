@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -32,6 +33,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUser = async () => {
     try {
+      // Защита от частых запросов - минимум 1 секунда между запросами
+      const now = Date.now();
+      if (now - lastFetchTime < 1000) {
+        console.log('AuthProvider: пропуск запроса - слишком частые вызовы');
+        return;
+      }
+      setLastFetchTime(now);
+      
       setLoading(true);
       const response = await fetch("/api/auth/me", {
         credentials: "include",
@@ -60,10 +69,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('AuthProvider: response not ok, setting user to null');
         setUser(null);
         
-        // Если получили 403 (заблокирован/удален) или 401 (неавторизован), 
-        // принудительно очищаем сессию и перенаправляем на логин
-        if (response.status === 403 || response.status === 401) {
-          console.log('AuthProvider: получен статус', response.status, '- очищаем сессию');
+        // Если получили 403 (заблокирован/удален), очищаем сессию и перенаправляем
+        // НО НЕ при 401 на странице входа, чтобы избежать бесконечного цикла
+        if (response.status === 403) {
+          console.log('AuthProvider: получен статус 403 - пользователь заблокирован, очищаем сессию');
           
           try {
             // Попытаемся выполнить logout для очистки cookie
@@ -75,9 +84,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error("Ошибка при очистке сессии:", logoutError);
           }
           
-          // Перенаправляем на страницу входа
-          if (typeof window !== 'undefined') {
+          // Перенаправляем на страницу входа только если мы НЕ на ней
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
             window.location.href = '/login';
+          }
+        } else if (response.status === 401) {
+          // При 401 просто логируем, но НЕ перенаправляем если уже на странице входа
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            console.log('AuthProvider: получен статус 401 - неавторизован, перенаправляем на логин');
+            window.location.href = '/login';
+          } else {
+            console.log('AuthProvider: получен статус 401 на странице входа - это нормально');
           }
         }
       }
@@ -124,10 +141,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const eventType = event.detail?.type;
         if (eventType === 'login') {
           setLoading(true);
+          // Сбрасываем время последнего запроса для немедленного обновления при логине
+          setLastFetchTime(0);
           // Небольшая задержка для завершения установки cookies
           setTimeout(() => {
             fetchUser();
           }, 100);
+        } else if (eventType === 'logout') {
+          // При выходе просто очищаем пользователя без дополнительных запросов
+          setUser(null);
+          setLoading(false);
         } else {
           fetchUser();
         }
@@ -150,6 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const forceRefresh = async () => {
     console.log('AuthProvider: принудительное обновление данных пользователя');
     setLoading(true);
+    setLastFetchTime(0); // Сбрасываем время для принудительного запроса
     await fetchUser();
   };
 

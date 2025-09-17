@@ -20,7 +20,13 @@ export default function AuthRedirect({
     if (mounted && !loading && user) {
       // Если пользователь авторизован, перенаправляем его
       console.log('AuthRedirect: перенаправляем авторизованного пользователя на', redirectTo);
-      router.replace(redirectTo);
+      
+      // Добавляем небольшую задержку чтобы избежать гонки состояний
+      const timer = setTimeout(() => {
+        router.replace(redirectTo);
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [mounted, loading, user, router, redirectTo]);
 
