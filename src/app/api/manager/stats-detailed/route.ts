@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
     let currentShiftType = 'DAY'; // По умолчанию
 
     if (activeShift) {
-      const shiftStart = activeShift.actualStart || activeShift.startTime;
+      const shiftStart = activeShift.actualStart || activeShift.scheduledStart;
       if (shiftStart) {
         const shiftDeposits = await prisma.processor_deposits.findMany({
           where: {
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Если нет активной смены, используем тип смены по времени и депозиты за день
-      const currentHour = getCurrentUTC3Time().getHours();
+      const currentHour = getCurrentUTC3Time().getUTCHours();
       if (currentHour >= 6 && currentHour < 14) {
         currentShiftType = 'MORNING';
       } else if (currentHour >= 14 && currentHour < 22) {
@@ -598,7 +598,7 @@ export async function GET(request: NextRequest) {
         currentSum: currentShiftSum,
         shiftType: currentShiftType,
         isActive: !!activeShift,
-        startTime: activeShift?.actualStart?.toISOString() || activeShift?.startTime?.toISOString(),
+        startTime: activeShift?.actualStart?.toISOString() || activeShift?.scheduledStart?.toISOString(),
         endTime: activeShift?.actualEnd?.toISOString()
       }
     };

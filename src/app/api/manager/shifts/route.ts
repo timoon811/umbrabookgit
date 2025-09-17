@@ -174,19 +174,22 @@ export async function POST(request: NextRequest) {
 
       const scheduledEnd = new Date(todayStart);
       if (shiftSetting.endHour >= 24) {
+        // Представление конца смены в 24+ часах (редко используется): всегда следующий день
         scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
         const endHourUTC = (shiftSetting.endHour - 24) - 3; // UTC+3 -> UTC
-        if (endHourUTC < 0) {
-          scheduledEnd.setUTCHours(endHourUTC + 24, shiftSetting.endMinute, 0, 0);
-        } else {
-          scheduledEnd.setUTCHours(endHourUTC, shiftSetting.endMinute, 0, 0);
-        }
+        const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
+        scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSetting.endMinute, 0, 0);
       } else {
         const endHourUTC = shiftSetting.endHour - 3; // UTC+3 -> UTC
-        if (endHourUTC < 0) {
-          // Переход на следующий день
+        // Если конец логически раньше начала (смена через полночь), переносим на следующий день
+        const crossesMidnight =
+          shiftSetting.endHour < shiftSetting.startHour ||
+          (shiftSetting.endHour === shiftSetting.startHour && shiftSetting.endMinute <= shiftSetting.startMinute);
+
+        if (endHourUTC < 0 || crossesMidnight) {
           scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-          scheduledEnd.setUTCHours(endHourUTC + 24, shiftSetting.endMinute, 0, 0);
+          const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
+          scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSetting.endMinute, 0, 0);
         } else {
           scheduledEnd.setUTCHours(endHourUTC, shiftSetting.endMinute, 0, 0);
         }

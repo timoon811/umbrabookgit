@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 import {
   getCurrentUTC3Time,
   getCurrentDayStartUTC3,
-  getShiftType,
-  validate24HourReset
+  getShiftType
 } from "@/lib/time-utils";
+import { ShiftType as PrismaShiftType } from "@prisma/client";
 import { requireManagerAuth } from "@/lib/api-auth";
 
 // Функция пересчета бонусов для всех депозитов в смене
@@ -91,7 +91,7 @@ async function checkMonthlyPlanAchievement(processorId: string) {
   }
 }
 
-async function recalculateShiftBonuses(shiftId: string, processorId: string, shiftType: string) {
+async function recalculateShiftBonuses(shiftId: string, processorId: string, shiftType: PrismaShiftType) {
   try {
     
     // Получаем активную смену
@@ -104,7 +104,7 @@ async function recalculateShiftBonuses(shiftId: string, processorId: string, shi
     }
     
     // Получаем все депозиты в смене
-    const shiftStart = new Date(shift.actualStart || shift.startTime);
+      const shiftStart = new Date(shift.actualStart || shift.scheduledStart);
     const shiftDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
@@ -320,8 +320,7 @@ export async function POST(request: NextRequest) {
     // Определяем тип смены для текущего времени
     const currentShiftType = getShiftType(utc3Now);
 
-    // Проверяем корректность 24-часового сброса
-    const isResetValid = validate24HourReset();
+    // Проверка 24-часового сброса не используется в логике сохранения
 
     // Получаем активную смену процессора
     const activeShift = await prisma.processor_shifts.findFirst({
@@ -336,7 +335,7 @@ export async function POST(request: NextRequest) {
 
     if (activeShift) {
       // Получаем депозиты за текущую смену
-      const shiftStart = new Date(activeShift.actualStart || activeShift.startTime);
+      const shiftStart = new Date(activeShift.actualStart || activeShift.scheduledStart);
       const shiftDeposits = await prisma.processor_deposits.findMany({
         where: {
           processorId,
@@ -372,7 +371,7 @@ export async function POST(request: NextRequest) {
     const bonusGrid = await prisma.bonus_grid.findFirst({
       where: {
         isActive: true,
-        shiftType: effectiveShiftType,
+        shiftType: effectiveShiftType as PrismaShiftType,
         minAmount: { lte: shiftSum },
         OR: [
           { maxAmount: { gte: shiftSum } },
@@ -477,7 +476,7 @@ export async function POST(request: NextRequest) {
     // КРИТИЧЕСКИ ВАЖНО: Пересчитываем бонусы для всех депозитов в смене
     // так как новый депозит может изменить процентную сетку для всей смены
     if (activeShift) {
-      await recalculateShiftBonuses(activeShift.id, processorId, effectiveShiftType);
+      await recalculateShiftBonuses(activeShift.id, processorId, effectiveShiftType as PrismaShiftType);
     }
 
     // НОВОЕ: Проверяем достижение месячных планов
@@ -496,7 +495,7 @@ export async function POST(request: NextRequest) {
           amount: bonusAmount,
           depositId: deposit.id,
           period: todayStart,
-          shiftType: currentShiftType.toUpperCase() as any,
+          shiftType: currentShiftType as PrismaShiftType,
           holdUntil,
           status: 'HELD', // Бонус в холде
         },
@@ -506,12 +505,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(deposit, { status: 201 });
   } catch (error) {
-    console.error("[DEPOSIT] ERROR: Подробная ошибка создания депозита:", error);
-    console.error("[DEPOSIT] ERROR: Stack trace:", error.stack);
+    if (error instanceof Error) {
+      console.error("[DEPOSIT] ERROR: Подробная ошибка создания депозита:", error);
+      console.error("[DEPOSIT] ERROR: Stack trace:", error.stack);
+    } else {
+      console.error("[DEPOSIT] ERROR: Неизвестная ошибка создания депозита", error);
+    }
     return NextResponse.json(
       { 
         error: "Внутренняя ошибка сервера",
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined 
       },
       { status: 500 }
     );

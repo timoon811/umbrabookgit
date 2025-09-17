@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
       const endTimeStr = `${displayEndHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
       let timeDisplay = `${startTimeStr} - ${endTimeStr}`;
-      if (endHour >= 24) {
+      // Показ (+1 день), если конец логически не позже начала (пересечение полуночи) или представлен в 24+ часах
+      const crossesMidnight = endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute);
+      if (crossesMidnight) {
         timeDisplay += ' (+1 день)';
       }
       

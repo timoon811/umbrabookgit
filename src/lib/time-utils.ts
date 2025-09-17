@@ -26,12 +26,13 @@ export function getCurrentDayStartUTC3(): Date {
   const utc3Now = getCurrentUTC3Time();
   const dayStart = new Date(utc3Now);
   
-  // Если текущее время меньше 06:00, то берем вчерашний день
+  // Если текущее время меньше 06:00 (UTC+3), то берем вчерашний день
   if (utc3Now.getUTCHours() < 6) {
     dayStart.setUTCDate(utc3Now.getUTCDate() - 1);
   }
   
-  dayStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
+  // Граница суток: 06:00 UTC+3 = 03:00 UTC
+  dayStart.setUTCHours(3, 0, 0, 0);
   return dayStart;
 }
 
@@ -39,10 +40,11 @@ export function getCurrentDayStartUTC3(): Date {
  * Получает конец текущего дня по UTC+3 (05:59:59.999 UTC+3 следующего дня)
  */
 export function getCurrentDayEndUTC3(): Date {
-  const utc3Now = getCurrentUTC3Time();
-  const dayEnd = new Date(utc3Now);
+  const dayStart = getCurrentDayStartUTC3();
+  const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-  dayEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3 следующего дня
+  // Конец суток: 05:59:59.999 UTC+3 = 02:59:59.999 UTC
+  dayEnd.setUTCHours(2, 59, 59, 999);
   return dayEnd;
 }
 
@@ -52,7 +54,11 @@ export function getCurrentDayEndUTC3(): Date {
 export function getDayStartUTC3(date: Date): Date {
   const utc3Date = new Date(date.getTime() + (3 * 60 * 60 * 1000));
   const dayStart = new Date(utc3Date);
-  dayStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3
+  if (utc3Date.getUTCHours() < 6) {
+    dayStart.setUTCDate(dayStart.getUTCDate() - 1);
+  }
+  // 06:00 UTC+3 = 03:00 UTC
+  dayStart.setUTCHours(3, 0, 0, 0);
   return dayStart;
 }
 
@@ -60,11 +66,12 @@ export function getDayStartUTC3(date: Date): Date {
  * Получает конец дня для указанной даты по UTC+3
  */
 export function getDayEndUTC3(date: Date): Date {
-  const utc3Date = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-  const dayEnd = new Date(utc3Date);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-  dayEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3 следующего дня
-  return dayEnd;
+  const start = getDayStartUTC3(date);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  // 05:59:59.999 UTC+3 = 02:59:59.999 UTC
+  end.setUTCHours(2, 59, 59, 999);
+  return end;
 }
 
 /**
@@ -93,25 +100,22 @@ export function getDayPeriod(date: Date): TimePeriod {
  * Получает период для текущей недели (понедельник 06:00:00 - воскресенье 05:59:59 UTC+3)
  */
 export function getCurrentWeekPeriod(): TimePeriod {
-  const utc3Now = getCurrentUTC3Time();
-  
-  // Сначала приводим к текущему дню (с учетом что день начинается в 06:00)
-  const currentDay = new Date(utc3Now);
-  if (utc3Now.getUTCHours() < 6) {
-    currentDay.setUTCDate(currentDay.getUTCDate() - 1);
-  }
-  
+  const todayStart = getCurrentDayStartUTC3();
+  const currentDay = new Date(todayStart);
+
   // Теперь находим понедельник этой недели
   const dayOfWeek = currentDay.getUTCDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
   const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Сколько дней прошло с понедельника
 
   const weekStart = new Date(currentDay);
   weekStart.setUTCDate(currentDay.getUTCDate() - daysFromMonday);
-  weekStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3 в понедельник
+  // 06:00 UTC+3 = 03:00 UTC
+  weekStart.setUTCHours(3, 0, 0, 0);
 
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekStart.getUTCDate() + 7); // Следующий понедельник
-  weekEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3
+  // 05:59:59.999 UTC+3 = 02:59:59.999 UTC
+  weekEnd.setUTCHours(2, 59, 59, 999);
 
   return { start: weekStart, end: weekEnd, isCurrentPeriod: true };
 }
@@ -124,7 +128,7 @@ export function getCurrentMonthPeriod(): TimePeriod {
   let year = utc3Now.getUTCFullYear();
   let month = utc3Now.getUTCMonth();
 
-  // Если сейчас до 06:00 и мы в первый день месяца, берем предыдущий месяц
+  // Если сейчас до 06:00 (UTC+3) и 1 число, значит всё ещё предыдущий месяц по бизнес-логике
   if (utc3Now.getUTCHours() < 6 && utc3Now.getUTCDate() === 1) {
     month = month - 1;
     if (month < 0) {
@@ -133,12 +137,15 @@ export function getCurrentMonthPeriod(): TimePeriod {
     }
   }
 
-  const monthStart = new Date(year, month, 1);
-  monthStart.setUTCHours(6, 0, 0, 0); // 06:00 UTC+3
+  const monthStart = new Date(Date.UTC(year, month, 1));
+  // 06:00 UTC+3 = 03:00 UTC
+  monthStart.setUTCHours(3, 0, 0, 0);
 
-  const monthEnd = new Date(year, month + 1, 0);
-  monthEnd.setUTCDate(monthEnd.getUTCDate() + 1);
-  monthEnd.setUTCHours(5, 59, 59, 999); // 05:59:59.999 UTC+3 следующего дня
+  // Конец месяца — секунда до следующего месяца по бизнес-границе
+  const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
+  // 06:00 UTC+3 (03:00 UTC) следующего месяца минус 1 мс
+  nextMonthStart.setUTCHours(3, 0, 0, 0);
+  const monthEnd = new Date(nextMonthStart.getTime() - 1);
 
   return { start: monthStart, end: monthEnd, isCurrentPeriod: true };
 }
