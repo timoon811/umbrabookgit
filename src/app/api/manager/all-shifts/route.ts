@@ -72,22 +72,26 @@ export async function GET(request: NextRequest) {
       
       let isCurrent = false;
       
-      // Проверяем тип смены
-      const isNightShiftThroughMidnight = endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute);
-      const isEarlyMorningShift = shiftType === 'NIGHT' && startHour < 12; // Смены типа 00:00-08:00
+      // Логика определения текущей смены с учетом возможности начать за 30 минут до старта
+      const thirtyMinutesBefore = shiftStartMinutes - 30;
       
-      if (isNightShiftThroughMidnight) {
-        // Обычная ночная смена через полночь (22:00-06:00)
-        const actualEndMinutes = endHour >= 24 ? (endHour - 24) * 60 + endMinute : shiftEndMinutes;
-        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < actualEndMinutes);
-      } else if (isEarlyMorningShift) {
-        // Раннеутренняя "ночная" смена (00:00-08:00)
-        // Активна за 30 минут до начала (23:30) до конца смены (08:01)
-        const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30; // Для 00:01 = 23:31
-        isCurrent = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
+      // Проверяем тип смены
+      const isNightShift = shiftType === 'NIGHT';
+      const isCrossMidnightShift = endHour < startHour || (endHour === startHour && endMinute <= startMinute);
+      
+      if (isNightShift && startHour === 0) {
+        // Ночная смена типа 00:01-08:01 
+        // Можно начать с 23:31 предыдущего дня до 08:01
+        const canStartFrom = (24 * 60) - 30; // 23:30
+        isCurrent = (currentTotalMinutes >= canStartFrom) || (currentTotalMinutes <= shiftEndMinutes);
+      } else if (isCrossMidnightShift) {
+        // Смена через полночь типа 22:00-06:00
+        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes <= shiftEndMinutes);
       } else {
-        // Обычная смена в пределах одного дня
-        isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
+        // Обычная дневная смена в пределах одного дня
+        // Можно начать за 30 минут до старта
+        const canStartFrom = thirtyMinutesBefore >= 0 ? thirtyMinutesBefore : 0;
+        isCurrent = currentTotalMinutes >= canStartFrom && currentTotalMinutes <= shiftEndMinutes;
       }
 
       // Определяем доступность смены для менеджера (должна быть активна и назначена пользователю)

@@ -1405,10 +1405,10 @@ function ProcessingPageContent() {
                     )}
                   </div>
 
-                  {/* Статус смены */}
+                  {/* Статус работы */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Статус</span>
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Статус работы</span>
                       <div className={`w-2 h-2 rounded-full ${
                         currentShift && currentShift.status === 'ACTIVE' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
                       }`}></div>
@@ -1416,18 +1416,27 @@ function ProcessingPageContent() {
                     <div className={`text-lg font-semibold ${
                       currentShift && currentShift.status === 'ACTIVE' ? 'text-green-600' : 'text-gray-600'
                     }`}>
-                      {currentShift && currentShift.status === 'ACTIVE' ? 'Активна' : 'Не начата'}
+                      {currentShift && currentShift.status === 'ACTIVE' ? 'Работаю' : 'Не работаю'}
                     </div>
+                    {currentShift && currentShift.status === 'ACTIVE' && currentShift.actualStart && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Начал: {new Date(currentShift.actualStart).toLocaleTimeString('ru-RU', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          timeZone: 'Europe/Moscow'
+                        })}
+                      </div>
+                    )}
                     {shiftTimeRemaining !== null && currentShift && currentShift.status === 'ACTIVE' && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {shiftTimeRemaining > 0 ? `${formatTime(shiftTimeRemaining)} до окончания` : 'Время истекло'}
+                        {shiftTimeRemaining > 0 ? `${formatTime(shiftTimeRemaining)} до плановой смены` : 'Плановое время истекло'}
                       </div>
                     )}
                     {!isShiftActive && (
                       <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
                         <div className="font-medium">Доступные операции</div>
                         <div className="text-gray-600 dark:text-gray-400">
-                          После начала смены станут доступны депозиты и другие функции
+                          После начала работы станут доступны депозиты и другие функции
                         </div>
                       </div>
                     )}
