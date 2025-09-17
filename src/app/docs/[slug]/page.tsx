@@ -56,9 +56,9 @@ async function getDocumentationPage(slug: string): Promise<DocumentationPage | n
 }
 
 interface DocumentationArticlePageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 export default async function DocumentationArticlePage({ params }: DocumentationArticlePageProps) {

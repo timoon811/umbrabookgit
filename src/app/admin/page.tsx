@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import NotificationDemo from "@/components/admin/NotificationDemo";
 
 interface StatsData {
@@ -292,6 +293,41 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Быстрый доступ к системам */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        <Link 
+          href="/admin/management"
+          className="group bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-xl text-white hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <span className="text-xl">⚙️</span>
+            </div>
+            <span className="text-sm opacity-80">Управление</span>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Управление системой</h3>
+          <p className="text-blue-100 text-sm">
+            Полное управление депозитами, менеджерами, сменами, зарплатами и системой обработки
+          </p>
+        </Link>
+
+        <Link 
+          href="/admin/buyer"
+          className="group bg-gradient-to-br from-purple-600 to-purple-700 p-6 rounded-xl text-white hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <span className="text-xl">📊</span>
+            </div>
+            <span className="text-sm opacity-80">Buyer</span>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Система байеров</h3>
+          <p className="text-purple-100 text-sm">
+            Управление медиа-байерами, проектами и закупками трафика
+          </p>
+        </Link>
       </div>
 
       {/* Демонстрация системы уведомлений */}

@@ -256,7 +256,11 @@ export const MetricCard: React.FC<{
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
             {title}
           </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          <p className={`text-2xl font-bold ${
+            typeof value === 'string' && value.startsWith('$-') 
+              ? 'text-red-600 dark:text-red-400' 
+              : 'text-gray-900 dark:text-white'
+          }`}>
             {typeof value === 'number' ? value.toLocaleString() : value}
           </p>
           {subtitle && (

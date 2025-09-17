@@ -3,12 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
     // Получаем настройки смен или создаем дефолтные
     let settings = await prisma.shift_settings.findMany({
       orderBy: { shiftType: 'asc' }
@@ -70,12 +73,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
   try {
+    
+    const authResult = await requireAdminAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    
+    const { user } = authResult;
     const data = await request.json();
     const { id, updates } = data;
 
@@ -124,12 +130,18 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const data = await request.json();
     const { shiftType, startHour, startMinute, endHour, endMinute, name, description } = data;
 

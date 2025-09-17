@@ -58,13 +58,16 @@ function calculateRelevance(title: string, content: string | null, query: string
 }
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию - поиск теперь требует авторизации
-  const authResult = await requireAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
   try {
+    // Проверяем авторизацию - поиск теперь требует авторизации
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const type = searchParams.get('type'); // 'all', 'docs'
@@ -136,7 +139,7 @@ export async function GET(request: NextRequest) {
       }));
 
     return NextResponse.json(sortedResults);
-  } catch (error: unknown) {
+    } catch (error: unknown) {
     console.error("Ошибка поиска:", error);
     return NextResponse.json(
       { error: "Ошибка сервера" },

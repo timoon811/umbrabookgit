@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // POST /api/admin/migrate - Применение отсутствующих миграций (только для админов)
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const { action } = await request.json();
@@ -92,6 +104,17 @@ export async function POST(request: NextRequest) {
 // GET /api/admin/migrate - Проверка состояния миграций
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     // Проверяем существующие колонки

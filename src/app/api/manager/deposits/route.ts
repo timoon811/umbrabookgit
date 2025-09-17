@@ -7,6 +7,7 @@ import {
 } from "@/lib/time-utils";
 import { ShiftType as PrismaShiftType } from "@prisma/client";
 import { requireManagerAuth } from "@/lib/api-auth";
+import { requireAuth } from '@/lib/api-auth';
 
 // Функция пересчета бонусов для всех депозитов в смене
 // Функция проверки достижения месячных планов
@@ -50,7 +51,6 @@ async function checkMonthlyPlanAchievement(processorId: string) {
       return;
     }
 
-
     // Проверяем, не начислялся ли уже бонус за этот план в этом месяце
     const existingBonus = await prisma.bonus_payments.findFirst({
       where: {
@@ -84,7 +84,6 @@ async function checkMonthlyPlanAchievement(processorId: string) {
         status: 'APPROVED' // Автоматически одобряем месячные бонусы
       }
     });
-
 
   } catch (error) {
     console.error('Ошибка при проверке месячных планов:', error);
@@ -177,16 +176,19 @@ async function recalculateShiftBonuses(shiftId: string, processorId: string, shi
 }
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
-  const { user } = authResult;
   
-  try {
-    // Для админов показываем все депозиты, для менеджеров - только их
+  const { user } = authResult;
+
+// Проверяем авторизацию
+  // Для админов показываем все депозиты, для менеджеров - только их
     const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем параметры запроса
@@ -208,6 +210,9 @@ export async function GET(request: NextRequest) {
       where.status = status.toUpperCase() as "PENDING" | "APPROVED" | "REJECTED" | "PROCESSING";
     }
 
+    console.log('[DEPOSITS_GET] Загрузка депозитов для процессора:', processorId);
+    console.log('[DEPOSITS_GET] Условия поиска:', where);
+
     // Получаем депозиты с пагинацией
     const [deposits, total] = await Promise.all([
       prisma.processor_deposits.findMany({
@@ -220,6 +225,8 @@ export async function GET(request: NextRequest) {
       }),
       prisma.processor_deposits.count({ where }),
     ]);
+
+    console.log('[DEPOSITS_GET] ✅ Найдено депозитов:', deposits.length, 'из общего количества:', total);
 
     return NextResponse.json({
       deposits,
@@ -240,15 +247,18 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
-  const { user } = authResult;
-  
   try {
+    
+
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    
+    const { user } = authResult;
+
+    // Основная логика POST
     const processorId = user.userId;
     const data = await request.json();
 
@@ -446,12 +456,18 @@ export async function POST(request: NextRequest) {
     const platformCommissionAmount = (data.amount * platformCommissionPercent) / 100;
     const processorEarnings = data.amount - platformCommissionAmount;
 
-
     // Создаем депозит
+    console.log('[DEPOSIT] Создание депозита с данными:', {
+      processorId,
+      playerEmail: data.playerEmail,
+      amount: data.amount,
+      currency: data.currency
+    });
+    
     const deposit = await prisma.processor_deposits.create({
       data: {
         processorId,
-        playerId: data.playerId || `deposit_${Date.now()}`, // Fallback если нет playerId
+        playerId: data.playerId || data.playerEmail, // Используем email как playerId если нет отдельного playerId
         playerNick: data.playerNick,
         playerEmail: data.playerEmail,
         offerId: data.offerId,
@@ -471,6 +487,15 @@ export async function POST(request: NextRequest) {
         platformCommissionAmount,
         processorEarnings,
       },
+    });
+
+    console.log('[DEPOSIT] ✅ Депозит успешно создан:', {
+      id: deposit.id,
+      processorId: deposit.processorId,
+      playerEmail: deposit.playerEmail,
+      amount: deposit.amount,
+      currency: deposit.currency,
+      createdAt: deposit.createdAt
     });
 
     // КРИТИЧЕСКИ ВАЖНО: Пересчитываем бонусы для всех депозитов в смене

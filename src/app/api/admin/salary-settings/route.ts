@@ -5,12 +5,17 @@ import { requireAdminAuth } from "@/lib/api-auth";
 // GET /api/admin/salary-settings - Получение всех настроек ЗП
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
 
-    // Получаем основные настройки
+    
+    const { user } = authResult;
+
     const salarySettings = await prisma.salary_settings.findFirst({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' }
@@ -52,10 +57,16 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/salary-settings - Создание/обновление основных настроек ЗП
 export async function POST(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+    
+    const { user } = authResult;
+
     const data = await request.json();
 
     // Деактивируем все существующие настройки
@@ -88,10 +99,16 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/salary-settings - Обновление настроек ЗП
 export async function PUT(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+    
+    const { user } = authResult;
+
     const data = await request.json();
 
     if (!data.id) {

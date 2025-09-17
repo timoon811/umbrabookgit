@@ -5,6 +5,7 @@ import { verifyToken } from "@/lib/auth";
 // Получить все кошельки пользователя
 export async function GET(request: NextRequest) {
   try {
+    
     const token = request.cookies.get("auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
 // Создать новый кошелек
 export async function POST(request: NextRequest) {
   try {
+    
     const token = request.cookies.get("auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ wallet }, { status: 201 });
+  
   } catch (error) {
     console.error("Error creating wallet:", error);
     return NextResponse.json(
@@ -120,6 +123,7 @@ export async function POST(request: NextRequest) {
 // Обновить кошелек
 export async function PUT(request: NextRequest) {
   try {
+    
     const token = request.cookies.get("auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -177,6 +181,7 @@ export async function PUT(request: NextRequest) {
 // Удалить кошелек (soft delete)
 export async function DELETE(request: NextRequest) {
   try {
+    
     const token = request.cookies.get("auth-token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

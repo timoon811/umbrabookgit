@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/managers - Получение списка менеджеров
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await requireAdmin(request);
 
     // Получаем всех пользователей с ролью PROCESSOR

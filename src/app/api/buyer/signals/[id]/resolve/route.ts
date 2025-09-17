@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const signalId = params.id;
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
+    const signalId = (await params).id;
     
     // В реальном проекте здесь будет обновление в БД
     // Проверяем, что сигнал существует и принадлежит текущему пользователю
@@ -22,6 +32,7 @@ export async function POST(
       { signal: resolvedSignal, message: "Сигнал отмечен как решенный" },
       { status: 200 }
     );
+  
   } catch (error) {
     console.error("Error resolving signal:", error);
     return NextResponse.json(

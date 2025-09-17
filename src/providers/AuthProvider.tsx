@@ -77,9 +77,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Добавляем слушатель для обновления пользователя при возвращении фокуса
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      let lastFocusTime = Date.now();
+      
       const handleFocus = () => {
-        // Обновляем данные пользователя при возвращении фокуса на страницу
-        fetchUser();
+        // Обновляем данные пользователя только если прошло достаточно времени
+        // Это предотвращает ненужные запросы при быстрой навигации между вкладками
+        const now = Date.now();
+        const timeSinceLastFocus = now - lastFocusTime;
+        
+        // Обновляем только если прошло больше 30 секунд с последнего фокуса
+        if (timeSinceLastFocus > 30000) {
+          console.log('AuthProvider: обновление пользователя по событию focus (прошло времени:', timeSinceLastFocus, 'мс)');
+          fetchUser();
+        } else {
+          console.log('AuthProvider: пропуск обновления по focus - слишком рано (прошло времени:', timeSinceLastFocus, 'мс)');
+        }
+        
+        lastFocusTime = now;
       };
 
       // Слушаем события кастомного обновления аутентификации

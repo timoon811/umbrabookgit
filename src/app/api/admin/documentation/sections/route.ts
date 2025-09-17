@@ -5,7 +5,10 @@ import { requireAuth } from '@/lib/api-auth';
 // POST /api/admin/documentation/sections - Создать новый раздел документации
 export async function POST(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -94,7 +97,10 @@ export async function POST(request: NextRequest) {
 // GET /api/admin/documentation/sections - Получить все разделы документации
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }

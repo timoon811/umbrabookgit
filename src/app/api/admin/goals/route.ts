@@ -3,62 +3,66 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
   try {
-    // Получаем типы целей
-    const goalTypes = await prisma.goal_types.findMany({
-      orderBy: { name: 'asc' }
-    });
-
-    // Получаем все месячные цели с этапами
-    const goals = await prisma.user_goals.findMany({
-      where: {
-        periodType: 'MONTHLY'
-      },
-      include: {
-        goalType: true,
-        stages: {
-          orderBy: { stage: 'asc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Форматируем данные для фронтенда
-    const formattedGoals = goals.map(goal => ({
-      id: goal.id,
-      name: goal.name,
-      description: goal.description,
-      goalTypeId: goal.goalTypeId,
-      goalTypeName: goal.goalType.name,
-      goalTypeUnit: goal.goalType.unit,
-      goalTypeType: goal.goalType.type,
-      periodType: goal.periodType,
-      isActive: goal.isActive,
-      stages: goal.stages.map(stage => ({
-        id: stage.id,
-        stage: stage.stage,
-        targetValue: stage.targetValue,
-        rewardAmount: stage.rewardAmount,
-        title: stage.title,
-        description: stage.description,
-        isActive: stage.isActive
-      })),
-      createdAt: goal.createdAt.toISOString(),
-      updatedAt: goal.updatedAt.toISOString()
-    }));
-
-    return NextResponse.json({
-      goalTypes: goalTypes,
-      goals: formattedGoals
-    });
-
-  } catch (error) {
+    // Проверяем авторизацию
+      const authResult = await requireAdminAuth(request);
+      
+        if ('error' in authResult) {
+        return authResult.error;
+      }
+    
+      
+        const { user } = authResult;
+    
+        const goalTypes = await prisma.goal_types.findMany({
+          orderBy: { name: 'asc' }
+        });
+    
+        // Получаем все месячные цели с этапами
+        const goals = await prisma.user_goals.findMany({
+          where: {
+            periodType: 'MONTHLY'
+          },
+          include: {
+            goalType: true,
+            stages: {
+              orderBy: { stage: 'asc' }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+    
+        // Форматируем данные для фронтенда
+        const formattedGoals = goals.map(goal => ({
+          id: goal.id,
+          name: goal.name,
+          description: goal.description,
+          goalTypeId: goal.goalTypeId,
+          goalTypeName: goal.goalType.name,
+          goalTypeUnit: goal.goalType.unit,
+          goalTypeType: goal.goalType.type,
+          periodType: goal.periodType,
+          isActive: goal.isActive,
+          stages: goal.stages.map(stage => ({
+            id: stage.id,
+            stage: stage.stage,
+            targetValue: stage.targetValue,
+            rewardAmount: stage.rewardAmount,
+            title: stage.title,
+            description: stage.description,
+            isActive: stage.isActive
+          })),
+          createdAt: goal.createdAt.toISOString(),
+          updatedAt: goal.updatedAt.toISOString()
+        }));
+    
+        return NextResponse.json({
+          goalTypes: goalTypes,
+          goals: formattedGoals
+        });
+    
+      
+  } catch (error: any) {
     console.error('Ошибка загрузки планов:', error);
     return NextResponse.json(
       { error: 'Ошибка загрузки планов' },
@@ -68,13 +72,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
   try {
+    // Проверяем авторизацию
+    const authResult = await requireAdminAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     const data = await request.json();
     const { name, description, goalTypeId, stages } = data;
 
@@ -129,7 +136,7 @@ export async function POST(request: NextRequest) {
       goal: goal
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка создания плана:', error);
     return NextResponse.json(
       { error: 'Ошибка создания плана' },

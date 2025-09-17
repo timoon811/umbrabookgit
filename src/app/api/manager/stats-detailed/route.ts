@@ -8,15 +8,18 @@ import {
   getCurrentMonthPeriod
 } from "@/lib/time-utils";
 import { maskUserName } from "@/utils/userUtils";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
+  try {
+    // Проверяем авторизацию
+    const authResult = await requireManagerAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
 
-  const { user } = authResult;
+    const { user } = authResult;
   const url = new URL(request.url);
   
   // Получаем параметры периода из запроса
@@ -24,8 +27,7 @@ export async function GET(request: NextRequest) {
   const customStart = url.searchParams.get('startDate');
   const customEnd = url.searchParams.get('endDate');
   
-  try {
-    const processorId = user.userId;
+  const processorId = user.userId;
     const utc3Now = getCurrentUTC3Time();
     
     // Определяем периоды в зависимости от выбора
@@ -218,13 +220,28 @@ export async function GET(request: NextRequest) {
       currentShiftSum = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
     }
 
-    // Рассчитываем рабочие часы
+    // Рассчитываем рабочие часы с проверками корректности
     const calculateWorkHours = (shifts: any[]) => {
       return shifts.reduce((total, shift) => {
         if (shift.actualStart && shift.actualEnd) {
           const start = new Date(shift.actualStart);
           const end = new Date(shift.actualEnd);
-          return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          // Проверяем корректность времени
+          if (end <= start) {
+            console.warn(`[STATS_DETAILED] Некорректное время смены ${shift.id}: конец (${end.toISOString()}) раньше или равен началу (${start.toISOString()})`);
+            return total;
+          }
+          
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          // Проверяем разумные границы (не более 24 часов за смену)
+          if (hours > 0 && hours <= 24) {
+            return total + hours;
+          } else {
+            console.warn(`[STATS_DETAILED] Некорректная продолжительность смены ${shift.id}: ${hours.toFixed(2)} часов`);
+            return total;
+          }
         }
         return total;
       }, 0);
@@ -326,9 +343,9 @@ export async function GET(request: NextRequest) {
     const weekBonuses = await calculateAllBonuses(weekDeposits, weekPeriod.start, weekEnd);
     const monthBonuses = await calculateAllBonuses(monthDeposits, monthPeriod.start, monthEnd);
     
-    const todayEarnings = todayBaseSalary + todayBonuses;
-    const weekEarnings = weekBaseSalary + weekBonuses;
-    const monthEarnings = monthBaseSalary + monthBonuses;
+    const todayEarnings = Math.max(0, todayBaseSalary + todayBonuses);
+    const weekEarnings = Math.max(0, weekBaseSalary + weekBonuses);
+    const monthEarnings = Math.max(0, monthBaseSalary + monthBonuses);
 
     // Рейтинг менеджеров (топ по выбранному периоду)
     const topManagers = await prisma.processor_deposits.groupBy({
@@ -422,7 +439,7 @@ export async function GET(request: NextRequest) {
           }
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log("Таблица user_goals не найдена, используем дефолтные цели");
       activeGoals = [];
     }

@@ -1,10 +1,22 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/salary-deposit-grid
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     // Получаем депозитную сетку
@@ -27,6 +39,17 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/salary-deposit-grid - Создание записи в сетке депозитов
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const data = await request.json();
 
@@ -54,6 +77,17 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/salary-deposit-grid - Обновление записи в сетке депозитов
 export async function PUT(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const data = await request.json();
 
@@ -86,6 +120,17 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/admin/salary-deposit-grid - Удаление записи из сетки депозитов
 export async function DELETE(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

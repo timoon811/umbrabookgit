@@ -6,7 +6,10 @@ import { getAllRoles } from '@/types/roles';
 // POST /api/admin/project-permissions - Сохранить права доступа для проектов
 export async function POST(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -118,7 +121,10 @@ export async function POST(request: NextRequest) {
 // GET /api/admin/project-permissions - Получить права доступа для проектов
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }

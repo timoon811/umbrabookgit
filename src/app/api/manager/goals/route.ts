@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateApiRequest } from "@/lib/api-auth";
+import { requireAuth } from '@/lib/api-auth';
 
 // GET /api/manager/goals - Получение активных планов для пользователей (упрощенная версия)
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await authenticateApiRequest(request);
-    if ('error' in authResult) {
-      return authResult.error;
-    }
+  
 
-    const { user } = authResult;
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
 
     // Временно возвращаем пустой массив для тестирования
     // После проверки работы интерфейса добавим полную логику
@@ -149,7 +153,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Ошибка получения планов пользователя:", error);
     return NextResponse.json(
       { error: "Внутренняя ошибка сервера" },

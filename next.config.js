@@ -22,13 +22,28 @@ const nextConfig = {
 
   // Настройки для API и статических файлов
   async headers() {
+    // Безопасные CORS origins в зависимости от окружения
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? (process.env.ALLOWED_ORIGINS || 'https://your-domain.com').split(',')
+      : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
     return [
       {
         source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+          { 
+            key: 'Access-Control-Allow-Origin', 
+            value: process.env.NODE_ENV === 'production' 
+              ? allowedOrigins[0] // В продакшене - первый домен из списка
+              : 'http://localhost:3000' // В разработке - localhost
+          },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, PATCH, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-Requested-With' },
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
       {

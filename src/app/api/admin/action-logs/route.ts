@@ -15,13 +15,16 @@ function getActionDescription(action: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию администратора
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
   try {
+    // Проверяем авторизацию администратора
+    const authResult = await requireAdminAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -140,7 +143,7 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка получения логов действий:', error);
     return NextResponse.json(
       { error: "Внутренняя ошибка сервера" },

@@ -6,15 +6,19 @@ import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Проверяем авторизацию - файлы требуют авторизации
-  const authResult = await requireAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
   try {
-    const pathArray = params.path;
+    // Проверяем авторизацию - файлы требуют авторизации
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    
+    const { user } = authResult;
+
+    const pathArray = (await params).path;
     const filename = pathArray[pathArray.length - 1];
     const directory = pathArray.slice(0, -1).join('/');
     
@@ -72,7 +76,7 @@ export async function GET(
       },
     });
 
-  } catch (error) {
+    } catch (error) {
     console.error('Ошибка получения файла:', error);
     return NextResponse.json(
       { error: 'Ошибка сервера' },

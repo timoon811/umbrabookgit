@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BuyerProject } from "@/types/buyer";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
+    const projectId = (await params).id;
     
     // Имитация подробных данных проекта
     const mockProjects: { [key: string]: BuyerProject } = {
@@ -153,10 +163,19 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
+    const projectId = (await params).id;
     const data = await request.json();
     
     // Валидация данных
@@ -178,6 +197,7 @@ export async function PUT(
       { project: updatedProject, message: "Проект обновлен успешно" },
       { status: 200 }
     );
+  
   } catch (error) {
     console.error("Error updating buyer project:", error);
     return NextResponse.json(
@@ -189,10 +209,19 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
+    const projectId = (await params).id;
     
     // Проверяем, что проект можно удалить (нет активных дневников)
     // В реальном проекте здесь проверка из БД
@@ -201,6 +230,7 @@ export async function DELETE(
       { message: "Проект архивирован успешно" },
       { status: 200 }
     );
+  
   } catch (error) {
     console.error("Error archiving buyer project:", error);
     return NextResponse.json(

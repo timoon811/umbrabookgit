@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentDayStartUTC3, getShiftType } from "@/lib/time-utils";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const { searchParams } = new URL(request.url);
     const processorId = searchParams.get('processorId');
     const status = searchParams.get('status');
@@ -34,6 +46,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
     const { processorId, shiftType, shiftDate, reason, adminComment } = data;
 
@@ -100,6 +123,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
     const { id, updates } = data;
 

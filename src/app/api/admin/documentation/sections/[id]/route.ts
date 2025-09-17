@@ -5,10 +5,11 @@ import { requireAuth } from '@/lib/api-auth';
 // PATCH /api/admin/documentation/sections/[id] - Обновить раздел документации
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -83,10 +84,11 @@ export async function PATCH(
 // DELETE /api/admin/documentation/sections/[id] - Удалить раздел документации
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -145,10 +147,11 @@ export async function DELETE(
 // GET /api/admin/documentation/sections/[id] - Получить раздел документации по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }

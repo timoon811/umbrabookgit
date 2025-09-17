@@ -5,6 +5,7 @@ import { registerSchema, validateSchema } from "@/lib/zod-schemas";
 
 export async function POST(request: NextRequest) {
   try {
+    
     const body = await request.json();
 
     // Валидация с помощью Zod

@@ -3,12 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');

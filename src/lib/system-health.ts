@@ -54,10 +54,36 @@ export async function checkAuthenticationHealth(): Promise<SystemHealthCheck> {
       };
     }
 
+    // Проверяем на дефолтные/небезопасные значения
+    const unsafeSecrets = [
+      'umbra_platform_super_secret_jwt_key_2024',
+      'CHANGE_THIS_IN_PRODUCTION_GENERATE_RANDOM_STRING_MIN_64_CHARS_CRYPTO_SECURE',
+      'secret',
+      'jwt_secret',
+      'your-secret-key'
+    ];
+    
+    if (unsafeSecrets.some(unsafe => jwtSecret.includes(unsafe))) {
+      return {
+        status: 'error',
+        message: 'JWT_SECRET использует дефолтное значение! КРИТИЧЕСКАЯ УЯЗВИМОСТЬ!',
+        details: { hint: 'Сгенерируйте уникальный секрет: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"' },
+        timestamp: new Date()
+      };
+    }
+
     if (jwtSecret.length < 32) {
       return {
         status: 'warning',
-        message: 'JWT_SECRET слишком короткий (рекомендуется минимум 32 символа)',
+        message: 'JWT_SECRET слишком короткий (рекомендуется минимум 64 символа)',
+        timestamp: new Date()
+      };
+    }
+    
+    if (jwtSecret.length < 64) {
+      return {
+        status: 'warning',
+        message: 'JWT_SECRET короче рекомендуемого (64+ символов для максимальной безопасности)',
         timestamp: new Date()
       };
     }

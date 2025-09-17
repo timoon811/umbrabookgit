@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // Простой тест для проверки миграции без авторизации
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Проверяем существующие колонки
     const tableInfo = await prisma.$queryRaw`
       SELECT column_name 
@@ -40,6 +52,17 @@ export async function GET(request: NextRequest) {
 // Применение миграции
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const { secret } = await request.json();
     
     // Простая защита

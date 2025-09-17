@@ -4,15 +4,16 @@ import { requireAuth } from "@/lib/api-auth";
 
 // GET /api/user - Получение информации о текущем пользователе
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
-  const { user } = authResult;
-
   try {
+    // Проверяем авторизацию
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     // Получаем полную информацию о пользователе
     const fullUser = await prisma.users.findUnique({
       where: { id: user.userId },
@@ -77,7 +78,6 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(fullUser);
-    
   } catch (error: unknown) {
     console.error("❌ Ошибка получения данных пользователя:", error);
     return NextResponse.json(
@@ -89,15 +89,16 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/user - Обновление профиля пользователя
 export async function PATCH(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
-  const { user } = authResult;
-
   try {
+    // Проверяем авторизацию
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     const body = await request.json();
     const { name, email } = body;
 
@@ -154,7 +155,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(updatedUser);
     
-  } catch (error: unknown) {
+    } catch (error: unknown) {
     console.error("❌ Ошибка обновления профиля:", error);
     return NextResponse.json(
       { message: "Ошибка сервера при обновлении профиля" },

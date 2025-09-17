@@ -1,6 +1,7 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/managers/[id]/settings - Получение настроек менеджера
 export async function GET(
@@ -8,11 +9,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const { id: processorId } = await params;
 
     // Получаем данные пользователя
-    const user = await prisma.users.findUnique({
+        const targetUser = await prisma.users.findUnique({
       where: { id: processorId },
       include: {
         assignedShifts: {
@@ -23,7 +33,7 @@ export async function GET(
       }
     });
 
-    if (!user) {
+        if (!targetUser) {
       return NextResponse.json(
         { error: "Пользователь не найден" },
         { status: 404 }
@@ -76,6 +86,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const { id: processorId } = await params;
     const data = await request.json();

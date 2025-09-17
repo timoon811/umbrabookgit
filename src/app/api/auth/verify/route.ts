@@ -5,6 +5,7 @@ import { verifyToken } from "@/lib/auth";
 // POST /api/auth/verify - Проверка токена и очистка невалидных cookies
 export async function POST(request: NextRequest) {
   try {
+    
     const cookieStore = await cookies();
     const authToken = cookieStore.get("auth-token")?.value;
     

@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { hasPermission } from "@/types/roles";
 import { BuyerStats } from "@/types/buyer";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация проверки авторизации (пока что будет заглушка)
     // В реальном проекте здесь должна быть проверка сессии
     

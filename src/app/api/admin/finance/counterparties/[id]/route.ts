@@ -1,17 +1,27 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/counterparties/[id] - Получение контрагента по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const counterparty = await prisma.finance_counterparties.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
     
     if (!counterparty) {
@@ -31,9 +41,18 @@ export async function GET(
 // PATCH /api/admin/finance/counterparties/[id] - Обновление контрагента
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const body = await request.json();
@@ -41,7 +60,7 @@ export async function PATCH(
 
     // Проверяем, существует ли контрагент
     const existingCounterparty = await prisma.finance_counterparties.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!existingCounterparty) {
@@ -60,7 +79,7 @@ export async function PATCH(
     if (isArchived !== undefined) updateData.isArchived = isArchived;
 
     const updatedCounterparty = await prisma.finance_counterparties.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: updateData,
       select: {
         id: true,
@@ -90,14 +109,23 @@ export async function PATCH(
 // DELETE /api/admin/finance/counterparties/[id] - Удаление контрагента
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     // Проверяем, существует ли контрагент
     const existingCounterparty = await prisma.finance_counterparties.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
     
     if (!existingCounterparty) {
@@ -106,7 +134,7 @@ export async function DELETE(
     
     // Удаляем контрагента
     await prisma.finance_counterparties.delete({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
     
     return NextResponse.json({ message: "Контрагент успешно удален" });

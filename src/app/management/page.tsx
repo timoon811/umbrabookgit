@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import SalaryRequestModal from "@/components/modals/SalaryRequestModal";
@@ -457,6 +457,8 @@ function ProcessingPageContent() {
     return currencyNames[currency] || currency;
   };
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const isDataLoading = useRef(false);
   const [userRole, setUserRole] = useState<string>("");
   const [stats, setStats] = useState<ManagerStats | null>(null);
   const [detailedStats, setDetailedStats] = useState<DetailedStats | null>(null);
@@ -579,12 +581,13 @@ function ProcessingPageContent() {
         setUserRole(user.role);
         
         // Загружаем данные для менеджеров и админов
-        if (user.role === "PROCESSOR" || user.role === "ADMIN") {
+        if ((user.role === "PROCESSOR" || user.role === "ADMIN") && !dataLoaded && !isDataLoading.current) {
           console.log('🔄 Начинаем загрузку данных для роли:', user.role);
           
           // Запускаем загрузку данных
           (async () => {
             try {
+              isDataLoading.current = true;
               setLoading(true);
 
               // Проверяем доступность API
@@ -674,10 +677,13 @@ function ProcessingPageContent() {
               console.error("Ошибка загрузки данных:", error);
             } finally {
               setLoading(false);
+              setDataLoaded(true);
+              isDataLoading.current = false;
             }
           })();
         } else {
           setLoading(false);
+          setDataLoaded(true);
         }
       } catch (error) {
         console.error("Ошибка проверки авторизации:", error);
@@ -688,7 +694,7 @@ function ProcessingPageContent() {
     if (user) {
       checkAuth();
     }
-  }, [user, router, selectedPeriod, loadSalaryRequests, loadSalaryStats]);
+  }, [user, router]);
 
   // Обновление текущего времени каждую секунду (UTC+3)
   useEffect(() => {
@@ -707,14 +713,14 @@ function ProcessingPageContent() {
 
   // Периодическое обновление статистики зарплаты (каждые 30 секунд)
   useEffect(() => {
-    if (salaryStats && isShiftActive) {
+    if (isShiftActive) {
       const interval = setInterval(() => {
         loadSalaryStats();
       }, 30000); // 30 секунд
 
       return () => clearInterval(interval);
     }
-  }, [salaryStats, isShiftActive, loadSalaryStats]);
+  }, [isShiftActive, loadSalaryStats]);
 
   // Периодическое обновление данных смены (каждые 60 секунд) для синхронизации времени
   useEffect(() => {
@@ -885,10 +891,12 @@ function ProcessingPageContent() {
   // Загрузка депозитов менеджера
   const loadDeposits = useCallback(async () => {
     try {
+      console.log('🔄 Загружаем депозиты...');
       const response = await fetch(`/api/manager/deposits?page=1&limit=50`);
       const data = await response.json();
 
       if (response.ok) {
+        console.log('✅ Депозиты загружены:', data.deposits?.length || 0);
         setDeposits(data.deposits || []);
       } else {
         console.error("Ошибка загрузки депозитов:", data.error);
@@ -897,6 +905,29 @@ function ProcessingPageContent() {
       console.error("Ошибка загрузки депозитов:", error);
     }
   }, []);
+
+  // Отдельный useEffect для загрузки депозитов при изменении активного таба
+  useEffect(() => {
+    if (user && (user.role === "PROCESSOR" || user.role === "ADMIN") && activeTab === "deposits" && !loading) {
+      console.log('📋 Переключились на таб депозитов, загружаем данные...');
+      loadDeposits();
+    }
+  }, [user, activeTab, loadDeposits]);
+
+  // Дополнительный useEffect для принудительного обновления депозитов при обновлении страницы
+  useEffect(() => {
+    const handlePageRefresh = () => {
+      if (activeTab === "deposits") {
+        console.log('🔄 Обновление страницы обнаружено, перезагружаем депозиты...');
+        setTimeout(() => loadDeposits(), 1000); // Небольшая задержка для полной инициализации
+      }
+    };
+
+    // Проверяем, если страница была обновлена
+    if (document.readyState === 'complete' && activeTab === "deposits") {
+      handlePageRefresh();
+    }
+  }, [activeTab, loadDeposits]);
 
   // Создать смену
   const createShift = async (shiftType: string) => {

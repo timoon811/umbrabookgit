@@ -1,10 +1,22 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/projects/stats - Получение проектов с финансовой статистикой
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const { searchParams } = new URL(request.url);

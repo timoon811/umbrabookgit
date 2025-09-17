@@ -1,10 +1,22 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/bonus-settings - Получение всех настроек бонусов
 export async function GET() {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const bonusSettings = await prisma.bonus_settings.findMany({
       orderBy: { createdAt: "desc" },
@@ -35,6 +47,17 @@ export async function GET() {
 // POST /api/admin/bonus-settings - Создание новых настроек
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const data = await request.json();
     const { type, settings } = data;
@@ -128,6 +151,7 @@ export async function POST(request: NextRequest) {
       { error: "Неизвестный тип настроек" },
       { status: 400 }
     );
+  
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
     console.error("Ошибка создания настроек бонусов:", error);
@@ -141,6 +165,17 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/bonus-settings - Обновление настроек
 export async function PUT(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const data = await request.json();
     const { type, id, updates } = data;
@@ -229,6 +264,7 @@ export async function PUT(request: NextRequest) {
       { error: "Неизвестный тип настроек" },
       { status: 400 }
     );
+  
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
     console.error("Ошибка обновления настроек бонусов:", error);
@@ -242,6 +278,17 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/admin/bonus-settings - Удаление настроек
 export async function DELETE(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");

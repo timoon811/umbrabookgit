@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 const prisma = new PrismaClient();
 
 export async function POST() {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
 
     // Очищаем существующих пользователей
     await prisma.users.deleteMany({});

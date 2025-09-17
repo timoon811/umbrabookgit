@@ -4,6 +4,7 @@ import { getSystemHealth, quickHealthCheck } from "@/lib/system-health";
 // GET /api/health - Проверка здоровья системы
 export async function GET(request: NextRequest) {
   try {
+    
     const url = new URL(request.url);
     const quick = url.searchParams.get('quick') === 'true';
     

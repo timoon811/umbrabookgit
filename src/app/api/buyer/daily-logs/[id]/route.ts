@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
-    const logId = params.id;
+    const logId = (await params).id;
     
     // Валидация данных
     if (!data.projectId || !data.date) {
@@ -48,6 +58,7 @@ export async function PUT(
       { log: updatedLog, message: "Дневник обновлен успешно" },
       { status: 200 }
     );
+  
   } catch (error) {
     console.error("Error updating daily log:", error);
     return NextResponse.json(
@@ -59,10 +70,19 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const logId = params.id;
+  const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
+    const logId = (await params).id;
     
     // Проверяем, что дневник можно удалить (только DRAFT)
     // В реальном проекте здесь проверка из БД
@@ -71,6 +91,7 @@ export async function DELETE(
       { message: "Дневник удален успешно" },
       { status: 200 }
     );
+  
   } catch (error) {
     console.error("Error deleting daily log:", error);
     return NextResponse.json(

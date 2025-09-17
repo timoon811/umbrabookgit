@@ -17,7 +17,7 @@ Sentry.init({
   // Server-specific configuration
   integrations: [
     // Automatically capture database queries
-    new Sentry.Integrations.Prisma({ client: undefined }),
+    Sentry.prismaIntegration(),
   ],
   
   // Ignore certain errors

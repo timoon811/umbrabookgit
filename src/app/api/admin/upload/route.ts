@@ -24,6 +24,7 @@ const ALLOWED_FILE_TYPES = [
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 import { requireAdmin } from "@/lib/auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
@@ -39,6 +40,17 @@ function sanitizeFilename(filename: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Проверяем права администратора
     await checkAdminAuth(request);
 
@@ -138,9 +150,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = await requireAdminAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    
+    const { user } = authResult;
+
+    return NextResponse.json(
+      { error: 'Method not allowed' },
+      { status: 405 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

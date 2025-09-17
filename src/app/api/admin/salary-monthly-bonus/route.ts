@@ -4,12 +4,18 @@ import { requireAdminAuth } from "@/lib/api-auth";
 
 // GET /api/admin/salary-monthly-bonus - Получение месячных бонусов
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const monthlyBonuses = await prisma.salary_monthly_bonus.findMany({
       where: { isActive: true },
       orderBy: { minAmount: 'asc' }
@@ -27,12 +33,18 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/salary-monthly-bonus - Создание месячного бонуса
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const data = await request.json();
     const { name, description, minAmount, bonusPercent } = data;
 
@@ -95,12 +107,18 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/admin/salary-monthly-bonus - Обновление месячного бонуса
 export async function PUT(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -184,12 +202,18 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/admin/salary-monthly-bonus - Удаление месячного бонуса
 export async function DELETE(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/transactions
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await requireAdmin(request);
 
     const { searchParams } = new URL(request.url);
@@ -46,6 +58,17 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/finance/transactions - Создание транзакции с учетом комиссий
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuth();
 
     const body = await request.json();

@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    // Получаем параметры запроса
+// Проверяем авторизацию
+  // Получаем параметры запроса
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");

@@ -1,17 +1,27 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/projects/[id] - Получение проекта по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const project = await prisma.finance_projects.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!project) {
@@ -31,9 +41,18 @@ export async function GET(
 // PATCH /api/admin/finance/projects/[id] - Обновление проекта
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const body = await request.json();
@@ -41,7 +60,7 @@ export async function PATCH(
 
     // Проверяем, существует ли проект
     const existingProject = await prisma.finance_projects.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!existingProject) {
@@ -49,7 +68,7 @@ export async function PATCH(
     }
 
     const updatedProject = await prisma.finance_projects.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
@@ -71,14 +90,23 @@ export async function PATCH(
 // DELETE /api/admin/finance/projects/[id] - Удаление проекта
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     // Проверяем, существует ли проект
     const existingProject = await prisma.finance_projects.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!existingProject) {
@@ -87,7 +115,7 @@ export async function DELETE(
 
     // Удаляем проект
     await prisma.finance_projects.delete({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     return NextResponse.json({ message: "Проект успешно удален" });

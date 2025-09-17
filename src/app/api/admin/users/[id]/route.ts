@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // Получение информации о пользователе
 export async function GET(
@@ -9,12 +10,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const { id } = await params;
 
     // Получаем пользователя с дополнительной информацией
-    const user = await prisma.users.findUnique({
+        const targetUser = await prisma.users.findUnique({
       where: { id },
       select: {
         id: true,
@@ -30,7 +40,7 @@ export async function GET(
       },
     });
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json(
         { message: "Пользователь не найден" },
         { status: 404 }
@@ -55,6 +65,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const { id } = await params;
@@ -173,6 +192,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     
     const { id } = await params;

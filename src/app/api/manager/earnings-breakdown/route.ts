@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { SalaryLogger } from "@/lib/salary-logger";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
-  const { user } = authResult;
   
-  try {
-    const { searchParams } = new URL(request.url);
+  const { user } = authResult;
+
+// Проверяем авторизацию
+  const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const type = searchParams.get("type"); // фильтр по типу начислений
@@ -156,15 +160,18 @@ export async function GET(request: NextRequest) {
 
 // Получение статистики заработков по сменам
 export async function POST(request: NextRequest) {
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    const { startDate, endDate } = await request.json();
+const { startDate, endDate } = await request.json();
     
     const { prisma } = await import("@/lib/prisma");
     

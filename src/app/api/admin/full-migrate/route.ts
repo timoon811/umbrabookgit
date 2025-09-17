@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // Полный аудит базы данных и применение всех миграций
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Проверяем все таблицы из схемы
     const expectedTables = [
       'users', 'courses', 'course_sections', 'course_pages', 
@@ -83,6 +95,17 @@ export async function GET(request: NextRequest) {
 // Применение полной миграции
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const { secret, action } = await request.json();
     
     if (secret !== "migrate_2025_full") {
@@ -280,6 +303,7 @@ export async function POST(request: NextRequest) {
       error: "Неизвестное действие миграции"
     }, { status: 400 });
 
+  
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
     console.error("Ошибка применения полной миграции:", error);

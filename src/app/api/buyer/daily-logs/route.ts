@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BuyerDailyLog } from "@/types/buyer";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация данных дневников для тестирования
     const mockLogs: BuyerDailyLog[] = [
       {
@@ -190,6 +202,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
     
     // Валидация данных
@@ -242,6 +265,7 @@ export async function POST(request: NextRequest) {
       { log: newLog, message: "Дневник создан успешно" },
       { status: 201 }
     );
+  
   } catch (error) {
     console.error("Error creating daily log:", error);
     return NextResponse.json(

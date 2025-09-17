@@ -2,18 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { getCurrentUTC3Time } from "@/lib/time-utils";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    const now = getCurrentUTC3Time();
+// Проверяем авторизацию
+  const now = getCurrentUTC3Time();
     
     // Получаем назначенные смены для текущего пользователя
     const userAssignments = await prisma.user_shift_assignments.findMany({

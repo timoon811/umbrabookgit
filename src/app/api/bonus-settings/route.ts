@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/bonus-settings - Получение настроек бонусной сетки для пользователей
 export async function GET() {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Получаем базовые настройки
     const bonusSettings = await prisma.bonus_settings.findFirst({
       where: { isActive: true },

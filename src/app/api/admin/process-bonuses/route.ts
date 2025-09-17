@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentDayStartUTC3 } from "@/lib/time-utils";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
 
     const now = new Date();
     const todayStart = getCurrentDayStartUTC3();
@@ -115,7 +125,6 @@ export async function POST(request: NextRequest) {
       burned: burnedCount,
       processedAt: now.toISOString()
     };
-
 
     return NextResponse.json({
       success: true,

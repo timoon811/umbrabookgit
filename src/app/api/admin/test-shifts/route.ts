@@ -3,13 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
-    // Получаем всех менеджеров
+  
+    
+    const { user } = authResult;
+
     const managers = await prisma.users.findMany({
       where: {
         role: 'PROCESSOR'

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
 import {
@@ -8,16 +9,19 @@ import {
 } from "@/lib/time-utils";
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    const processorId = user.userId;
+// Проверяем авторизацию
+  const processorId = user.userId;
     const utc3Now = getCurrentUTC3Time();
     const todayStart = getCurrentDayStartUTC3();
     const monthPeriod = getCurrentMonthPeriod();
@@ -53,18 +57,47 @@ export async function GET(request: NextRequest) {
       })
     ]);
 
-    // Функция расчета отработанных часов
+    // Функция расчета отработанных часов с проверками корректности
     const calculateWorkHours = (shifts: any[]) => {
       return shifts.reduce((total, shift) => {
         if (shift.actualStart && shift.actualEnd) {
           const start = new Date(shift.actualStart);
           const end = new Date(shift.actualEnd);
-          return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          // Проверяем корректность времени
+          if (end <= start) {
+            console.warn(`[SALARY_STATS] Некорректное время смены ${shift.id}: конец (${end.toISOString()}) раньше или равен началу (${start.toISOString()})`);
+            return total;
+          }
+          
+          const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          // Проверяем разумные границы (не более 24 часов за смену)
+          if (hours > 0 && hours <= 24) {
+            return total + hours;
+          } else {
+            console.warn(`[SALARY_STATS] Некорректная продолжительность смены ${shift.id}: ${hours.toFixed(2)} часов`);
+            return total;
+          }
         } else if (shift.actualStart && shift.status === 'ACTIVE') {
           // Для активной смены считаем время от начала до сейчас
           const start = new Date(shift.actualStart);
           const now = utc3Now;
-          return total + (now.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          if (now <= start) {
+            console.warn(`[SALARY_STATS] Некорректное время активной смены ${shift.id}: текущее время раньше или равно началу`);
+            return total;
+          }
+          
+          const hours = (now.getTime() - start.getTime()) / (1000 * 60 * 60);
+          
+          // Ограничиваем активную смену разумными пределами (не более 24 часов)
+          if (hours > 0 && hours <= 24) {
+            return total + hours;
+          } else {
+            console.warn(`[SALARY_STATS] Некорректная продолжительность активной смены ${shift.id}: ${hours.toFixed(2)} часов`);
+            return total;
+          }
         }
         return total;
       }, 0);

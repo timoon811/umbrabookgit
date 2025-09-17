@@ -5,10 +5,11 @@ import { requireAuth } from '@/lib/api-auth';
 // PUT /api/admin/content-projects/[id] - Обновить проект контента
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -75,10 +76,11 @@ export async function PUT(
 // DELETE /api/admin/content-projects/[id] - Удалить проект контента
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -148,10 +150,11 @@ export async function DELETE(
 // GET /api/admin/content-projects/[id] - Получить проект контента по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }

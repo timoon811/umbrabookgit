@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_ke
 
 export async function POST(request: NextRequest) {
   try {
+    
     // Принудительно подключаемся к базе данных
     await connectPrisma();
 

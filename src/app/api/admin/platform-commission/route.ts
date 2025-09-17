@@ -4,6 +4,8 @@ import { requireAdminAuth } from '@/lib/api-auth';
 
 export async function GET(req: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(req);
     if ('error' in authResult) return authResult.error;
 
@@ -34,6 +36,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(req);
     if ('error' in authResult) return authResult.error;
 
@@ -86,6 +90,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(req);
     if ('error' in authResult) return authResult.error;
 

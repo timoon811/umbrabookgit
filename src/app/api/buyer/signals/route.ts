@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BuyerSignal } from "@/types/buyer";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация данных сигналов для тестирования
     const mockSignals: BuyerSignal[] = [
       {
@@ -231,6 +243,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
     
     // Валидация данных
@@ -259,6 +282,7 @@ export async function POST(request: NextRequest) {
       { signal: newSignal, message: "Сигнал создан успешно" },
       { status: 201 }
     );
+  
   } catch (error) {
     console.error("Error creating buyer signal:", error);
     return NextResponse.json(

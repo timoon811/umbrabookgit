@@ -4,12 +4,18 @@ import { requireAdminAuth } from "@/lib/api-auth";
 
 // POST /api/admin/monthly-bonuses/calculate - Расчет и начисление месячных бонусов
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { month, year, dryRun = true } = await request.json();
 
     // Определяем период

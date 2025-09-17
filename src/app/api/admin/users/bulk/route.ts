@@ -7,10 +7,16 @@ import { requireAdminAuth } from "@/lib/api-auth";
 // Массовые операции с пользователями
 export async function PUT(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+
+    
+    const { user } = authResult;
 
     const body = await request.json();
     const { userIds, action } = body;
@@ -113,6 +119,7 @@ export async function PUT(request: NextRequest) {
 // Массовое удаление пользователей
 export async function DELETE(request: NextRequest) {
   try {
+    
     const authError = await checkAdminAuth();
     if (authError) return authError;
 

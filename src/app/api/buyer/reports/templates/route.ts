@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 
 interface ReportTemplate {
   id: string;
@@ -12,6 +13,17 @@ interface ReportTemplate {
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация шаблонов отчетов
     const mockTemplates: ReportTemplate[] = [
       {

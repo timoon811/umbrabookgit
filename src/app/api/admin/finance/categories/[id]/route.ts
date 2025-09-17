@@ -1,17 +1,27 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/categories/[id] - Получение категории по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const category = await prisma.finance_categories.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!category) {
@@ -31,9 +41,18 @@ export async function GET(
 // PATCH /api/admin/finance/categories/[id] - Обновление категории
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const body = await request.json();
@@ -41,7 +60,7 @@ export async function PATCH(
 
     // Проверяем, существует ли категория
     const existingCategory = await prisma.finance_categories.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!existingCategory) {
@@ -49,7 +68,7 @@ export async function PATCH(
     }
 
     const updatedCategory = await prisma.finance_categories.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...(name !== undefined && { name }),
         ...(type !== undefined && { type }),
@@ -72,14 +91,23 @@ export async function PATCH(
 // DELETE /api/admin/finance/categories/[id] - Удаление категории
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     // Проверяем, существует ли категория
     const existingCategory = await prisma.finance_categories.findUnique({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     if (!existingCategory) {
@@ -88,7 +116,7 @@ export async function DELETE(
 
     // Удаляем категорию
     await prisma.finance_categories.delete({
-      where: { id: params.id }
+      where: { id: (await params).id }
     });
 
     return NextResponse.json({ message: "Категория успешно удалена" });

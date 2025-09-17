@@ -35,11 +35,11 @@ export interface DocumentationSection {
   project?: ContentProject;
 }
 
-import React from 'react';
+import { ReactNode } from 'react';
 
 export interface SortableItemProps {
   id: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export interface SectionItemProps {

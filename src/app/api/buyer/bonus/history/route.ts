@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация истории выплат бонусов
     const mockHistory = [
       {

@@ -3,10 +3,22 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from '@/lib/api-auth';
 const JWT_SECRET = process.env.JWT_SECRET || "umbra_platform_super_secret_jwt_key_2024";
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const body = await request.json();
     const { currentPassword, newPassword, confirmPassword } = body;
 
@@ -54,11 +66,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Получение текущего пользователя
-    const user = await prisma.users.findUnique({
+        const currentUser = await prisma.users.findUnique({
       where: { id: decoded.userId },
     });
 
-    if (!user) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: "Пользователь не найден" },
         { status: 404 }
@@ -66,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка текущего пароля
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, currentUser.password);
     if (!isCurrentPasswordValid) {
       return NextResponse.json(
         { error: "Неверный текущий пароль" },
@@ -79,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     // Обновление пароля в базе данных
           await prisma.users.update({
-      where: { id: user.id },
+      where: { id: currentUser.id },
       data: {
         password: hashedNewPassword,
         updatedAt: new Date(),
@@ -102,6 +114,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
+  
   } catch (error) {
     console.error("Ошибка при смене пароля:", error);
     return NextResponse.json(

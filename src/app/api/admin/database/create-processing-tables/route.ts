@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { requireAdmin } from '@/lib/auth';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 const prisma = new PrismaClient();
 
@@ -96,6 +97,17 @@ CREATE INDEX IF NOT EXISTS "processing_resources_isPublic_idx" ON "processing_re
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await requireAdmin(request);
 
     // Выполняем создание всех таблиц processing системы

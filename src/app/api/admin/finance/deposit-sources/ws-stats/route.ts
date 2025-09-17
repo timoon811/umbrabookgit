@@ -2,10 +2,22 @@ import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getWebSocketClient } from "@/lib/websocket-client";
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // GET /api/admin/finance/deposit-sources/ws-stats - Получение статистики WebSocket подключений
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const wsClient = getWebSocketClient();
@@ -47,6 +59,17 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/finance/deposit-sources/ws-stats - Переподключение WebSocket
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
 
     const body = await request.json();
@@ -60,6 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: "Неизвестное действие" }, { status: 400 });
+  
   } catch (error: any) {
     console.error("Ошибка при управлении WebSocket:", error);
     return NextResponse.json(

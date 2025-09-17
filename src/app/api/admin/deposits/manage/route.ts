@@ -4,12 +4,18 @@ import { requireAdminAuth } from "@/lib/api-auth";
 
 // PUT /api/admin/deposits/manage?depositId=xxx - Обновление депозита
 export async function PUT(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const depositId = searchParams.get('depositId');
 
@@ -108,12 +114,18 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/admin/deposits/manage?depositId=xxx - Удаление депозита
 export async function DELETE(request: NextRequest) {
-  const authResult = await requireAdminAuth(request);
-  if ('error' in authResult) {
+  try {
+    
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
 
-  try {
+  
+    
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const depositId = searchParams.get('depositId');
 

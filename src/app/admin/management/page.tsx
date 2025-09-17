@@ -60,7 +60,7 @@ interface Manager {
   isBlocked: boolean;
   createdAt: string;
   updatedAt: string;
-  stats: {
+  stats?: {
     totalDeposits: number;
     totalAmount: number;
     totalBonuses: number;
@@ -184,6 +184,7 @@ export default function AdminManagementPage() {
 
   const loadDeposits = async () => {
     try {
+      console.log('[ADMIN_DEPOSITS] Загрузка депозитов в админ панели...');
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
@@ -195,12 +196,15 @@ export default function AdminManagementPage() {
       const response = await fetch(`/api/admin/deposits?${params}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('[ADMIN_DEPOSITS] ✅ Депозиты загружены:', data.deposits?.length || 0);
         setDeposits(data.deposits);
         setAnalytics(data.analytics);
         setPagination(data.pagination);
+      } else {
+        console.error('[ADMIN_DEPOSITS] ❌ Ошибка загрузки депозитов:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error("Ошибка загрузки депозитов:", error);
+      console.error("[ADMIN_DEPOSITS] ❌ Ошибка загрузки депозитов:", error);
     }
   };
 
@@ -354,7 +358,7 @@ export default function AdminManagementPage() {
             });
             clearTimeout(statsTimeout);
             
-            const stats = statsResponse.ok ? await statsResponse.json() : {
+            let stats = {
               totalDeposits: 0,
               totalAmount: 0,
               totalBonuses: 0,
@@ -363,6 +367,24 @@ export default function AdminManagementPage() {
               thisMonthAmount: 0,
               thisMonthBonuses: 0
             };
+
+            if (statsResponse.ok) {
+              try {
+                const statsData = await statsResponse.json();
+                // Проверяем наличие всех необходимых полей и присваиваем безопасные значения
+                stats = {
+                  totalDeposits: statsData.totalDeposits || 0,
+                  totalAmount: statsData.totalAmount || 0,
+                  totalBonuses: statsData.totalBonuses || 0,
+                  avgBonusRate: statsData.avgBonusRate || 0,
+                  thisMonthDeposits: statsData.thisMonthDeposits || 0,
+                  thisMonthAmount: statsData.thisMonthAmount || 0,
+                  thisMonthBonuses: statsData.thisMonthBonuses || 0
+                };
+              } catch (error) {
+                console.error(`Ошибка парсинга статистики для менеджера ${user.id}:`, error);
+              }
+            }
 
             // Получаем настройки менеджера
             const settingsController = new AbortController();
@@ -998,16 +1020,16 @@ export default function AdminManagementPage() {
                                 valueB = b.name.toLowerCase();
                                 break;
                               case 'totalDeposits':
-                                valueA = a.stats.totalDeposits;
-                                valueB = b.stats.totalDeposits;
+                                valueA = a.stats?.totalDeposits || 0;
+                                valueB = b.stats?.totalDeposits || 0;
                                 break;
                               case 'totalAmount':
-                                valueA = a.stats.totalAmount;
-                                valueB = b.stats.totalAmount;
+                                valueA = a.stats?.totalAmount || 0;
+                                valueB = b.stats?.totalAmount || 0;
                                 break;
                               case 'totalBonuses':
-                                valueA = a.stats.totalBonuses;
-                                valueB = b.stats.totalBonuses;
+                                valueA = a.stats?.totalBonuses || 0;
+                                valueB = b.stats?.totalBonuses || 0;
                                 break;
                               default:
                                 valueA = a.name.toLowerCase();
@@ -1048,30 +1070,30 @@ export default function AdminManagementPage() {
                             {/* Депозиты */}
                             <td className="px-4 py-3">
                               <div className="text-sm font-semibold text-[#171717] dark:text-[#ededed]">
-                                {manager.stats.totalDeposits}
+                                {manager.stats?.totalDeposits || 0}
                               </div>
                               <div className="text-xs text-green-600 dark:text-green-400">
-                                +{manager.stats.thisMonthDeposits} за месяц
+                                +{manager.stats?.thisMonthDeposits || 0} за месяц
                               </div>
                             </td>
                             
                             {/* Объем */}
                             <td className="px-4 py-3">
                               <div className="text-sm font-semibold text-[#171717] dark:text-[#ededed]">
-                                ${manager.stats.totalAmount.toLocaleString()}
+                                ${(manager.stats?.totalAmount || 0).toLocaleString()}
                               </div>
                               <div className="text-xs text-blue-600 dark:text-blue-400">
-                                +${manager.stats.thisMonthAmount.toLocaleString()} за месяц
+                                +${(manager.stats?.thisMonthAmount || 0).toLocaleString()} за месяц
                               </div>
                             </td>
                             
                             {/* Заработано */}
                             <td className="px-4 py-3">
                               <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                                ${manager.stats.totalBonuses.toLocaleString()}
+                                ${(manager.stats?.totalBonuses || 0).toLocaleString()}
                               </div>
                               <div className="text-xs text-purple-600 dark:text-purple-400">
-                                {manager.stats.avgBonusRate}% средний
+                                {manager.stats?.avgBonusRate || 0}% средний
                               </div>
                             </td>
                             

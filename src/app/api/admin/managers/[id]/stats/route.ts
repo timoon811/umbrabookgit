@@ -1,4 +1,5 @@
 import { checkAdminAuthUserId } from "@/lib/admin-auth";
+import { requireAdminAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -14,6 +15,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     await checkAdminAuthUserId();
     const { id: processorId } = await params;
 
@@ -85,27 +95,41 @@ export async function GET(
       },
     });
 
-    // Расчет заработка и доступности
-    const earned = monthDeposits.reduce((sum, d) => sum + d.processorEarnings, 0) +
-                  monthBonuses.reduce((sum, b) => sum + b.amount, 0);
-                  
-    const paid = monthSalary.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0);
-    const available = earned - paid;
+    // Получаем статистику за все время
+    const allTimeDeposits = await prisma.processor_deposits.findMany({
+      where: {
+        processorId,
+      },
+    });
 
+    // Получаем все бонусы
+    const allTimeBonuses = await prisma.bonus_payments.findMany({
+      where: {
+        processorId,
+        status: "PAID",
+      },
+    });
+
+    // Расчет общих показателей
+    const totalDeposits = allTimeDeposits.length;
+    const totalAmount = allTimeDeposits.reduce((sum, d) => sum + d.amount, 0);
+    const totalBonuses = allTimeBonuses.reduce((sum, b) => sum + b.amount, 0);
+    const avgBonusRate = totalAmount > 0 ? Math.round((totalBonuses / totalAmount) * 100 * 100) / 100 : 0;
+
+    // Статистика за текущий месяц
+    const thisMonthDeposits = monthDeposits.length;
+    const thisMonthAmount = monthDeposits.reduce((sum, d) => sum + d.amount, 0);
+    const thisMonthBonuses = monthBonuses.reduce((sum, b) => sum + b.amount, 0);
+
+    // Возвращаем в ожидаемом формате для интерфейса Manager
     const stats = {
-      today: todayStats,
-      period: {
-        weekDeposits: weekDeposits.reduce((sum, d) => sum + d.amount, 0),
-        monthDeposits: monthDeposits.reduce((sum, d) => sum + d.amount, 0),
-        salaryPaid: monthSalary.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0),
-        bonuses: monthBonuses.reduce((sum, b) => sum + b.amount, 0),
-      },
-      balance: {
-        earned: Math.round(earned * 100) / 100,
-        paid: Math.round(paid * 100) / 100,
-        pending: 0,
-        available: Math.round(available * 100) / 100,
-      },
+      totalDeposits,
+      totalAmount,
+      totalBonuses,
+      avgBonusRate,
+      thisMonthDeposits,
+      thisMonthAmount,
+      thisMonthBonuses,
     };
 
     return NextResponse.json(stats);

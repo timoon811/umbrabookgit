@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  // Используем централизованную аутентификацию
-  const authResult = await requireAuth(request);
-  if ('error' in authResult) {
-    return authResult.error;
-  }
-
-  const { user } = authResult;
-
   try {
+    // Используем централизованную аутентификацию
+    const authResult = await requireAuth(request);
+    
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
+
     return NextResponse.json({
       user: {
         id: user.userId,
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
         isBlocked: false // Если пользователь дошел до этой точки, он не заблокирован
       }
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Ошибка получения информации о пользователе:", error);
     
     if (error.name === "JsonWebTokenError") {

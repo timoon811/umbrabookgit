@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from '@/lib/api-auth';
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
 import {
@@ -9,16 +10,19 @@ import {
 } from "@/lib/time-utils";
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
-  const { user } = authResult;
   
-  try {
-    // Для админов показываем общую статистику, для менеджеров - их личную
+  const { user } = authResult;
+
+// Проверяем авторизацию
+  // Для админов показываем общую статистику, для менеджеров - их личную
     const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем текущую дату по UTC+3
@@ -108,9 +112,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const earned = allApprovedDeposits.reduce((sum, d) => sum + d.bonusAmount, 0);
-    const paid = allPaidSalary.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0);
-    const available = earned - paid;
+    const earned = Math.max(0, allApprovedDeposits.reduce((sum, d) => sum + d.processorEarnings, 0));
+    const paid = Math.max(0, allPaidSalary.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0));
+    const available = Math.max(0, earned - paid);
 
     const stats = {
       today: todayStats,

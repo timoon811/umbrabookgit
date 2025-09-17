@@ -8,12 +8,7 @@ Sentry.init({
   // Capture Replay for 10% of all sessions,
   // plus for 100% of sessions with an error
   integrations: [
-    new Sentry.Replay({
-      // Capture 10% of all sessions
-      sessionSampleRate: 0.1,
-      // Capture 100% of sessions with an error
-      errorSampleRate: 1.0,
-    }),
+    Sentry.replayIntegration(),
   ],
   
   // Performance Monitoring

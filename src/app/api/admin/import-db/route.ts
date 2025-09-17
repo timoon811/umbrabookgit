@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
 
     // Сначала очистим все таблицы
     await prisma.$executeRaw`TRUNCATE TABLE analytics RESTART IDENTITY CASCADE`;

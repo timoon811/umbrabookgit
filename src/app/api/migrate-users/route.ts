@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/api-auth';
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
 
     // Очищаем существующих пользователей
     await prisma.users.deleteMany({});

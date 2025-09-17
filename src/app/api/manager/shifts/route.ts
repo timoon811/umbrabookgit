@@ -4,18 +4,22 @@ import { requireManagerAuth } from "@/lib/api-auth";
 import { getCurrentUTC3Time } from "@/lib/time-utils";
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    // Получаем текущую смену или последнюю завершенную
+// Проверяем авторизацию
+  // Получаем текущую смену или последнюю завершенную
     const now = getCurrentUTC3Time();
     const todayStart = new Date(now);
     todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
@@ -33,38 +37,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ shift: null, isActive: false, timeRemaining: null });
     }
 
-    // Проверяем автозавершение смены (если прошло больше 30 минут после запланированного окончания)
-    if (currentShift.status === 'ACTIVE' && currentShift.scheduledEnd) {
-      const thirtyMinutesAfterEnd = new Date(currentShift.scheduledEnd.getTime() + 30 * 60 * 1000);
-      if (now > thirtyMinutesAfterEnd) {
-        // Автоматически завершаем смену
-        const autoEndedShift = await prisma.processor_shifts.update({
-          where: { id: currentShift.id },
-          data: {
-            actualEnd: thirtyMinutesAfterEnd,
-            status: 'COMPLETED',
-            notes: (currentShift.notes || '') + ' [Автозавершена системой через 30 мин после окончания]'
-          }
-        });
-
-        // Логируем автозавершение
-        await ProcessorLogger.logShiftEnd(user.userId, currentShift.shiftType, 
-          thirtyMinutesAfterEnd.getTime() - new Date(currentShift.actualStart!).getTime(), 
-          request, true // автозавершение
-        );
-
-        // Рассчитываем и логируем все заработки за автозавершенную смену
-        await calculateAndLogShiftEarnings(user.userId, currentShift.id, autoEndedShift);
-
-        return NextResponse.json({ 
-          shift: autoEndedShift, 
-          isActive: false, 
-          timeRemaining: null,
-          autoEnded: true,
-          message: "Смена была автоматически завершена системой" 
-        });
-      }
-    }
+    // ПРИМЕЧАНИЕ: Автозавершение смены перенесено в отдельный endpoint для безопасности
+    // Теперь смены автоматически завершаются только по расписанию, а не при каждом запросе
 
     // Вычисляем оставшееся время если смена активна
     let timeRemaining = null;
@@ -89,16 +63,19 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Проверяем авторизацию
-  const authResult = await requireManagerAuth(request);
-  if ('error' in authResult) {
+  try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
     return authResult.error;
   }
-
+  
   const { user } = authResult;
 
-  try {
-    const data = await request.json();
+// Проверяем авторизацию
+  const data = await request.json();
     const { action, shiftType } = data; // 'start', 'end' или 'create'
 
     const now = getCurrentUTC3Time();
@@ -272,6 +249,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Проверяем корректность времени завершения
+      if (shift.actualStart && now <= new Date(shift.actualStart)) {
+        return NextResponse.json(
+          { error: "Время завершения не может быть раньше или равно времени начала смены" },
+          { status: 400 }
+        );
+      }
+
       const updatedShift = await prisma.processor_shifts.update({
         where: { id: shift.id },
         data: {
@@ -300,6 +285,7 @@ export async function POST(request: NextRequest) {
       { error: "Неверное действие" },
       { status: 400 }
     );
+  
   } catch (error) {
     console.error('Ошибка управления сменой:', error);
     return NextResponse.json(
@@ -318,11 +304,18 @@ async function calculateAndLogShiftEarnings(
   shift: { actualStart?: Date | null; actualEnd?: Date | null; shiftType: string; [key: string]: unknown }
 ) {
   try {
-    console.log(`[SHIFT_EARNINGS] Начинаем расчет заработков за смену ${shiftId} для процессора ${processorId}`);
-
     // 1. Рассчитываем часовую оплату
     if (shift.actualStart && shift.actualEnd) {
-      const shiftDurationMs = new Date(shift.actualEnd).getTime() - new Date(shift.actualStart).getTime();
+      const actualStartTime = new Date(shift.actualStart);
+      const actualEndTime = new Date(shift.actualEnd);
+      
+      // Проверяем корректность времени
+      if (actualEndTime <= actualStartTime) {
+        console.warn(`[SHIFT_EARNINGS] Некорректное время смены ${shiftId}: конец (${actualEndTime.toISOString()}) раньше или равен началу (${actualStartTime.toISOString()})`);
+        return;
+      }
+      
+      const shiftDurationMs = actualEndTime.getTime() - actualStartTime.getTime();
       const shiftHours = shiftDurationMs / (1000 * 60 * 60);
 
       // Получаем настройки зарплаты для процессора
@@ -333,7 +326,8 @@ async function calculateAndLogShiftEarnings(
 
       const hourlyRate = salarySettings?.hourlyRate || 10; // Дефолтная ставка $10/час
 
-      if (shiftHours > 0) {
+      // Дополнительная проверка на разумные границы (не более 24 часов за смену)
+      if (shiftHours > 0 && shiftHours <= 24) {
         const hourlyPayment = shiftHours * hourlyRate;
         await SalaryLogger.logShiftHourlyPay(
           processorId,
@@ -342,6 +336,8 @@ async function calculateAndLogShiftEarnings(
           hourlyRate,
           hourlyPayment
         );
+        } else {
+        console.warn(`[SHIFT_EARNINGS] Некорректная продолжительность смены: ${shiftHours.toFixed(2)} часов`);
       }
     }
 
@@ -356,8 +352,6 @@ async function calculateAndLogShiftEarnings(
         },
       },
     });
-
-    console.log(`[SHIFT_DEPOSITS] Найдено ${shiftDeposits.length} одобренных депозитов за смену`);
 
     // Логируем заработки от каждого депозита
     for (const deposit of shiftDeposits) {
@@ -454,9 +448,7 @@ async function calculateAndLogShiftEarnings(
       }
     }
 
-    console.log(`[SHIFT_EARNINGS] ✓ Завершен расчет заработков за смену ${shiftId}`);
-
-  } catch (error) {
+    } catch (error) {
     console.error(`[SHIFT_EARNINGS] ERROR: Ошибка при расчете заработков за смену ${shiftId}:`, error);
     // Не прерываем завершение смены из-за ошибок в логировании
   }

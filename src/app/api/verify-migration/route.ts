@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
+  
+
+    const authResult = await requireAdminAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
 
     // Подсчитываем количество записей
     const userCount = await prisma.users.count();

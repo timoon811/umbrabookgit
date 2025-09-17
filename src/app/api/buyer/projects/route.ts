@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BuyerProject } from "@/types/buyer";
+import { requireAuth } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     // Имитация данных проектов для тестирования
     const mockProjects: BuyerProject[] = [
       {
@@ -139,6 +151,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+  
+
+    const authResult = await requireAuth(request);
+  
+    if ('error' in authResult) {
+    return authResult.error;
+  }
+  
+  const { user } = authResult;
+
+
     const data = await request.json();
     
     // Валидация данных
@@ -171,6 +194,7 @@ export async function POST(request: NextRequest) {
       { project: newProject, message: "Проект создан успешно" },
       { status: 201 }
     );
+  
   } catch (error) {
     console.error("Error creating buyer project:", error);
     return NextResponse.json(

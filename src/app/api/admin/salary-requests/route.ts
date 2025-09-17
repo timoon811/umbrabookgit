@@ -6,10 +6,16 @@ import { SalaryLogger } from "@/lib/salary-logger";
 // GET /api/admin/salary-requests - Получение всех заявок на зарплату
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -115,10 +121,16 @@ export async function GET(request: NextRequest) {
 // PUT /api/admin/salary-requests/[id] - Обновление статуса заявки
 export async function PUT(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+
+    
+    const { user } = authResult;
 
     const body = await request.json();
     const { id, status, adminComment, action } = body;
@@ -258,6 +270,7 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/admin/salary-requests/[id] - Удаление заявки (только для отклоненных)
 export async function DELETE(request: NextRequest) {
   try {
+    
     await checkAdminAuth(request);
 
     const { searchParams } = new URL(request.url);

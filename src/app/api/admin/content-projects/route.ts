@@ -5,7 +5,10 @@ import { requireAuth } from '@/lib/api-auth';
 // GET /api/admin/content-projects - Получить все проекты контента
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
@@ -41,7 +44,10 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/content-projects - Создать новый проект контента
 export async function POST(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }

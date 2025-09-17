@@ -23,10 +23,16 @@ interface ApiResponse {
 // GET /api/admin/documentation - Получение списка разделов и страниц документации
 export async function GET(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
+
+    
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -115,11 +121,17 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/documentation - Создание новой страницы документации
 export async function POST(request: NextRequest) {
   try {
+    
+
     const authResult = await requireAdminAuth(request);
+    
     if ('error' in authResult) {
       return authResult.error;
     }
     
+    
+    const { user } = authResult;
+
     const body = await request.json();
     const { title, description, slug, content, sectionId, order = 0, isPublished = true, parentId } = body;
     
@@ -197,6 +209,7 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/documentation - Переупорядочивание страниц и разделов
 export async function PUT(request: NextRequest) {
   try {
+    
     await checkAdminAuth();
 
     const body = await request.json();
