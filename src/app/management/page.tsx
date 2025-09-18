@@ -36,6 +36,7 @@ function ShiftManagementControls({
   shiftLoading: boolean;
   onCreateShift: (shiftType: string) => void;
 }) {
+  const [isCreating, setIsCreating] = useState(false);
   const [timeToNextShift, setTimeToNextShift] = useState<string>("");
   const [nextShift, setNextShift] = useState<typeof allShifts[0] | null>(null);
   const [canStartShift, setCanStartShift] = useState(false);
@@ -208,48 +209,30 @@ function ShiftManagementControls({
     <div className="space-y-3">
       {/* Кнопка начала смены */}
       <button
-        onClick={() => nextShift && onCreateShift(nextShift.type)}
-        disabled={shiftLoading || !canStartShift}
-        className={`w-full px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium ${
-          canStartShift 
+        onClick={() => {
+          if (nextShift && !shiftLoading && !isCreating && canStartShift) {
+            setIsCreating(true);
+            onCreateShift(nextShift.type);
+            // Сбрасываем флаг через 3 секунды для предотвращения блокировки
+            setTimeout(() => setIsCreating(false), 3000);
+          }
+        }}
+        disabled={shiftLoading || !canStartShift || isCreating}
+        className={`w-full px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium ${
+          canStartShift && !isCreating
             ? 'bg-green-600 hover:bg-green-700 text-white' 
             : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
         }`}
       >
-        {shiftLoading ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        {(shiftLoading || isCreating) ? (
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
         ) : (
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z"/>
           </svg>
         )}
         Начать смену
-        {nextShift && (
-          <span className="text-xs opacity-75">
-            ({nextShift.name})
-          </span>
-        )}
       </button>
-
-      {/* Таймер */}
-      {nextShift && (
-        <div className="text-center">
-          <div className="text-xs text-gray-600 dark:text-gray-400">
-            {canStartShift ? (
-              <span className="text-green-600 dark:text-green-400 font-medium">
-                ✓ {timeToNextShift} &quot;{nextShift.name}&quot;
-              </span>
-            ) : (
-              <span>
-                Начало смены &quot;{nextShift.name}&quot; {timeToNextShift}
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Время смены: {nextShift.timeDisplay}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -931,6 +914,9 @@ function ProcessingPageContent() {
 
   // Создать смену
   const createShift = async (shiftType: string) => {
+    // Защита от дублирования кликов
+    if (shiftLoading) return;
+    
     setShiftLoading(true);
     try {
       const response = await fetch("/api/manager/shifts", {
@@ -961,6 +947,9 @@ function ProcessingPageContent() {
 
   // Начать смену
   const startShift = async () => {
+    // Защита от дублирования кликов
+    if (shiftLoading) return;
+    
     setShiftLoading(true);
     try {
       const response = await fetch("/api/manager/shifts", {
@@ -1458,12 +1447,12 @@ function ProcessingPageContent() {
                       <button
                         onClick={startShift}
                         disabled={shiftLoading}
-                        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
                       >
                         {shiftLoading ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z"/>
                           </svg>
                         )}
