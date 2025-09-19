@@ -37,7 +37,7 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
         blocks.push({
           id: generateId(),
           type: 'heading1',
-          content: firstLine.substring(2),
+          content: firstLine.substring(2).trim(), // Убираем лишние пробелы
           metadata: {}
         });
         continue;
@@ -47,7 +47,7 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
         blocks.push({
           id: generateId(),
           type: 'heading2',
-          content: firstLine.substring(3),
+          content: firstLine.substring(3).trim(), // Убираем лишние пробелы
           metadata: {}
         });
         continue;
@@ -57,20 +57,24 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
         blocks.push({
           id: generateId(),
           type: 'heading3',
-          content: firstLine.substring(4),
+          content: firstLine.substring(4).trim(), // Убираем лишние пробелы
           metadata: {}
         });
         continue;
       }
 
-      // Изображения
-      const imageMatch = firstLine.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+      // Изображения (включая пустые alt и src)
+      const imageMatch = firstLine.match(/!\[([^\]]*)\]\(([^)]*)\)/);
       if (imageMatch) {
         blocks.push({
           id: generateId(),
           type: 'image',
-          content: imageMatch[2],
-          metadata: { url: imageMatch[2], alt: imageMatch[1], caption: imageMatch[1] }
+          content: imageMatch[2] || '',
+          metadata: { 
+            url: imageMatch[2] || '', 
+            alt: imageMatch[1] || '', 
+            caption: imageMatch[1] || '' 
+          }
         });
         continue;
       }
@@ -83,6 +87,30 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
           type: 'file',
           content: fileMatch[2],
           metadata: { url: fileMatch[2], name: fileMatch[1] }
+        });
+        continue;
+      }
+
+      // Внешние ссылки (обычные markdown ссылки)
+      const externalLinkMatch = firstLine.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+      if (externalLinkMatch) {
+        blocks.push({
+          id: generateId(),
+          type: 'external-link',
+          content: externalLinkMatch[1],
+          metadata: { linkUrl: externalLinkMatch[2] }
+        });
+        continue;
+      }
+
+      // Внутренние ссылки (ссылки на /docs/)
+      const internalLinkMatch = firstLine.match(/^\[([^\]]+)\]\(\/docs\/([^)]+)\)$/);
+      if (internalLinkMatch) {
+        blocks.push({
+          id: generateId(),
+          type: 'internal-link',
+          content: internalLinkMatch[1],
+          metadata: { internalPageId: internalLinkMatch[2] }
         });
         continue;
       }
@@ -109,6 +137,7 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
         codeLines.pop();
       }
 
+      // Сохраняем оригинальные отступы и пробелы в коде
       blocks.push({
         id: generateId(),
         type: 'code',
@@ -118,21 +147,7 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
       continue;
     }
 
-    // Цитаты (многострочные)
-    if (firstLine.startsWith('> ')) {
-      const quoteLines = lines.map(line =>
-        line.startsWith('> ') ? line.substring(2) : line
-      );
-      blocks.push({
-        id: generateId(),
-        type: 'quote',
-        content: quoteLines.join('\n'),
-        metadata: {}
-      });
-      continue;
-    }
-
-    // Callout блоки
+    // Callout блоки (проверяем ДО обычных цитат!)
     const calloutMatch = firstLine.match(/^>\s*\*\*(INFO|WARNING|ERROR|SUCCESS)\*\*:\s*(.+)$/i);
     if (calloutMatch) {
       const calloutType = calloutMatch[1].toLowerCase() as 'info' | 'warning' | 'error' | 'success';
@@ -149,27 +164,56 @@ export function parseMarkdownToBlocks(markdown: string): Block[] {
       continue;
     }
 
-    // Списки (многострочные)
-    if (firstLine.match(/^[-*] /) || firstLine.match(/^\d+\. /)) {
-      const isNumbered = firstLine.match(/^\d+\. /);
-      const listContent = lines.map(line => {
-        if (isNumbered) {
-          return line.replace(/^\d+\. /, '');
-        } else {
-          return line.replace(/^[-*] /, '');
-        }
-      }).join('\n');
-
+    // Цитаты (многострочные) - сохраняем отступы и пробелы
+    if (firstLine.startsWith('> ')) {
+      const quoteLines = lines.map(line =>
+        line.startsWith('> ') ? line.substring(2) : line
+      );
       blocks.push({
         id: generateId(),
-        type: isNumbered ? 'numbered-list' : 'list',
-        content: listContent,
+        type: 'quote',
+        content: quoteLines.join('\n'),
         metadata: {}
       });
       continue;
     }
 
-    // Обычный текст (многострочный параграф)
+    // Списки (многострочные) - улучшенная обработка с отступами
+    if (firstLine.match(/^[-*] /) || firstLine.match(/^\d+\. /)) {
+      const isNumbered = firstLine.match(/^\d+\. /);
+      
+      // Более умная обработка списков - извлекаем все элементы списка
+      const listItems = [];
+      let currentItem = '';
+      
+      for (const line of lines) {
+        if (line.match(/^[-*] /) || line.match(/^\d+\. /)) {
+          // Новый элемент списка
+          if (currentItem) {
+            listItems.push(currentItem.trim());
+          }
+          currentItem = line.replace(/^[-*] /, '').replace(/^\d+\. /, '');
+        } else if (line.trim() && currentItem) {
+          // Продолжение текущего элемента (с отступом или без)
+          currentItem += '\n' + line.trim();
+        }
+      }
+      
+      // Добавляем последний элемент
+      if (currentItem) {
+        listItems.push(currentItem.trim());
+      }
+
+      blocks.push({
+        id: generateId(),
+        type: isNumbered ? 'numbered-list' : 'list',
+        content: listItems.join('\n'),
+        metadata: {}
+      });
+      continue;
+    }
+
+    // Обычный текст (многострочный параграф) - сохраняем отступы и переносы
     blocks.push({
       id: generateId(),
       type: 'paragraph',
@@ -197,12 +241,13 @@ export function convertBlocksToMarkdown(blocks: Block[]): string {
         // Обрабатываем многострочные цитаты
         return block.content.split('\n').map(line => `> ${line}`).join('\n');
       case 'code':
+        // Сохраняем оригинальное форматирование кода с отступами и пробелами
         return `\`\`\`${block.metadata?.language || 'text'}\n${block.content}\n\`\`\``;
       case 'list':
-        // Обрабатываем многострочные списки
+        // Обрабатываем многострочные списки с сохранением отступов
         return block.content.split('\n').map(line => `- ${line}`).join('\n');
       case 'numbered-list':
-        // Обрабатываем многострочные нумерованные списки
+        // Обрабатываем многострочные нумерованные списки с сохранением отступов
         return block.content.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
       case 'image':
         return `![${block.metadata?.alt || ''}](${block.metadata?.url || block.content})`;
@@ -225,7 +270,7 @@ export function convertBlocksToMarkdown(blocks: Block[]): string {
       case 'divider':
         return '---';
       default:
-        // Параграфы сохраняют свою структуру как есть
+        // Параграфы сохраняют свою структуру как есть, включая отступы и переносы
         return block.content;
     }
   }).join('\n\n');

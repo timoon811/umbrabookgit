@@ -181,7 +181,7 @@ export async function authenticateAdmin(request: NextRequest): Promise<ApiAuthRe
  * Shorthand for admin-only endpoints
  */
 export async function requireAdminAuth(request: NextRequest): Promise<ApiAuthResult | ApiAuthError> {
-  return authenticateApiRequest(request, ["ADMIN"]);
+  return authenticateApiRequest(request, undefined, true);
 }
 
 /**

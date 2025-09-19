@@ -23,7 +23,6 @@ const ALLOWED_FILE_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-import { requireAdmin } from "@/lib/auth";
 import { requireAdminAuth } from '@/lib/api-auth';
 
 function getFileExtension(filename: string): string {
@@ -45,14 +44,10 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAdminAuth(request);
   
     if ('error' in authResult) {
-    return authResult.error;
-  }
+      return authResult.error;
+    }
   
-  const { user } = authResult;
-
-
-    // Проверяем права администратора
-    await checkAdminAuth(request);
+    const { user } = authResult;
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -112,7 +107,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
 
     // Возвращаем информацию о файле
-    const fileUrl = `/${uploadDir}/${filename}`;
+    const fileUrl = `/api/${uploadDir}/${filename}`;
     
     return NextResponse.json({
       success: true,

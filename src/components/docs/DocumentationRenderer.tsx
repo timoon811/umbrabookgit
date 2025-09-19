@@ -76,28 +76,95 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
     };
 
     const processContent = (content: string): React.ReactNode => {
-      // Обработка встроенного форматирования
+      // Обработка встроенного форматирования с сохранением пробелов и переносов
       let processed = content;
       
-      // Жирный текст
-      processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // УСИЛЕННАЯ защита от XSS - удаляем опасные конструкции
+      processed = processed
+        .replace(/javascript:/gi, '[BLOCKED-JS-PROTOCOL]')
+        .replace(/vbscript:/gi, '[BLOCKED-VB-PROTOCOL]')
+        .replace(/data:[^;]*;base64/gi, '[BLOCKED-DATA-URI]')
+        .replace(/on\w+\s*=/gi, '[BLOCKED-EVENT-HANDLER]')
+        .replace(/alert\s*\(/gi, '[BLOCKED-ALERT]')
+        .replace(/eval\s*\(/gi, '[BLOCKED-EVAL]')
+        .replace(/expression\s*\(/gi, '[BLOCKED-EXPRESSION]')
+        .replace(/<script[^>]*>/gi, '[BLOCKED-SCRIPT-TAG]')
+        .replace(/<\/script>/gi, '[/BLOCKED-SCRIPT-TAG]')
+        .replace(/<iframe[^>]*>/gi, '[BLOCKED-IFRAME]')
+        .replace(/<\/iframe>/gi, '[/BLOCKED-IFRAME]')
+        .replace(/<object[^>]*>/gi, '[BLOCKED-OBJECT]')
+        .replace(/<embed[^>]*>/gi, '[BLOCKED-EMBED]');
       
-      // Курсив
-      processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      // ОСНОВНОЕ экранирование HTML символов для безопасности
+      processed = processed
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;'); // Дополнительная защита от закрытия тегов
       
-      // Подчеркивание
-      processed = processed.replace(/__(.*?)__/g, '<u>$1</u>');
+      // Жирный текст (с дополнительным экранированием)
+      processed = processed.replace(/\*\*(.*?)\*\*/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<strong>${safeContent}</strong>`;
+      });
       
-      // Зачеркивание
-      processed = processed.replace(/~~(.*?)~~/g, '<del>$1</del>');
+      // Курсив (с дополнительным экранированием)
+      processed = processed.replace(/\*(.*?)\*/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<em>${safeContent}</em>`;
+      });
       
-      // Выделение
-      processed = processed.replace(/==(.*?)==/g, '<mark>$1</mark>');
+      // Подчеркивание (с дополнительным экранированием)
+      processed = processed.replace(/__(.*?)__/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<u>${safeContent}</u>`;
+      });
       
-      // Код
-      processed = processed.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-[#0a0a0a] px-1 py-0.5 rounded text-sm">$1</code>');
+      // Зачеркивание (с дополнительным экранированием)
+      processed = processed.replace(/~~(.*?)~~/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<del>${safeContent}</del>`;
+      });
+      
+      // Выделение (с дополнительным экранированием)
+      processed = processed.replace(/==(.*?)==/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<mark>${safeContent}</mark>`;
+      });
+      
+      // Код (с дополнительным экранированием)
+      processed = processed.replace(/`(.*?)`/g, (match, content) => {
+        const safeContent = content.replace(/[<>"']/g, (char) => {
+          const escapeMap = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+          return escapeMap[char] || char;
+        });
+        return `<code class="bg-gray-100 dark:bg-[#0a0a0a] px-1 py-0.5 rounded text-sm">${safeContent}</code>`;
+      });
 
-      return <span dangerouslySetInnerHTML={{ __html: processed }} />;
+      // Заменяем переносы строк на <br> для сохранения форматирования
+      processed = processed.replace(/\n/g, '<br>');
+
+      return <span 
+        dangerouslySetInnerHTML={{ __html: processed }} 
+        style={{ whiteSpace: 'pre-wrap' }}
+      />;
     };
 
     switch (block.type) {
@@ -143,7 +210,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
             key={block.id}
             className={`border-l-4 border-gray-500 pl-6 py-4 bg-gray-50 dark:bg-gray-800/50 rounded-r-lg mb-6 ${getAlignmentClass()}`}
           >
-            <p className={`text-gray-700 dark:text-gray-300 italic ${getTextClasses()}`} style={getTextStyles()}>
+            <p className={`text-gray-700 dark:text-gray-300 italic ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </p>
           </blockquote>
@@ -153,7 +220,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         return (
           <div key={block.id} className="flex items-start gap-3 mb-2">
             <span className="text-gray-400 mt-1">•</span>
-            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={getTextStyles()}>
+            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </p>
           </div>
@@ -163,7 +230,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
         return (
           <div key={block.id} className="flex items-start gap-3 mb-2">
             <span className="text-gray-400 mt-1">1.</span>
-            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={getTextStyles()}>
+            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </p>
           </div>
@@ -177,7 +244,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
                 {block.metadata.language}
               </div>
             )}
-            <pre className="p-4 overflow-x-auto">
+            <pre className="p-4 overflow-x-auto" style={{ whiteSpace: 'pre-wrap' }}>
               <code className="text-sm font-mono text-gray-900 dark:text-gray-100">
                 {block.content}
               </code>
@@ -394,7 +461,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
                 {calloutType === 'success' && 'Успех'}
               </span>
             </div>
-            <div className={getTextClasses()} style={getTextStyles()}>
+            <div className={getTextClasses()} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </div>
           </div>
@@ -412,7 +479,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
           <p 
             key={block.id}
             className={`text-gray-900 dark:text-white mb-4 leading-relaxed ${getAlignmentClass()} ${getTextClasses()}`}
-            style={getTextStyles()}
+            style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}
           >
             {processContent(block.content)}
           </p>
