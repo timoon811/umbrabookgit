@@ -6,10 +6,10 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:turbo": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
+    "dev": "TZ=UTC next dev",
+    "dev:turbo": "TZ=UTC next dev --turbopack",
+    "build": "TZ=UTC next build",
+    "start": "TZ=UTC next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",

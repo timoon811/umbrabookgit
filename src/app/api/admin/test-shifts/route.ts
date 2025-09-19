@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
+import { createShiftSafely } from "@/lib/shift-manager";
 
 export async function POST(request: NextRequest) {
   try {
@@ -129,15 +130,42 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    // Создаем новые тестовые смены
-    const createdShifts = await prisma.processor_shifts.createMany({
-      data: testShifts,
-      skipDuplicates: true,
-    });
+    // ИСПРАВЛЕНО: Создаем смены безопасно, по одной с проверкой дублей
+    const createdShifts = [];
+    const failedShifts = [];
+    
+    for (const shiftData of testShifts) {
+      const result = await createShiftSafely({
+        processorId: shiftData.processorId,
+        shiftType: shiftData.shiftType,
+        shiftDate: shiftData.shiftDate,
+        scheduledStart: shiftData.scheduledStart,
+        scheduledEnd: shiftData.scheduledEnd,
+        status: shiftData.status,
+        notes: shiftData.notes,
+        bypassChecks: true // Админская операция, пропускаем проверки прав
+      });
+      
+      if (result.success) {
+        createdShifts.push(result.shift);
+      } else {
+        failedShifts.push({
+          shiftData,
+          error: result.error,
+          code: result.code
+        });
+      }
+    }
 
     return NextResponse.json({
-      message: `Создано ${createdShifts.count} тестовых смен`,
-      count: createdShifts.count,
+      message: `Создано ${createdShifts.length} тестовых смен`,
+      count: createdShifts.length,
+      failed: failedShifts.length,
+      details: failedShifts.length > 0 ? {
+        created: createdShifts.length,
+        failed: failedShifts.length,
+        failures: failedShifts.map(f => `${f.error} (${f.code})`)
+      } : undefined
     });
   } catch (error) {
     console.error('Ошибка создания тестовых смен:', error);

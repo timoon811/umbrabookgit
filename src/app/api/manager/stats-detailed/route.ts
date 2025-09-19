@@ -104,9 +104,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Корректные временные окончания для фильтрации
-    const todayEnd = period === 'current' ? new Date() : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    const weekEnd = period === 'current' ? new Date() : weekPeriod.end || new Date();
-    const monthEnd = period === 'current' ? new Date() : monthPeriod.end || new Date();
+    // ИСПРАВЛЕНО: Используем корректное UTC+3 время вместо new Date()
+    const todayEnd = period === 'current' ? getCurrentUTC3Time() : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const weekEnd = period === 'current' ? getCurrentUTC3Time() : weekPeriod.end || getCurrentUTC3Time();
+    const monthEnd = period === 'current' ? getCurrentUTC3Time() : monthPeriod.end || getCurrentUTC3Time();
 
     // Статистика за разные периоды с корректными фильтрами
     const [todayDeposits, weekDeposits, monthDeposits] = await Promise.all([

@@ -10,6 +10,7 @@ import { MetricCard, ProgressBar, LeaderboardCard, ProjectionCard, ShiftGoalsCar
 import SalaryStatsCard from "@/components/SalaryStatsCard";
 import WalletBalance from "@/components/WalletBalance";
 import { useAuth } from "@/hooks/useAuth";
+import { getCurrentUTC3Time } from "@/lib/time-utils";
 
 // Компонент управления сменами
 function ShiftManagementControls({ 
@@ -47,9 +48,8 @@ function ShiftManagementControls({
       const availableShifts = allShifts.filter(s => s.isAvailableForManager);
       if (availableShifts.length === 0) return;
 
-      // Используем время в UTC+3 для корректной работы с графиком смен
-      const utcTime = new Date(currentTime);
-      const utc3Time = new Date(utcTime.getTime() + (utcTime.getTimezoneOffset() * 60000) + (3 * 60 * 60 * 1000));
+      // ИСПРАВЛЕНО: Используем унифицированную функцию UTC+3 без зависимости от локального времени
+      const utc3Time = getCurrentUTC3Time();
       const currentHour = utc3Time.getUTCHours();
       const currentMinute = utc3Time.getUTCMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
@@ -679,12 +679,11 @@ function ProcessingPageContent() {
     }
   }, [user, router]);
 
-  // Обновление текущего времени каждую секунду (UTC+3)
+  // ИСПРАВЛЕНО: Обновление текущего времени каждую секунду (UTC+3)
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      // Конвертируем в UTC+3 время для отображения
-      const utc3Time = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (3 * 60 * 60 * 1000));
+      // Используем унифицированную функцию UTC+3
+      const utc3Time = getCurrentUTC3Time();
       setCurrentTime(utc3Time);
     };
 

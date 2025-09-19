@@ -701,6 +701,7 @@ model processor_shifts {
   processor      users       @relation(fields: [processorId], references: [id], onDelete: Cascade)
   earningsLog    salary_earnings_log[]
 
+  @@unique([processorId, shiftDate])
   @@index([processorId])
   @@index([shiftType])
   @@index([shiftDate])

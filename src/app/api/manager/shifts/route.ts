@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getUnifiedTime, TimePeriods, TimeFormatter } from "@/lib/unified-time";
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 import { requireAuth } from '@/lib/api-auth';
+import { createShiftSafely } from "@/lib/shift-manager";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,11 +20,11 @@ export async function GET(request: NextRequest) {
   
   const { user } = authResult;
 
-// Проверяем авторизацию
+// ИСПРАВЛЕНО: Используем унифицированную систему времени
   // Получаем текущую смену или последнюю завершенную
-    const now = getCurrentUTC3Time();
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
+    const unifiedTime = getUnifiedTime();
+    const dayPeriod = TimePeriods.getCurrentDayStart();
+    const todayStart = dayPeriod.utc;
 
     const currentShift = await prisma.processor_shifts.findFirst({
       where: {
@@ -44,14 +46,14 @@ export async function GET(request: NextRequest) {
     let timeRemaining = null;
     if (currentShift.status === 'ACTIVE' && currentShift.scheduledEnd) {
       // Используем запланированное время окончания смены, а не 8 часов от начала
-      timeRemaining = Math.max(0, currentShift.scheduledEnd.getTime() - now.getTime());
+      timeRemaining = Math.max(0, currentShift.scheduledEnd.getTime() - unifiedTime.utc.getTime());
     }
 
     return NextResponse.json({
       shift: currentShift,
       isActive: currentShift.status === 'ACTIVE',
       timeRemaining,
-      serverTime: now.getTime() // Добавляем серверное время для синхронизации
+      serverTime: TimeFormatter.forAPI(unifiedTime) // ИСПРАВЛЕНО: Унифицированное время для синхронизации
     });
   } catch (error) {
     console.error('Ошибка получения смены:', error);
@@ -78,113 +80,47 @@ export async function POST(request: NextRequest) {
   const data = await request.json();
     const { action, shiftType } = data; // 'start', 'end' или 'create'
 
-    const now = getCurrentUTC3Time();
-    const todayStart = new Date(now);
-    todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
+    // ИСПРАВЛЕНО: Используем унифицированную систему времени
+    const unifiedTime = getUnifiedTime();
+    const dayPeriod = TimePeriods.getCurrentDayStart();
+    const todayStart = dayPeriod.utc;
 
     if (action === 'create') {
-      // Создаем новую смену с проверкой доступности
-      if (!shiftType) {
-        return NextResponse.json(
-          { error: "Тип смены обязателен" },
-          { status: 400 }
-        );
-      }
-
-      // Проверяем, что смена разрешена администратором
-      const shiftSetting = await prisma.shift_settings.findFirst({
-        where: { 
-          shiftType: shiftType,
-          isActive: true 
-        }
+      // ИСПРАВЛЕНО: Используем новый безопасный менеджер смен
+      // Все проверки и защита от дублей выполняются централизованно
+      const shiftResult = await createShiftSafely({
+        processorId: user.userId,
+        shiftType: shiftType,
+        shiftDate: todayStart,
       });
 
-      if (!shiftSetting) {
+      if (!shiftResult.success) {
+        let statusCode = 400;
+        
+        // Определяем статус код по типу ошибки
+        switch (shiftResult.code) {
+          case 'UNAUTHORIZED':
+            statusCode = 403;
+            break;
+          case 'ALREADY_EXISTS':
+            statusCode = 400;
+            break;
+          case 'INVALID_DATA':
+            statusCode = 400;
+            break;
+          case 'SYSTEM_ERROR':
+            statusCode = 500;
+            break;
+        }
+        
         return NextResponse.json(
-          { error: "Данный тип смены недоступен. Обратитесь к администратору." },
-          { status: 403 }
+          { error: shiftResult.error },
+          { status: statusCode }
         );
       }
-
-      // Проверяем, что смена назначена текущему пользователю
-      const userAssignment = await prisma.user_shift_assignments.findFirst({
-        where: {
-          userId: user.userId,
-          shiftSettingId: shiftSetting.id,
-          isActive: true
-        }
-      });
-
-      if (!userAssignment) {
-        return NextResponse.json(
-          { error: "Данная смена не назначена вам администратором. Обратитесь к администратору для назначения смены." },
-          { status: 403 }
-        );
-      }
-
-      // Проверяем, нет ли уже смены на сегодня
-      const existingShift = await prisma.processor_shifts.findFirst({
-        where: {
-          processorId: user.userId,
-          shiftDate: todayStart,
-        }
-      });
-
-      if (existingShift) {
-        return NextResponse.json(
-          { error: "Смена на сегодня уже создана" },
-          { status: 400 }
-        );
-      }
-
-      // Создаем смену на основе настроек (ВАЖНО: используем UTC+3 время!)
-      const scheduledStart = new Date(todayStart);
-      // Конвертируем UTC+3 часы в UTC для корректного сохранения
-      const startHourUTC = shiftSetting.startHour - 3; // UTC+3 -> UTC
-      if (startHourUTC < 0) {
-        // Если время переходит на предыдущий день (например 00:00 UTC+3 = 21:00 UTC)
-        scheduledStart.setUTCDate(scheduledStart.getUTCDate() - 1);
-        scheduledStart.setUTCHours(startHourUTC + 24, shiftSetting.startMinute, 0, 0);
-      } else {
-        scheduledStart.setUTCHours(startHourUTC, shiftSetting.startMinute, 0, 0);
-      }
-
-      const scheduledEnd = new Date(todayStart);
-      if (shiftSetting.endHour >= 24) {
-        // Представление конца смены в 24+ часах (редко используется): всегда следующий день
-        scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-        const endHourUTC = (shiftSetting.endHour - 24) - 3; // UTC+3 -> UTC
-        const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-        scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSetting.endMinute, 0, 0);
-      } else {
-        const endHourUTC = shiftSetting.endHour - 3; // UTC+3 -> UTC
-        // Если конец логически раньше начала (смена через полночь), переносим на следующий день
-        const crossesMidnight =
-          shiftSetting.endHour < shiftSetting.startHour ||
-          (shiftSetting.endHour === shiftSetting.startHour && shiftSetting.endMinute <= shiftSetting.startMinute);
-
-        if (endHourUTC < 0 || crossesMidnight) {
-          scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-          const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-          scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSetting.endMinute, 0, 0);
-        } else {
-          scheduledEnd.setUTCHours(endHourUTC, shiftSetting.endMinute, 0, 0);
-        }
-      }
-
-      const newShift = await prisma.processor_shifts.create({
-        data: {
-          processorId: user.userId,
-          shiftType: shiftType,
-          shiftDate: todayStart,
-          scheduledStart,
-          scheduledEnd,
-          status: 'SCHEDULED'
-        }
-      });
 
       return NextResponse.json({
-        shift: newShift,
+        shift: shiftResult.shift,
         isActive: false,
         message: "Смена успешно создана"
       });
@@ -250,7 +186,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Проверяем корректность времени завершения
-      if (shift.actualStart && now <= new Date(shift.actualStart)) {
+      if (shift.actualStart && unifiedTime.utc <= new Date(shift.actualStart)) {
         return NextResponse.json(
           { error: "Время завершения не может быть раньше или равно времени начала смены" },
           { status: 400 }
@@ -260,13 +196,13 @@ export async function POST(request: NextRequest) {
       const updatedShift = await prisma.processor_shifts.update({
         where: { id: shift.id },
         data: {
-          actualEnd: now,
+          actualEnd: unifiedTime.utc, // ИСПРАВЛЕНО: Используем UTC время для БД
           status: 'COMPLETED'
         }
       });
 
       // Рассчитываем продолжительность смены
-      const duration = shift.actualStart ? now.getTime() - new Date(shift.actualStart).getTime() : 0;
+      const duration = shift.actualStart ? unifiedTime.utc.getTime() - new Date(shift.actualStart).getTime() : 0;
       
       // Логируем завершение смены
       await ProcessorLogger.logShiftEnd(user.userId, shift.shiftType, duration, request);

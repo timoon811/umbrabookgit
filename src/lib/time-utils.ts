@@ -12,10 +12,13 @@ export type ShiftType = 'MORNING' | 'DAY' | 'NIGHT';
 
 /**
  * Получает текущее время в UTC+3
+ * ИСПРАВЛЕНО: Теперь не зависит от локального времени пользователя
  */
 export function getCurrentUTC3Time(): Date {
   const now = new Date();
-  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (3 * 60 * 60 * 1000));
+  // Убираем зависимость от локальной временной зоны пользователя
+  // Всегда конвертируем UTC в UTC+3 (добавляем 3 часа)
+  return new Date(now.getTime() + (3 * 60 * 60 * 1000));
 }
 
 /**
@@ -52,6 +55,7 @@ export function getCurrentDayEndUTC3(): Date {
  * Получает начало дня для указанной даты по UTC+3
  */
 export function getDayStartUTC3(date: Date): Date {
+  // ИСПРАВЛЕНО: Корректная работа с UTC+3
   const utc3Date = new Date(date.getTime() + (3 * 60 * 60 * 1000));
   const dayStart = new Date(utc3Date);
   if (utc3Date.getUTCHours() < 6) {
@@ -154,6 +158,7 @@ export function getCurrentMonthPeriod(): TimePeriod {
  * Определяет тип смены для указанного времени (UTC+3)
  */
 export function getShiftType(date: Date): ShiftType {
+  // ИСПРАВЛЕНО: Правильная конвертация в UTC+3
   const utc3Time = new Date(date.getTime() + (3 * 60 * 60 * 1000));
   const hour = utc3Time.getUTCHours();
 
@@ -248,8 +253,9 @@ export function validate24HourReset(): boolean {
  * Получает текущее время в UTC (для обратной совместимости)
  */
 export function getCurrentUTCTime(): Date {
+  // ИСПРАВЛЕНО: Возвращаем чистое UTC время без зависимости от локальной зоны
   const now = new Date();
-  return new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+  return new Date(now.getTime());
 }
 
 /**
