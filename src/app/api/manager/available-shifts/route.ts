@@ -47,6 +47,9 @@ export async function GET(request: NextRequest) {
       });
     }
     
+    // Импортируем функцию заранее
+    const { isTimeInShift } = await import('@/lib/dynamic-shift-utils');
+    
     const availableShifts = shiftSettings.map(setting => {
       const { shiftType, startHour, startMinute, endHour, endMinute, name, description } = setting;
       
@@ -63,8 +66,6 @@ export async function GET(request: NextRequest) {
       }
       
       // Определяем, является ли данная смена текущей по времени
-      // Используем импорт динамически чтобы избежать проблем с инициализацией
-      const { isTimeInShift } = await import('@/lib/dynamic-shift-utils');
       const isCurrent = isTimeInShift(now.getHours(), now.getMinutes(), setting);
       
       return {

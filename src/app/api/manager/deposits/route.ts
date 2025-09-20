@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentDayStartUTC3,
-  getShiftType
- } from '@/lib/time-utils';
+  getShiftTypeByTime
+} from '@/lib/time-utils';
 import { getSystemTime } from '@/lib/system-time';
 import { ShiftType as PrismaShiftType } from "@prisma/client";
 import { requireManagerAuth } from "@/lib/api-auth";
@@ -327,7 +327,7 @@ export async function POST(request: NextRequest) {
     const todayStart = getCurrentDayStartUTC3();
 
     // Определяем тип смены для текущего времени
-    const currentShiftType = getShiftType(utc3Now);
+    const currentShiftType = getShiftTypeByTime(utc3Now);
 
     // Проверка 24-часового сброса не используется в логике сохранения
 
