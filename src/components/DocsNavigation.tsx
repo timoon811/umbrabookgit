@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 interface NavItem {
@@ -22,11 +22,24 @@ interface DocsNavigationProps {
 
 export default function DocsNavigation({ nav }: DocsNavigationProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isClient, setIsClient] = useState(false);
+
+  // Получаем текущий проект из URL параметров
+  const currentProject = searchParams.get('project');
 
   useEffect(() => {
     setIsClient(true);
   }, [nav]);
+
+  // Функция для добавления параметра проекта к href
+  const addProjectParam = (href: string) => {
+    if (!currentProject) return href;
+    
+    const url = new URL(href, window.location.origin);
+    url.searchParams.set('project', currentProject);
+    return url.pathname + url.search;
+  };
 
   // Определяем текущую страницу и раздел
   const getCurrentPageInfo = () => {
@@ -102,7 +115,7 @@ export default function DocsNavigation({ nav }: DocsNavigationProps) {
                   return (
                     <li key={`item-${itemIndex}`}>
                       <Link
-                        href={item.href}
+                        href={addProjectParam(item.href)}
                         className={`block text-sm py-1 px-2 rounded-md transition-colors w-full docs-nav-item ${
                           isCurrentPage
                             ? 'text-white bg-gray-900 dark:bg-[#0a0a0a] font-medium shadow-sm'

@@ -119,12 +119,12 @@ export default function MaterialsDropdown() {
     const firstPage = firstSection?.pages?.[0];
     
     if (firstPage?.slug) {
-      // Все проекты ведут на /docs/[slug] - единая точка входа
-      return `/docs/${firstPage.slug}`;
+      // Все проекты ведут на /docs/[slug] с параметром project для корректной навигации
+      return `/docs/${firstPage.slug}?project=${project.id}`;
     }
     
-    // Fallback для проектов без страниц - переходим на главную страницу документации
-    return '/docs';
+    // Fallback для проектов без страниц - переходим на главную страницу документации с параметром project
+    return `/docs?project=${project.id}`;
   };
 
   return (
