@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSystemTime } from "@/lib/system-time";
 import { getShiftTypeByTime } from "@/lib/time-utils";
+import { getShiftTypeByTimeFromDB, getAllShiftsSchedule } from "@/lib/dynamic-shift-utils";
 
 /**
  * API для проверки времени на платформе
@@ -12,8 +13,14 @@ export async function GET(request: NextRequest) {
     const hour = systemTime.getHours();
     const minute = systemTime.getMinutes();
     
-    // Определяем текущую смену
-    const currentShift = getShiftTypeByTime(systemTime);
+    // Определяем текущую смену (статичная логика)
+    const staticShift = getShiftTypeByTime(systemTime);
+    
+    // Определяем текущую смену (динамическая логика из БД)
+    const dynamicShift = await getShiftTypeByTimeFromDB(systemTime);
+    
+    // Получаем расписание смен из БД
+    const shiftSchedule = await getAllShiftsSchedule();
     
     // Информация о временной зоне сервера
     const timezoneInfo = {
@@ -30,12 +37,13 @@ export async function GET(request: NextRequest) {
       currentHour: hour,
       currentMinute: minute,
       timeDisplay: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-      currentShift: currentShift,
-      shiftSchedule: {
-        MORNING: '06:00 - 14:00',
-        DAY: '14:00 - 22:00', 
-        NIGHT: '22:00 - 06:00'
-      },
+      currentShift: dynamicShift || staticShift, // Приоритет динамической логике
+      staticShift: staticShift,
+      dynamicShift: dynamicShift,
+      shiftSchedule: shiftSchedule.reduce((acc, shift) => {
+        acc[shift.type] = shift.timeDisplay;
+        return acc;
+      }, {} as Record<string, string>),
       timezoneInfo,
       debug: {
         nodeEnv: process.env.NODE_ENV,

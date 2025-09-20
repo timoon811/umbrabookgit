@@ -63,31 +63,9 @@ export async function GET(request: NextRequest) {
       }
       
       // Определяем, является ли данная смена текущей по времени
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const currentTotalMinutes = currentHour * 60 + currentMinute;
-      const shiftStartMinutes = startHour * 60 + startMinute;
-      const shiftEndMinutes = endHour * 60 + endMinute;
-      
-      let isCurrent = false;
-      
-      // Проверяем тип смены
-      const isNightShiftThroughMidnight = endHour >= 24 || endHour < startHour || (endHour === startHour && endMinute <= startMinute);
-      const isEarlyMorningShift = shiftType === 'NIGHT' && startHour < 12; // Смены типа 00:00-08:00
-      
-      if (isNightShiftThroughMidnight) {
-        // Обычная ночная смена через полночь (22:00-06:00)
-        const actualEndMinutes = endHour >= 24 ? (endHour - 24) * 60 + endMinute : shiftEndMinutes;
-        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < actualEndMinutes);
-      } else if (isEarlyMorningShift) {
-        // Раннеутренняя "ночная" смена (00:00-08:00)
-        // Активна за 30 минут до начала до конца смены
-        const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30; // Для 00:01 = 23:31
-        isCurrent = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
-      } else {
-        // Обычная смена в пределах одного дня
-        isCurrent = currentTotalMinutes >= shiftStartMinutes && currentTotalMinutes < shiftEndMinutes;
-      }
+      // Используем импорт динамически чтобы избежать проблем с инициализацией
+      const { isTimeInShift } = await import('@/lib/dynamic-shift-utils');
+      const isCurrent = isTimeInShift(now.getHours(), now.getMinutes(), setting);
       
       return {
         type: shiftType,

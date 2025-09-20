@@ -294,8 +294,8 @@ function calculateShiftTimes(
  */
 
 export async function checkExistingShift(processorId: string, shiftDate?: Date): Promise<any | null> {
-  const dayPeriod = TimePeriods.getCurrentDayStart();
-  const targetDate = shiftDate || dayPeriod.utc;
+  const dayPeriod = TimePeriods.today();
+  const targetDate = shiftDate || dayPeriod.start;
   
   return await prisma.processor_shifts.findFirst({
     where: {

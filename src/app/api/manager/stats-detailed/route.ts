@@ -206,14 +206,9 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Если нет активной смены, используем тип смены по времени и депозиты за день
-      const currentHour = getSystemTime().getHours();
-      if (currentHour >= 6 && currentHour < 14) {
-        currentShiftType = 'MORNING';
-      } else if (currentHour >= 14 && currentHour < 22) {
-        currentShiftType = 'DAY';
-      } else {
-        currentShiftType = 'NIGHT';
-      }
+      const { getShiftTypeByTimeFromDB } = await import('@/lib/dynamic-shift-utils');
+      const dynamicShiftType = await getShiftTypeByTimeFromDB(getSystemTime());
+      currentShiftType = dynamicShiftType || 'DAY'; // fallback
       currentShiftSum = todayDeposits.reduce((sum, d) => sum + d.amount, 0);
     }
 

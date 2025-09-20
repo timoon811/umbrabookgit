@@ -96,11 +96,11 @@ export class ShiftAutoCloser {
 
     // Логируем событие закрытия смены (попытка - если ProcessorLogger недоступен, игнорируем)
     try {
-      await ProcessorLogger.logShiftEnd(
-        shift.processorId,
-        shift.shiftType,
-        autoEndTime.getTime() - new Date(shift.actualStart).getTime(),
-        null, // Нет request объекта
+        await ProcessorLogger.logShiftEnd(
+          shift.processorId,
+          shift.shiftType,
+          autoEndTime.getTime() - new Date(shift.actualStart).getTime(),
+          undefined, // Нет request объекта
         true // автозавершение
       );
     } catch (logError) {
