@@ -5,19 +5,41 @@ import { requireAuth } from "@/lib/api-auth";
 export async function GET(request: NextRequest) {
   try {
     // Проверяем авторизацию - документация теперь требует авторизации
-      const authResult = await requireAuth(request);
-      
-        if ('error' in authResult) {
-        return authResult.error;
-      }
+    const authResult = await requireAuth(request);
     
-      
-        const { user } = authResult;
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+
+    const { user } = authResult;
     
-        const documentation = await prisma.documentation.findMany({
-          where: {
-            isPublished: true,
-          },
+    // ✅ ИСПРАВЛЕНИЕ: Получаем projectId из URL параметров
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('projectId');
+    
+    // ✅ КРИТИЧНО: Если projectId не указан, возвращаем пустой результат
+    if (!projectId) {
+      console.log('⚠️ API /documentation: ProjectId не указан, возвращаем пустую документацию');
+      return NextResponse.json({
+        documentation: [],
+        sections: {},
+        statistics: {
+          total: 0,
+          sections: 0,
+          recent: 0,
+        },
+      });
+    }
+
+    // ✅ ИСПРАВЛЕНИЕ: Фильтруем документацию только по указанному проекту
+    const documentation = await prisma.documentation.findMany({
+      where: {
+        isPublished: true,
+        section: {
+          projectId: projectId,  // ✅ КРИТИЧНО: Фильтрация по проекту
+          isVisible: true
+        }
+      },
           select: {
             id: true,
             title: true,

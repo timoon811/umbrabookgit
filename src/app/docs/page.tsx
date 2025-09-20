@@ -56,9 +56,9 @@ export default async function DocsIndexPage() {
     }
 
     console.log('⚠️ DocsIndexPage: Проекты не найдены, используем клиентский редирект');
-    return <DocsRedirect fallbackSlug="page-1" />;
+    return <DocsRedirect fallbackSlug="page-1" projectId={null} />;
   } catch (error) {
     console.error("❌ DocsIndexPage: Ошибка при загрузке документации:", error);
-    return <DocsRedirect fallbackSlug="page-1" />;
+    return <DocsRedirect fallbackSlug="page-1" projectId={null} />;
   }
 }

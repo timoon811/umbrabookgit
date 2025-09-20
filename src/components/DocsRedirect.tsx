@@ -6,9 +6,10 @@ import DebugInfo from './DebugInfo';
 
 interface DocsRedirectProps {
   fallbackSlug?: string;
+  projectId?: string;  // ✅ Добавляем projectId в props
 }
 
-export default function DocsRedirect({ fallbackSlug = "page-1" }: DocsRedirectProps) {
+export default function DocsRedirect({ fallbackSlug = "page-1", projectId }: DocsRedirectProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +19,21 @@ export default function DocsRedirect({ fallbackSlug = "page-1" }: DocsRedirectPr
     async function redirectToFirstDoc() {
       try {
         
-        // Сначала попробуем fallback, если он есть
-        if (fallbackSlug) {
-          router.replace(`/docs/${fallbackSlug}`);
+        // ✅ ИСПРАВЛЕНИЕ: Если есть projectId и fallbackSlug, используем их вместе
+        if (fallbackSlug && projectId) {
+          router.replace(`/docs/${fallbackSlug}?project=${projectId}`);
+          return;
+        }
+        
+        // Если нет projectId, не можем загрузить документацию
+        if (!projectId) {
+          setError('ProjectId не указан');
+          setLoading(false);
           return;
         }
 
-        // Получаем список документации через API
-        const response = await fetch('/api/documentation');
+        // ✅ ИСПРАВЛЕНИЕ: Получаем список документации с обязательным projectId
+        const response = await fetch(`/api/documentation?projectId=${projectId}`);
         
         if (!response.ok) {
           throw new Error(`API Error: ${response.status}`);
@@ -38,14 +46,16 @@ export default function DocsRedirect({ fallbackSlug = "page-1" }: DocsRedirectPr
         if (data.documentation && Array.isArray(data.documentation) && data.documentation.length > 0) {
           const firstDoc = data.documentation[0];
           if (firstDoc && firstDoc.slug) {
-            router.replace(`/docs/${firstDoc.slug}`);
+            // ✅ ИСПРАВЛЕНИЕ: Добавляем projectId при редиректе
+            router.replace(`/docs/${firstDoc.slug}?project=${projectId}`);
             return;
           }
         }
 
         // Если данных нет, пробуем редирект на известную страницу
         if (fallbackSlug) {
-          router.replace(`/docs/${fallbackSlug}`);
+          // ✅ ИСПРАВЛЕНИЕ: Добавляем projectId при fallback редиректе
+          router.replace(`/docs/${fallbackSlug}?project=${projectId}`);
         } else {
           setError('Документация не найдена');
           setLoading(false);
@@ -63,7 +73,7 @@ export default function DocsRedirect({ fallbackSlug = "page-1" }: DocsRedirectPr
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [router, fallbackSlug]);
+  }, [router, fallbackSlug, projectId]);
 
   if (loading) {
     return (
