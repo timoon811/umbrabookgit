@@ -5,6 +5,9 @@ const nextConfig = {
   // Настройки для Next.js 15
   serverExternalPackages: ['@prisma/client', 'bcryptjs'],
   
+  // Включаем gzip сжатие
+  compress: true,
+  
   // Настройки для изображений
   images: {
     remotePatterns: [
@@ -47,9 +50,21 @@ const nextConfig = {
         ],
       },
       {
-        source: '/uploads/:path*',
+        source: '/_next/static/:path*',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/uploads/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=604800' }, // 1 неделя для загруженных файлов
+        ],
+      },
+      {
+        source: '/favicon.ico',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400' }, // 1 день для favicon
         ],
       },
     ];

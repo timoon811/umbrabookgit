@@ -65,14 +65,17 @@ export async function getDocsNav(workspaceKey?: string, projectId?: string): Pro
     // Принудительно обновляем кэш для получения актуальных данных
     await prisma.$queryRaw`SELECT 1`;
 
-    // Получаем информацию о разделах с учетом проекта
-    const sectionsWhere: any = {
-      isVisible: true
-    };
-    
-    if (projectId) {
-      sectionsWhere.projectId = projectId;
+    // ИСПРАВЛЕНИЕ: Если projectId не указан, возвращаем пустую навигацию
+    if (!projectId) {
+      console.log('⚠️ getDocsNav: ProjectId не указан, возвращаем пустую навигацию');
+      return [];
     }
+
+    // Получаем информацию о разделах с обязательной фильтрацией по проекту
+    const sectionsWhere: any = {
+      isVisible: true,
+      projectId: projectId  // ВСЕГДА фильтруем по projectId
+    };
 
     const sections = await prisma.documentation_sections.findMany({
       where: sectionsWhere,
@@ -81,11 +84,15 @@ export async function getDocsNav(workspaceKey?: string, projectId?: string): Pro
         key: true,
         name: true,
         projectId: true,
-      }
+      },
+      orderBy: [
+        { order: 'asc' },
+        { createdAt: 'asc' }
+      ]
     });
 
-    // Если нет разделов для конкретного проекта, возвращаем пустую навигацию
-    if (projectId && sections.length === 0) {
+    // Если нет разделов для проекта, возвращаем пустую навигацию
+    if (sections.length === 0) {
       console.log('⚠️ getDocsNav: Нет разделов для проекта', projectId);
       return [];
     }

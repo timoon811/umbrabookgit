@@ -11,6 +11,9 @@ import { ShiftAutoCloser } from "@/lib/shift-auto-closer";
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("🚀 API GET /manager/shifts: запрос получен");
+    console.log("🔍 Headers:", Object.fromEntries(request.headers.entries()));
+    
     // ДОБАВЛЕНО: Автоматическое закрытие просроченных смен
     await ShiftAutoCloser.checkAndCloseOverdueShifts();
 
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
       const updatedShift = await prisma.processor_shifts.update({
         where: { id: shift.id },
         data: {
-          actualStart: now,
+          actualStart: systemTime,
           status: 'ACTIVE'
         }
       });
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
         shift: updatedShift,
         isActive: true,
         message: "Смена начата",
-        serverTime: now.getTime() // Добавляем серверное время для синхронизации
+        serverTime: systemTime.getTime() // Добавляем серверное время для синхронизации
       });
     }
 

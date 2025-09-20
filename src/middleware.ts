@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getRateLimitHeaders, getRateLimitConfig } from "@/lib/rate-limit";
 
 // JWT_SECRET для Edge Runtime
 const JWT_SECRET = "umbra_platform_super_secret_jwt_key_2024";
@@ -80,14 +81,47 @@ function checkAdminRole(role: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Разрешаем доступ к статическим файлам и API маршрутам аутентификации
+  // Разрешаем доступ к статическим файлам без rate limiting
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
+    pathname.includes(".") // статические файлы
+  ) {
+    return NextResponse.next();
+  }
+
+  // Rate limiting для API маршрутов (включая аутентификацию)
+  if (pathname.startsWith('/api/')) {
+    const rateLimitResult = checkRateLimit(request, pathname);
+    const config = getRateLimitConfig(pathname);
+    
+    if (!rateLimitResult.allowed) {
+      const headers = getRateLimitHeaders(
+        false,
+        rateLimitResult.remaining,
+        rateLimitResult.resetTime,
+        config
+      );
+      
+      return NextResponse.json(
+        { 
+          error: 'Too Many Requests',
+          message: 'Превышен лимит запросов. Попробуйте позже.',
+          retryAfter: headers['Retry-After'] 
+        },
+        { 
+          status: 429,
+          headers 
+        }
+      );
+    }
+  }
+
+  // Разрешаем доступ к публичным API маршрутам
+  if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/seed") || // Добавляем для инициализации БД
-    pathname.startsWith("/api/admin/import-db") || // Добавляем для импорта БД
-    pathname.includes(".")
+    pathname.startsWith("/api/admin/import-db") // Добавляем для импорта БД
   ) {
     return NextResponse.next();
   }
@@ -97,7 +131,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("auth-token")?.value;
+  // Проверяем токен в cookies или в заголовке Authorization
+  let token = request.cookies.get("auth-token")?.value;
+  
+  // Если нет токена в cookies, проверяем Authorization header
+  if (!token) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    }
+  }
 
   // Проверяем защищенные маршруты
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
@@ -175,7 +218,12 @@ export async function middleware(request: NextRequest) {
 
   // API маршруты для администраторов
   if (pathname.startsWith("/api/admin")) {
-    if (!token) {
+    // Получаем токен для API маршрутов (приоритет - Authorization header)
+    let apiToken = request.headers.get("authorization")?.startsWith("Bearer ") 
+      ? request.headers.get("authorization")?.substring(7)
+      : request.cookies.get("auth-token")?.value;
+      
+    if (!apiToken) {
       return NextResponse.json(
         { message: "Не авторизован" },
         { status: 401 }
@@ -183,7 +231,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Декодируем токен
-    const decoded = decodeJWT(token);
+    const decoded = decodeJWT(apiToken);
     
     if (!decoded || decoded.exp * 1000 < Date.now()) {
       return NextResponse.json(
@@ -207,7 +255,12 @@ export async function middleware(request: NextRequest) {
 
   // API маршруты для байеров
   if (pathname.startsWith("/api/buyer")) {
-    if (!token) {
+    // Получаем токен для API маршрутов (приоритет - Authorization header)
+    let buyerApiToken = request.headers.get("authorization")?.startsWith("Bearer ") 
+      ? request.headers.get("authorization")?.substring(7)
+      : request.cookies.get("auth-token")?.value;
+      
+    if (!buyerApiToken) {
       return NextResponse.json(
         { message: "Не авторизован" },
         { status: 401 }
@@ -215,7 +268,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Декодируем токен
-    const decoded = decodeJWT(token);
+    const decoded = decodeJWT(buyerApiToken);
     
     if (!decoded || decoded.exp * 1000 < Date.now()) {
       return NextResponse.json(
@@ -239,7 +292,20 @@ export async function middleware(request: NextRequest) {
 
   // Проверка API маршрутов менеджера - требуют роли PROCESSOR
   if (pathname.startsWith("/api/manager")) {
-    if (!token) {
+    console.log("🔍 Middleware: обрабатываем", pathname);
+    
+    // Получаем токен для API маршрутов (приоритет - Authorization header)
+    const authHeader = request.headers.get("authorization");
+    console.log("🔍 Middleware: Authorization header:", authHeader);
+    
+    let managerApiToken = authHeader?.startsWith("Bearer ") 
+      ? authHeader.substring(7)
+      : request.cookies.get("auth-token")?.value;
+      
+    console.log("🔍 Middleware: извлеченный токен:", managerApiToken ? "ЕСТЬ" : "НЕТ");
+      
+    if (!managerApiToken) {
+      console.log("❌ Middleware: токен не найден");
       return NextResponse.json(
         { message: "Не авторизован" },
         { status: 401 }
@@ -247,7 +313,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Декодируем токен
-    const decoded = decodeJWT(token);
+    const decoded = decodeJWT(managerApiToken);
     
     if (!decoded || decoded.exp * 1000 < Date.now()) {
       return NextResponse.json(

@@ -40,8 +40,17 @@ export async function authenticateApiRequest(
   adminOnly: boolean = false
 ): Promise<ApiAuthResult | ApiAuthError> {
   try {
+    // Проверяем токен в cookies или в Authorization header
     const cookieStore = await cookies();
-    const token = cookieStore.get("auth-token")?.value;
+    let token = cookieStore.get("auth-token")?.value;
+    
+    // Если нет токена в cookies, проверяем Authorization header
+    if (!token) {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      }
+    }
 
     if (!token) {
       return {

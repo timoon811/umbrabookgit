@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
 
     const { user } = authResult;
 
-    // Получаем полную информацию о пользователе
-    const fullUser = await prisma.users.findUnique({
+    // Получаем базовую информацию о пользователе
+    const baseUser = await prisma.users.findUnique({
       where: { id: user.userId },
       select: {
         id: true,
@@ -26,56 +26,85 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
         isBlocked: true,
-        // Добавляем связанные данные в зависимости от роли
-        ...(user.role === 'PROCESSOR' && {
-          processor_deposits: {
-            select: {
-              id: true,
-              amount: true,
-              bonusAmount: true,
-              status: true,
-              createdAt: true,
-            },
-            orderBy: {
-              createdAt: 'desc'
-            },
-            take: 10, // Последние 10 депозитов
-          },
-          salary_requests: {
-            select: {
-              id: true,
-              requestedAmount: true,
-              calculatedAmount: true,
-              status: true,
-              createdAt: true,
-            },
-            orderBy: {
-              createdAt: 'desc'
-            },
-            take: 5, // Последние 5 заявок на зарплату
-          }
-        }),
-        wallets: {
-          select: {
-            id: true,
-            network: true,
-            address: true,
-            label: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
       },
     });
 
-    if (!fullUser) {
+    if (!baseUser) {
       return NextResponse.json(
         { message: "Пользователь не найден" },
         { status: 404 }
       );
     }
+
+    // Дополнительные данные для процессоров
+    let additionalData = {};
+    if (baseUser.role === 'PROCESSOR') {
+      try {
+        const deposits = await prisma.processor_deposits.findMany({
+          where: { processorId: user.userId },
+          select: {
+            id: true,
+            amount: true,
+            bonusAmount: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        });
+
+        const salaryRequests = await prisma.salary_requests.findMany({
+          where: { processorId: user.userId },
+          select: {
+            id: true,
+            requestedAmount: true,
+            calculatedAmount: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+        
+        additionalData = {
+          processor_deposits: deposits,
+          salary_requests: salaryRequests,
+        };
+      } catch (error) {
+        console.error("❌ Ошибка получения данных процессора:", error);
+        // Продолжаем без данных процессора
+        additionalData = {
+          processor_deposits: [],
+          salary_requests: [],
+        };
+      }
+    }
+
+    // Кошельки для всех пользователей
+    let wallets = [];
+    try {
+      wallets = await prisma.user_wallets.findMany({
+        where: { userId: user.userId },
+        select: {
+          id: true,
+          network: true,
+          address: true,
+          label: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } catch (error) {
+      console.error("❌ Ошибка получения кошельков:", error);
+      // Продолжаем без кошельков
+      wallets = [];
+    }
+
+    const fullUser = {
+      ...baseUser,
+      ...additionalData,
+      wallets,
+    };
 
     return NextResponse.json(fullUser);
   } catch (error: unknown) {
@@ -155,7 +184,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(updatedUser);
     
-    } catch (error: unknown) {
+  } catch (error: unknown) {
     console.error("❌ Ошибка обновления профиля:", error);
     return NextResponse.json(
       { message: "Ошибка сервера при обновлении профиля" },
