@@ -11,22 +11,19 @@ import { ShiftAutoCloser } from "@/lib/shift-auto-closer";
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("🚀 API GET /manager/shifts: запрос получен");
-    console.log("🔍 Headers:", Object.fromEntries(request.headers.entries()));
-    
     // ДОБАВЛЕНО: Автоматическое закрытие просроченных смен
     await ShiftAutoCloser.checkAndCloseOverdueShifts();
 
     const authResult = await requireAuth(request);
   
     if ('error' in authResult) {
-    return authResult.error;
-  }
+      return authResult.error;
+    }
   
-  const { user } = authResult;
+    const { user } = authResult;
 
-// ИСПРАВЛЕНО: Используем системное время
-  // Получаем текущую смену или последнюю завершенную
+    // ИСПРАВЛЕНО: Используем системное время
+    // Получаем текущую смену или последнюю завершенную
     const systemTime = getSystemTime();
     const todayPeriod = TimePeriods.today();
     const todayStart = todayPeriod.start;
@@ -77,13 +74,12 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAuth(request);
   
     if ('error' in authResult) {
-    return authResult.error;
-  }
+      return authResult.error;
+    }
   
-  const { user } = authResult;
+    const { user } = authResult;
 
-// Проверяем авторизацию
-  const data = await request.json();
+    const data = await request.json();
     const { action, shiftType } = data; // 'start', 'end' или 'create'
 
     // ИСПРАВЛЕНО: Используем системное время

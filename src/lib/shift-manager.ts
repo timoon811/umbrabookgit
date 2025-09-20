@@ -245,36 +245,23 @@ function calculateShiftTimes(
   
   // Если настройки смены есть, рассчитываем на их основе
   if (shiftSettings) {
+    // ✅ ИСПРАВЛЕНО: Система уже работает в UTC+3, не нужно дополнительного преобразования
     const scheduledStart = new Date(shiftDate);
-    const startHourUTC = shiftSettings.startHour - 3; // UTC+3 -> UTC
-    
-    if (startHourUTC < 0) {
-      scheduledStart.setUTCDate(scheduledStart.getUTCDate() - 1);
-      scheduledStart.setHours(startHourUTC + 24, shiftSettings.startMinute, 0, 0);
-    } else {
-      scheduledStart.setHours(startHourUTC, shiftSettings.startMinute, 0, 0);
-    }
+    scheduledStart.setHours(shiftSettings.startHour, shiftSettings.startMinute, 0, 0);
 
     const scheduledEnd = new Date(shiftDate);
-    if (shiftSettings.endHour >= 24) {
-      scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-      const endHourUTC = (shiftSettings.endHour - 24) - 3;
-      const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-      scheduledEnd.setHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
-    } else {
-      const endHourUTC = shiftSettings.endHour - 3;
-      const crossesMidnight =
-        shiftSettings.endHour < shiftSettings.startHour ||
-        (shiftSettings.endHour === shiftSettings.startHour && shiftSettings.endMinute <= shiftSettings.startMinute);
-
-      if (endHourUTC < 0 || crossesMidnight) {
-        scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
-        const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-        scheduledEnd.setHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
-      } else {
-        scheduledEnd.setHours(endHourUTC, shiftSettings.endMinute, 0, 0);
-      }
+    
+    // Обработка ночных смен через полночь
+    const crossesMidnight = 
+      shiftSettings.endHour < shiftSettings.startHour ||
+      (shiftSettings.endHour === shiftSettings.startHour && shiftSettings.endMinute <= shiftSettings.startMinute);
+    
+    if (crossesMidnight) {
+      // Смена переходит на следующий день (например, 22:00-06:00)
+      scheduledEnd.setDate(scheduledEnd.getDate() + 1);
     }
+    
+    scheduledEnd.setHours(shiftSettings.endHour, shiftSettings.endMinute, 0, 0);
     
     return { scheduledStart, scheduledEnd };
   }
