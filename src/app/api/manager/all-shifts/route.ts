@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Определяем текущую смену по времени
-    const currentHour = now.getUTCHours();
-    const currentMinute = now.getUTCMinutes();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
     const currentTotalMinutes = currentHour * 60 + currentMinute;
 
     const shifts = allShiftSettings.map(setting => {

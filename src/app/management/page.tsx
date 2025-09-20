@@ -50,8 +50,8 @@ function ShiftManagementControls({
 
       // ИСПРАВЛЕНО: Используем унифицированную функцию UTC+3 без зависимости от локального времени
       const utc3Time = getSystemTime();
-      const currentHour = utc3Time.getUTCHours();
-      const currentMinute = utc3Time.getUTCMinutes();
+      const currentHour = utc3Time.getHours();
+      const currentMinute = utc3Time.getMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
 
       let nearestShift = null;

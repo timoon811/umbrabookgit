@@ -249,9 +249,9 @@ function calculateShiftTimes(
     
     if (startHourUTC < 0) {
       scheduledStart.setUTCDate(scheduledStart.getUTCDate() - 1);
-      scheduledStart.setUTCHours(startHourUTC + 24, shiftSettings.startMinute, 0, 0);
+      scheduledStart.setHours(startHourUTC + 24, shiftSettings.startMinute, 0, 0);
     } else {
-      scheduledStart.setUTCHours(startHourUTC, shiftSettings.startMinute, 0, 0);
+      scheduledStart.setHours(startHourUTC, shiftSettings.startMinute, 0, 0);
     }
 
     const scheduledEnd = new Date(shiftDate);
@@ -259,7 +259,7 @@ function calculateShiftTimes(
       scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
       const endHourUTC = (shiftSettings.endHour - 24) - 3;
       const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-      scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
+      scheduledEnd.setHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
     } else {
       const endHourUTC = shiftSettings.endHour - 3;
       const crossesMidnight =
@@ -269,9 +269,9 @@ function calculateShiftTimes(
       if (endHourUTC < 0 || crossesMidnight) {
         scheduledEnd.setUTCDate(scheduledEnd.getUTCDate() + 1);
         const normalizedEndHourUTC = endHourUTC < 0 ? endHourUTC + 24 : endHourUTC;
-        scheduledEnd.setUTCHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
+        scheduledEnd.setHours(normalizedEndHourUTC, shiftSettings.endMinute, 0, 0);
       } else {
-        scheduledEnd.setUTCHours(endHourUTC, shiftSettings.endMinute, 0, 0);
+        scheduledEnd.setHours(endHourUTC, shiftSettings.endMinute, 0, 0);
       }
     }
     
@@ -280,10 +280,10 @@ function calculateShiftTimes(
   
   // Дефолтные времена если настроек нет
   const scheduledStart = new Date(shiftDate);
-  scheduledStart.setUTCHours(6, 0, 0, 0); // 09:00 MSK = 06:00 UTC
+  scheduledStart.setHours(6, 0, 0, 0); // 09:00 MSK = 06:00 UTC
   
   const scheduledEnd = new Date(shiftDate);
-  scheduledEnd.setUTCHours(14, 0, 0, 0); // 17:00 MSK = 14:00 UTC
+  scheduledEnd.setHours(14, 0, 0, 0); // 17:00 MSK = 14:00 UTC
   
   return { scheduledStart, scheduledEnd };
 }

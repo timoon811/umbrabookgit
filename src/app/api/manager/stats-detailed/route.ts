@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentDayStartUTC3,
-  getCurrentWeekPeriod,
-  getCurrentMonthPeriod
- } from '@/lib/time-utils';
+import { getCurrentDayStartUTC3, TimePeriods } from '@/lib/time-utils';
 import { getSystemTime } from '@/lib/system-time';
 import { maskUserName } from "@/utils/userUtils";
 import { requireAuth } from '@/lib/api-auth';
@@ -33,8 +30,8 @@ export async function GET(request: NextRequest) {
     let todayStart, weekPeriod, monthPeriod;
     
     if (period === 'previous') {
-      // Предыдущий месяц с корректным расчетом по UTC+3
-      const currentMonth = getCurrentMonthPeriod();
+      // Предыдущий месяц с корректным расчетом по системному времени
+      const currentMonth = TimePeriods.thisMonth();
       const prevMonthStart = new Date(currentMonth.start);
       prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
       const prevMonthEnd = new Date(currentMonth.start);
@@ -45,26 +42,26 @@ export async function GET(request: NextRequest) {
       // Последняя неделя прошлого месяца
       const lastWeekStart = new Date(prevMonthEnd);
       lastWeekStart.setDate(lastWeekStart.getDate() - 6);
-      lastWeekStart.setUTCHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
+      lastWeekStart.setHours(0, 0, 0, 0);
       weekPeriod = { start: lastWeekStart, end: prevMonthEnd };
       
       // Последний день прошлого месяца
       todayStart = new Date(prevMonthEnd);
-      todayStart.setUTCHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
+      todayStart.setHours(0, 0, 0, 0);
     } else if (period === 'custom' && customStart && customEnd) {
       // Кастомный период
       const startDate = new Date(customStart);
       const endDate = new Date(customEnd);
-      endDate.setUTCHours(20, 59, 59, 999); // Конец дня UTC+3 = 23:59 UTC+3 = 20:59 UTC
+      endDate.setHours(23, 59, 59, 999);
       
       monthPeriod = { start: startDate, end: endDate };
       weekPeriod = { start: startDate, end: endDate };
       todayStart = startDate;
     } else {
-      // Текущий период (по умолчанию) - используем корректные UTC+3 периоды
-      todayStart = getCurrentDayStartUTC3();
-      weekPeriod = getCurrentWeekPeriod();
-      monthPeriod = getCurrentMonthPeriod();
+      // Текущий период (по умолчанию) - используем системное время
+      todayStart = TimePeriods.today().start;
+      weekPeriod = TimePeriods.thisWeek();
+      monthPeriod = TimePeriods.thisMonth();
     }
 
     // Получаем настройки зарплаты из админ панели
@@ -209,7 +206,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Если нет активной смены, используем тип смены по времени и депозиты за день
-      const currentHour = getSystemTime().getUTCHours();
+      const currentHour = getSystemTime().getHours();
       if (currentHour >= 6 && currentHour < 14) {
         currentShiftType = 'MORNING';
       } else if (currentHour >= 14 && currentHour < 22) {

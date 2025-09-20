@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { getSystemTime } from '@/lib/system-time';
-import { getUnifiedTime, TimePeriods, TimeFormatter } from "@/lib/unified-time";
+import { TimePeriods } from '@/lib/time-utils';
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 import { requireAuth } from '@/lib/api-auth';
@@ -22,11 +22,11 @@ export async function GET(request: NextRequest) {
   
   const { user } = authResult;
 
-// ИСПРАВЛЕНО: Используем унифицированную систему времени
+// ИСПРАВЛЕНО: Используем системное время
   // Получаем текущую смену или последнюю завершенную
-    const unifiedTime = getUnifiedTime();
-    const dayPeriod = TimePeriods.getCurrentDayStart();
-    const todayStart = dayPeriod.utc;
+    const systemTime = getSystemTime();
+    const todayPeriod = TimePeriods.today();
+    const todayStart = todayPeriod.start;
 
     const currentShift = await prisma.processor_shifts.findFirst({
       where: {
@@ -48,14 +48,14 @@ export async function GET(request: NextRequest) {
     let timeRemaining = null;
     if (currentShift.status === 'ACTIVE' && currentShift.scheduledEnd) {
       // Используем запланированное время окончания смены, а не 8 часов от начала
-      timeRemaining = Math.max(0, currentShift.scheduledEnd.getTime() - unifiedTime.utc.getTime());
+      timeRemaining = Math.max(0, currentShift.scheduledEnd.getTime() - systemTime.getTime());
     }
 
     return NextResponse.json({
       shift: currentShift,
       isActive: currentShift.status === 'ACTIVE',
       timeRemaining,
-      serverTime: TimeFormatter.forAPI(unifiedTime) // ИСПРАВЛЕНО: Унифицированное время для синхронизации
+      serverTime: systemTime.toISOString() // ИСПРАВЛЕНО: Системное время для синхронизации
     });
   } catch (error) {
     console.error('Ошибка получения смены:', error);
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
   const data = await request.json();
     const { action, shiftType } = data; // 'start', 'end' или 'create'
 
-    // ИСПРАВЛЕНО: Используем унифицированную систему времени
-    const unifiedTime = getUnifiedTime();
-    const dayPeriod = TimePeriods.getCurrentDayStart();
-    const todayStart = dayPeriod.utc;
+    // ИСПРАВЛЕНО: Используем системное время
+    const systemTime = getSystemTime();
+    const todayPeriod = TimePeriods.today();
+    const todayStart = todayPeriod.start;
 
     if (action === 'create') {
       // ИСПРАВЛЕНО: Используем новый безопасный менеджер смен
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Проверяем корректность времени завершения
-      if (shift.actualStart && unifiedTime.utc <= new Date(shift.actualStart)) {
+      if (shift.actualStart && systemTime <= new Date(shift.actualStart)) {
         return NextResponse.json(
           { error: "Время завершения не может быть раньше или равно времени начала смены" },
           { status: 400 }
@@ -199,13 +199,13 @@ export async function POST(request: NextRequest) {
       const updatedShift = await prisma.processor_shifts.update({
         where: { id: shift.id },
         data: {
-          actualEnd: unifiedTime.utc, // ИСПРАВЛЕНО: Используем UTC время для БД
+          actualEnd: systemTime, // ИСПРАВЛЕНО: Используем системное время для БД
           status: 'COMPLETED'
         }
       });
 
       // Рассчитываем продолжительность смены
-      const duration = shift.actualStart ? unifiedTime.utc.getTime() - new Date(shift.actualStart).getTime() : 0;
+      const duration = shift.actualStart ? systemTime.getTime() - new Date(shift.actualStart).getTime() : 0;
       
       // Логируем завершение смены
       await ProcessorLogger.logShiftEnd(user.userId, shift.shiftType, duration, request);

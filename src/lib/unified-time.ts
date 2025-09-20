@@ -140,11 +140,11 @@ export const TimePeriods = {
     const unified = getUnifiedTime();
     const dayStart = new Date(unified.utc3);
     
-    if (unified.utc3.getUTCHours() < 6) {
+    if (unified.utc3.getHours() < 6) {
       dayStart.setUTCDate(dayStart.getUTCDate() - 1);
     }
     
-    dayStart.setUTCHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
+    dayStart.setHours(3, 0, 0, 0); // 06:00 UTC+3 = 03:00 UTC
     
     return toUnifiedTime(dayStart);
   },
@@ -167,11 +167,11 @@ export const TimePeriods = {
     
     const weekStart = new Date(currentDay);
     weekStart.setUTCDate(currentDay.getUTCDate() - daysFromMonday);
-    weekStart.setUTCHours(3, 0, 0, 0);
+    weekStart.setHours(3, 0, 0, 0);
     
     const weekEnd = new Date(weekStart);
     weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
-    weekEnd.setUTCHours(2, 59, 59, 999);
+    weekEnd.setHours(2, 59, 59, 999);
     
     return {
       start: toUnifiedTime(weekStart),
@@ -185,7 +185,7 @@ export const TimePeriods = {
     let year = unified.utc3.getUTCFullYear();
     let month = unified.utc3.getUTCMonth();
     
-    if (unified.utc3.getUTCHours() < 6 && unified.utc3.getUTCDate() === 1) {
+    if (unified.utc3.getHours() < 6 && unified.utc3.getUTCDate() === 1) {
       month = month - 1;
       if (month < 0) {
         month = 11;
@@ -194,10 +194,10 @@ export const TimePeriods = {
     }
     
     const monthStart = new Date(Date.UTC(year, month, 1));
-    monthStart.setUTCHours(3, 0, 0, 0);
+    monthStart.setHours(3, 0, 0, 0);
     
     const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
-    nextMonthStart.setUTCHours(3, 0, 0, 0);
+    nextMonthStart.setHours(3, 0, 0, 0);
     const monthEnd = new Date(nextMonthStart.getTime() - 1);
     
     return {
@@ -214,7 +214,7 @@ export const ShiftTime = {
   // Определение типа смены
   getShiftType: (time?: UnifiedTime): 'MORNING' | 'DAY' | 'NIGHT' => {
     const unified = time || getUnifiedTime();
-    const hour = unified.utc3.getUTCHours();
+    const hour = unified.utc3.getHours();
     
     if (hour >= 6 && hour < 14) {
       return 'MORNING'; // 06:00 - 14:00 UTC+3
@@ -228,8 +228,8 @@ export const ShiftTime = {
   // Проверка доступности смены
   isShiftAvailable: (shiftType: 'MORNING' | 'DAY' | 'NIGHT', time?: UnifiedTime): boolean => {
     const unified = time || getUnifiedTime();
-    const hour = unified.utc3.getUTCHours();
-    const minute = unified.utc3.getUTCMinutes();
+    const hour = unified.utc3.getHours();
+    const minute = unified.utc3.getMinutes();
     
     const currentMinutes = hour * 60 + minute;
     

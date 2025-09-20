@@ -2,12 +2,7 @@ import { checkAdminAuthUserId } from "@/lib/admin-auth";
 import { requireAdminAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  getCurrentUTC3Time,
-  getCurrentDayStartUTC3,
-  getCurrentWeekPeriod,
-  getCurrentMonthPeriod
-} from "@/lib/time-utils";
+import { getCurrentDayStartUTC3, TimePeriods } from "@/lib/time-utils";
 
 // GET /api/admin/managers/[id]/stats - Получение статистики конкретного менеджера
 export async function GET(
@@ -27,13 +22,12 @@ export async function GET(
     await checkAdminAuthUserId();
     const { id: processorId } = await params;
 
-    // Получаем текущую дату по UTC+3
-    const utc3Now = getCurrentUTC3Time();
+    // Получаем текущую дату и периоды
     const todayStart = getCurrentDayStartUTC3();
     
-    // Получаем периоды по UTC+3
-    const weekPeriod = getCurrentWeekPeriod();
-    const monthPeriod = getCurrentMonthPeriod();
+    // Получаем периоды по системному времени
+    const weekPeriod = TimePeriods.thisWeek();
+    const monthPeriod = TimePeriods.thisMonth();
 
     // Статистика за сегодня
     const todayDeposits = await prisma.processor_deposits.findMany({

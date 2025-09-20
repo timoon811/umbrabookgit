@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
       }
       
       // Определяем, является ли данная смена текущей по времени
-      const currentHour = now.getUTCHours();
-      const currentMinute = now.getUTCMinutes();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
       const shiftStartMinutes = startHour * 60 + startMinute;
       const shiftEndMinutes = endHour * 60 + endMinute;

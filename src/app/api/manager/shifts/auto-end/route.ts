@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 // Проверяем авторизацию
   const now = getSystemTime();
     const todayStart = new Date(now);
-    todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
+    todayStart.setHours(6, 0, 0, 0); // Начало дня 06:00
 
     // Ищем активную смену пользователя
     const activeShift = await prisma.processor_shifts.findFirst({
