@@ -19,11 +19,24 @@ interface DepositData {
   notes?: string;
   paymentMethod?: string;
   createdAt: string;
-  processor: {
+  processor?: {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
+  type: 'manual' | 'external'; // Тип депозита
+  status: string;
+  source: string; // Источник депозита
+  // Дополнительные поля для ручных депозитов
+  commissionRate?: number;
+  bonusAmount?: number;
+  processorEarnings?: number;
+  // Дополнительные поля для внешних депозитов
+  netAmount?: number;
+  netAmountUsd?: number;
+  commissionPercent?: number;
+  txHash?: string;
+  mammothCountry?: string;
 }
 
 interface DepositsAnalytics {
@@ -102,6 +115,7 @@ export default function AdminManagementPage() {
     currency: "all",
     currencyType: "all",
     processorId: "all",
+    depositType: "all", // Новый фильтр
     dateFrom: "",
     dateTo: "",
     search: "",
@@ -143,6 +157,13 @@ export default function AdminManagementPage() {
     loadData();
     loadManagers();
   }, []);
+
+  // Загружаем депозиты при изменении фильтров, пагинации или сортировки
+  useEffect(() => {
+    if (activeTab === "overview") {
+      loadDeposits();
+    }
+  }, [activeTab, filters, pagination.page, pagination.limit, sortBy, sortOrder]);
 
   useEffect(() => {
     if (activeTab === "deposits") {
@@ -642,8 +663,22 @@ export default function AdminManagementPage() {
 
                 {/* Фильтры - адаптивная версия */}
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 lg:p-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 lg:gap-4">
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Тип депозита
+                      </label>
+                      <select
+                        value={filters.depositType}
+                        onChange={(e) => handleFilterChange("depositType", e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      >
+                        <option value="all">Все депозиты</option>
+                        <option value="processor">Ручные (обработчики)</option>
+                        <option value="external">Внешние (автоматические)</option>
+                      </select>
+                    </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -728,6 +763,9 @@ export default function AdminManagementPage() {
                         >
                           Дата {sortBy === "createdAt" && (sortOrder === "asc" ? "↑" : "↓")}
                         </th>
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Тип
+                        </th>
                         <th 
                           className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                           onClick={() => handleSort("amount")}
@@ -735,19 +773,19 @@ export default function AdminManagementPage() {
                           Сумма {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Чистая сумма
-                        </th>
-                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Валюта
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Email депозитера
+                          Статус
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Менеджер
+                          Депозитер
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Заметки
+                          Источник
+                        </th>
+                        <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Обработчик
                         </th>
                         <th className="px-3 lg:px-6 py-2 lg:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Действия
@@ -766,17 +804,28 @@ export default function AdminManagementPage() {
                               minute: '2-digit'
                             })}
                           </td>
-                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                            ${deposit.amount.toLocaleString()}
-                          </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              deposit.type === 'manual' 
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            }`}>
+                              {deposit.type === 'manual' ? '✋ Ручной' : '🤖 Внешний'}
+                            </span>
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                             <div className="flex flex-col">
-                              <span className="font-medium text-green-600 dark:text-green-400">
-                                ${(deposit.amount * (1 - platformCommission / 100)).toLocaleString()}
-                              </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                -{platformCommission}% комиссия
-                              </span>
+                              <span className="font-bold">${deposit.amount.toLocaleString()}</span>
+                              {deposit.netAmountUsd && (
+                                <span className="text-xs text-green-600 dark:text-green-400">
+                                  Чистая: ${deposit.netAmountUsd.toLocaleString()}
+                                </span>
+                              )}
+                              {deposit.processorEarnings && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                  Заработок: ${deposit.processorEarnings.toLocaleString()}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -789,21 +838,56 @@ export default function AdminManagementPage() {
                             </span>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {deposit.playerEmail}
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              deposit.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              deposit.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              deposit.status === 'PROCESSED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              deposit.status === 'REJECTED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                            }`}>
+                              {deposit.status === 'PENDING' ? 'Ожидает' :
+                               deposit.status === 'APPROVED' ? 'Одобрен' :
+                               deposit.status === 'PROCESSED' ? 'Обработан' :
+                               deposit.status === 'REJECTED' ? 'Отклонен' : deposit.status}
+                            </span>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            <div>
-                              <div className="font-medium">{deposit.processor.name}</div>
-                              <div className="text-gray-500 dark:text-gray-400">{deposit.processor.email}</div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{deposit.playerEmail}</span>
+                              {deposit.playerId && deposit.playerId !== deposit.playerEmail && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">ID: {deposit.playerId}</span>
+                              )}
+                              {deposit.mammothCountry && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">🌍 {deposit.mammothCountry}</span>
+                              )}
                             </div>
                           </td>
-                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
-                            {deposit.notes || '-'}
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{deposit.source}</span>
+                              {deposit.txHash && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                  {deposit.txHash.slice(0, 10)}...
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {deposit.processor ? (
+                              <div>
+                                <div className="font-medium">{deposit.processor.name}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">{deposit.processor.email}</div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 dark:text-gray-500 italic">Автоматический</span>
+                            )}
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleEditDeposit(deposit)}
+                              {deposit.type === 'manual' && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditDeposit(deposit)}
                                 className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                 title="Редактировать"
                               >
@@ -820,13 +904,29 @@ export default function AdminManagementPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                               </button>
+                                <button
+                                  onClick={() => handleDeleteDeposit(deposit)}
+                                  className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  title="Удалить"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                                </>
+                              )}
+                              {/* Кнопка просмотра для всех типов депозитов */}
                               <button
-                                onClick={() => handleDeleteDeposit(deposit)}
-                                className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="Удалить"
+                                onClick={() => {
+                                  // Показать детали депозита
+                                  alert(`Детали депозита:\n\nID: ${deposit.id}\nТип: ${deposit.type}\nСумма: $${deposit.amount}\nВалюта: ${deposit.currency}\nСтатус: ${deposit.status}\nИсточник: ${deposit.source}\n${deposit.notes ? `Заметки: ${deposit.notes}` : ''}${deposit.txHash ? `\nTX Hash: ${deposit.txHash}` : ''}`);
+                                }}
+                                className="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/20 rounded-lg transition-colors"
+                                title="Просмотр деталей"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                               </button>
                             </div>

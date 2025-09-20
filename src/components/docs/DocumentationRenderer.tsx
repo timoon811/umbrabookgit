@@ -34,7 +34,25 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
   }, [content]);
 
 
-  const renderBlock = (block: Block) => {
+  // Функция для вычисления номера элемента нумерованного списка
+  const getListItemNumber = (currentIndex: number): number => {
+    let number = 1;
+    
+    // Идем назад от текущего элемента, считаем элементы нумерованного списка
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const prevBlock = blocks[i];
+      if (prevBlock.type === 'numbered-list') {
+        number++;
+      } else {
+        // Если встретили блок другого типа, прерываем подсчет
+        break;
+      }
+    }
+    
+    return number;
+  };
+
+  const renderBlock = (block: Block, index: number) => {
     const getAlignmentClass = () => {
       const alignment = block.metadata?.alignment || 'left';
       switch (alignment) {
@@ -219,8 +237,8 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
       case 'list':
         return (
           <div key={block.id} className="flex items-start gap-3 mb-2">
-            <span className="text-gray-400 mt-1">•</span>
-            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
+            <span className="text-gray-400 leading-relaxed flex-shrink-0">•</span>
+            <p className={`text-gray-900 dark:text-white leading-relaxed ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </p>
           </div>
@@ -229,8 +247,8 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
       case 'numbered-list':
         return (
           <div key={block.id} className="flex items-start gap-3 mb-2">
-            <span className="text-gray-400 mt-1">1.</span>
-            <p className={`text-gray-900 dark:text-white ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
+            <span className="text-gray-400 leading-relaxed flex-shrink-0 min-w-0">{getListItemNumber(index)}.</span>
+            <p className={`text-gray-900 dark:text-white leading-relaxed ${getTextClasses()}`} style={{ ...getTextStyles(), whiteSpace: 'pre-wrap' }}>
               {processContent(block.content)}
             </p>
           </div>
@@ -489,7 +507,7 @@ export default function DocumentationRenderer({ content }: DocumentationRenderer
 
   return (
     <div className="prose prose-lg prose-gray dark:prose-invert max-w-none">
-      {blocks.map(renderBlock)}
+      {blocks.map((block, index) => renderBlock(block, index))}
     </div>
   );
 }

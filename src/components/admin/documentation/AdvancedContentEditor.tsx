@@ -367,58 +367,119 @@ export default function AdvancedContentEditor({
     }
   };
 
-    // Применение форматирования текста - НОВАЯ УПРОЩЕННАЯ ВЕРСИЯ
+    // ИСПРАВЛЕНО: Применение форматирования только к выделенному тексту
   const applyTextFormatting = (ignoredElement: any, prefix: string, suffix: string) => {
-    if (!activeBlockId) {
+    if (!activeBlockId || !selectionInfo) {
       return;
     }
 
-    // Найдем активный блок в DOM
-    const activeBlockElement = document.querySelector(`[data-block-id="${activeBlockId}"]`);
-    if (!activeBlockElement) {
+    const { element, start, end } = selectionInfo;
+    if (!element) {
       return;
     }
 
-    // Найдем поле ввода в активном блоке
-    const inputElement = activeBlockElement.querySelector('textarea, input') as HTMLTextAreaElement | HTMLInputElement;
-    if (!inputElement) {
-      return;
-    }
+    // Сохраняем текущую позицию курсора
+    const cursorPosition = element.selectionStart || 0;
+    const selectedText = element.value.substring(start, end);
 
-    // Получаем текущее выделение
-    const start = inputElement.selectionStart || 0;
-    const end = inputElement.selectionEnd || 0;
-    const selectedText = inputElement.value.substring(start, end);
-
-    // Применяем форматирование
+    // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Применяем форматирование только к выделенному тексту
     let newText: string;
-    let newCursorPos: number;
+    let newCursorStart: number;
+    let newCursorEnd: number;
 
     if (selectedText.length > 0) {
-      // Есть выделенный текст - оборачиваем его
-      newText = inputElement.value.substring(0, start) + prefix + selectedText + suffix + inputElement.value.substring(end);
-      newCursorPos = end + prefix.length + suffix.length;
+      // Есть выделенный текст - оборачиваем только его
+      const beforeSelection = element.value.substring(0, start);
+      const afterSelection = element.value.substring(end);
+      const formattedText = prefix + selectedText + suffix;
+      
+      newText = beforeSelection + formattedText + afterSelection;
+      newCursorStart = start + prefix.length;
+      newCursorEnd = start + prefix.length + selectedText.length;
     } else {
       // Нет выделенного текста - вставляем маркеры и ставим курсор между ними
-      newText = inputElement.value.substring(0, start) + prefix + suffix + inputElement.value.substring(end);
-      newCursorPos = start + prefix.length;
+      const beforeCursor = element.value.substring(0, cursorPosition);
+      const afterCursor = element.value.substring(cursorPosition);
+      
+      newText = beforeCursor + prefix + suffix + afterCursor;
+      newCursorStart = cursorPosition + prefix.length;
+      newCursorEnd = newCursorStart;
     }
 
-    // Напрямую обновляем значение в элементе
-    inputElement.value = newText;
+    // Обновляем значение через React события для правильного обновления состояния
+    const event = new Event('input', { bubbles: true });
+    Object.defineProperty(event, 'target', {
+      writable: false,
+      value: { ...element, value: newText }
+    });
     
     // Обновляем блок в состоянии
     updateBlock(activeBlockId, { content: newText });
     
-    // Скрываем панель инструментов
-    setShowToolbar(false);
-    setSelectionInfo(null);
-    
-    // Восстанавливаем фокус и позицию курсора
-    setTimeout(() => {
+    // ИСПРАВЛЕНО: Используем requestAnimationFrame для корректного обновления DOM
+    requestAnimationFrame(() => {
+      // Восстанавливаем значение в элементе
+      element.value = newText;
+      
+      // Устанавливаем правильное выделение
+      element.focus();
+      element.setSelectionRange(newCursorStart, newCursorEnd);
+      
+      // Скрываем панель инструментов
+      setShowToolbar(false);
+      setSelectionInfo(null);
+    });
+  };
+
+  // Функция для очистки всего форматирования блока
+  const clearAllFormatting = () => {
+    if (!activeBlockId) return;
+
+    // Найдем активный блок в DOM
+    const activeBlockElement = document.querySelector(`[data-block-id="${activeBlockId}"]`);
+    if (!activeBlockElement) return;
+
+    // Найдем поле ввода в активном блоке
+    const inputElement = activeBlockElement.querySelector('textarea, input') as HTMLTextAreaElement | HTMLInputElement;
+    if (!inputElement) return;
+
+    // Очищаем весь текст от markdown форматирования
+    let cleanText = inputElement.value
+      // Удаляем жирный текст
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      // Удаляем курсив
+      .replace(/\*(.*?)\*/g, '$1')
+      // Удаляем подчеркивание
+      .replace(/__(.*?)__/g, '$1')
+      // Удаляем зачеркивание
+      .replace(/~~(.*?)~~/g, '$1')
+      // Удаляем код
+      .replace(/`(.*?)`/g, '$1')
+      // Удаляем ссылки, оставляя только текст
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Удаляем внутренние ссылки
+      .replace(/\[\[([^\]]+)\]\]/g, '$1');
+
+    // Очищаем метаданные форматирования
+    const cleanMetadata = {
+      alignment: 'left' as const
+    };
+
+    // Обновляем блок
+    updateBlock(activeBlockId, { 
+      content: cleanText,
+      metadata: cleanMetadata
+    });
+
+    // Обновляем значение в поле ввода
+    requestAnimationFrame(() => {
+      inputElement.value = cleanText;
       inputElement.focus();
-      inputElement.setSelectionRange(newCursorPos, newCursorPos);
-    }, 50);
+      
+      // Скрываем панель инструментов
+      setShowToolbar(false);
+      setSelectionInfo(null);
+    });
   };
 
   // Обработчик клавиш для команд и навигации - только специальные команды
@@ -742,6 +803,18 @@ export default function AdvancedContentEditor({
             <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--editor-border)' }}></div>
             
             <button
+              onClick={clearAllFormatting}
+              className="p-1.5 editor-button-hover rounded transition-colors text-red-500 hover:text-red-600"
+              title="Очистить всё форматирование"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+            
+            <div className="w-px h-4 mx-1" style={{ backgroundColor: 'var(--editor-border)' }}></div>
+            
+            <button
               onClick={() => applyTextFormatting(null, '`', '`')}
               className="p-1.5 editor-button-hover rounded font-mono text-xs transition-colors"
               title="Код"
@@ -858,7 +931,7 @@ export default function AdvancedContentEditor({
     );
   };
 
-  const renderBlock = (block: Block) => {
+  const renderBlock = (block: Block, blockIndex: number) => {
     const isActive = activeBlockId === block.id;
 
     return (
@@ -874,6 +947,8 @@ export default function AdvancedContentEditor({
             onUpdate={(updates) => updateBlock(block.id, updates)}
             onTextSelection={handleTextSelection}
             onSlashCommand={handleKeyDown}
+            blockIndex={blockIndex}
+            allBlocks={blocks}
             sections={sections}
           />
         </div>
@@ -1097,7 +1172,7 @@ export default function AdvancedContentEditor({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
           <div onMouseUp={handleTextSelection}>
-            {blocks.map((block) => renderBlock(block))}
+            {blocks.map((block, index) => renderBlock(block, index))}
           </div>
           
           {/* Кнопка добавления нового блока */}
@@ -1272,6 +1347,8 @@ function BlockRenderer({
   onUpdate, 
   onTextSelection,
   onSlashCommand,
+  blockIndex,
+  allBlocks,
 }: {
   block: Block;
   isActive: boolean;
@@ -1279,8 +1356,28 @@ function BlockRenderer({
   onTextSelection: () => void;
   onSlashCommand?: (e: React.KeyboardEvent, blockId: string) => void;
   sections?: DocumentationSection[];
+  blockIndex: number;
+  allBlocks: Block[];
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Функция для вычисления номера элемента нумерованного списка
+  const getListItemNumber = (): number => {
+    let number = 1;
+    
+    // Идем назад от текущего элемента, считаем элементы нумерованного списка
+    for (let i = blockIndex - 1; i >= 0; i--) {
+      const prevBlock = allBlocks[i];
+      if (prevBlock.type === 'numbered-list') {
+        number++;
+      } else {
+        // Если встретили блок другого типа, прерываем подсчет
+        break;
+      }
+    }
+    
+    return number;
+  };
 
   // Автоматическое изменение размера при загрузке и изменении контента
   useEffect(() => {
@@ -1324,6 +1421,10 @@ function BlockRenderer({
 
     return () => {
       resizeObserver.disconnect();
+      // Очищаем timeout при размонтировании
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
   }, []);
   const updateContent = (content: string) => {
@@ -1337,6 +1438,7 @@ function BlockRenderer({
   // Улучшенная функция для автоматического изменения размера textarea
   // Убираем ограничения по максимальной высоте для полной адаптивности
   const autoResize = useRef<((element: HTMLTextAreaElement) => void) | null>(null);
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   if (!autoResize.current) {
     // Создаем функцию с debouncing для лучшей производительности
@@ -1379,19 +1481,17 @@ function BlockRenderer({
         // Восстанавливаем позицию курсора
         element.setSelectionRange(cursorPosition, cursorPosition);
         
-        // Дополнительная оптимизация для больших блоков текста
-        // Если блок стал высоким, обеспечиваем видимость курсора
-        if (newHeight > window.innerHeight * 0.3) {
-          const containerRect = element.getBoundingClientRect();
-          const viewportCenter = window.innerHeight / 2;
-          
-          // Если верх элемента выше центра экрана или низ ниже центра, прокручиваем
-          if (containerRect.top < viewportCenter * 0.5 || containerRect.bottom > viewportCenter * 1.5) {
-            element.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'center' 
-            });
-          }
+        // ИСПРАВЛЕНО: Убираем принудительный автоскролл к центру
+        // Только обеспечиваем видимость курсора если он вышел за пределы экрана
+        const rect = element.getBoundingClientRect();
+        const isOutOfView = rect.bottom < 0 || rect.top > window.innerHeight;
+        
+        if (isOutOfView) {
+          // Скроллим только до видимости, не к центру
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest'  // ИЗМЕНЕНО: nearest вместо center
+          });
         }
       });
     };
@@ -1438,7 +1538,13 @@ function BlockRenderer({
     ...baseInputProps,
     onInput: (e: React.FormEvent<HTMLTextAreaElement>) => {
       if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA' && autoResize.current) {
-        autoResize.current(e.target as HTMLTextAreaElement);
+        // ИСПРАВЛЕНО: Используем debouncing для предотвращения избыточных вызовов autoResize
+        clearTimeout(resizeTimeoutRef.current);
+        resizeTimeoutRef.current = setTimeout(() => {
+          if (autoResize.current && e.target) {
+            autoResize.current(e.target as HTMLTextAreaElement);
+          }
+        }, 16); // ~60fps
       }
     }
   };
@@ -1496,7 +1602,7 @@ function BlockRenderer({
     case 'list':
       return (
         <div className="flex items-start gap-3">
-          <span className="mt-1" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
+          <span className="flex-shrink-0" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
           <textarea
             {...baseTextareaProps}
             ref={textareaRef}
@@ -1513,7 +1619,7 @@ function BlockRenderer({
     case 'numbered-list':
       return (
         <div className="flex items-start gap-3">
-          <span className="mt-1" style={{ color: 'var(--editor-secondary-text)' }}>1.</span>
+          <span className="flex-shrink-0 min-w-0" style={{ color: 'var(--editor-secondary-text)' }}>{getListItemNumber()}.</span>
           <textarea
             {...baseTextareaProps}
             ref={textareaRef}

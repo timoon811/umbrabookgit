@@ -18,6 +18,8 @@ interface BlockEditorProps {
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  blockIndex?: number;
+  allBlocks?: Block[];
 }
 
 export default function BlockEditor({
@@ -32,11 +34,31 @@ export default function BlockEditor({
   onMoveUp,
   onMoveDown,
   canMoveUp,
-  canMoveDown
+  canMoveDown,
+  blockIndex = 0,
+  allBlocks = []
 }: BlockEditorProps) {
   // Управляющие оверлеи и меню действий убраны
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Функция для вычисления номера элемента нумерованного списка
+  const getListItemNumber = (): number => {
+    let number = 1;
+    
+    // Идем назад от текущего элемента, считаем элементы нумерованного списка
+    for (let i = blockIndex - 1; i >= 0; i--) {
+      const prevBlock = allBlocks[i];
+      if (prevBlock?.type === 'numbered-list') {
+        number++;
+      } else {
+        // Если встретили блок другого типа, прерываем подсчет
+        break;
+      }
+    }
+    
+    return number;
+  };
 
   const updateContent = (content: string) => {
     onUpdate({ ...block, content });
@@ -141,7 +163,7 @@ export default function BlockEditor({
       case 'list':
         return (
           <div className="flex items-start">
-            <span className="mr-3 mt-1" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
+            <span className="mr-3 flex-shrink-0" style={{ color: 'var(--editor-secondary-text)' }}>•</span>
             <textarea
               {...commonProps}
               className={`${commonProps.className} flex-1 min-h-[24px]`}
@@ -154,7 +176,7 @@ export default function BlockEditor({
       case 'numbered-list':
         return (
           <div className="flex items-start">
-            <span className="mr-3 mt-1" style={{ color: 'var(--editor-secondary-text)' }}>1.</span>
+            <span className="mr-3 flex-shrink-0" style={{ color: 'var(--editor-secondary-text)' }}>{getListItemNumber()}.</span>
             <textarea
               {...commonProps}
               className={`${commonProps.className} flex-1 min-h-[24px]`}
