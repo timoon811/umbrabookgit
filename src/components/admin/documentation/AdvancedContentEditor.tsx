@@ -56,6 +56,7 @@ export default function AdvancedContentEditor({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isManualSaving, setIsManualSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Состояния для дополнительной панели форматирования
   const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(false);
@@ -104,11 +105,31 @@ export default function AdvancedContentEditor({
       const markdown = convertBlocksToMarkdown(blocks);
       
       // Проверяем, изменился ли контент
-      if (markdown !== selectedPage.content) {
-        setHasUnsavedChanges(true);
+      const hasContentChanged = markdown !== selectedPage.content;
+      const hasTitleChanged = selectedPage.title !== selectedPage.title; // Здесь должна быть логика для заголовка
+      const hasDescriptionChanged = selectedPage.description !== selectedPage.description; // И для описания
+      
+      console.log('🔍 Проверка изменений:', {
+        hasContentChanged,
+        currentContentLength: markdown.length,
+        originalContentLength: selectedPage.content?.length || 0,
+        isInitialLoad,
+        hasUnsavedChanges
+      });
+      
+      if (hasContentChanged) {
+        if (!hasUnsavedChanges) {
+          console.log('✏️ Обнаружены несохраненные изменения');
+          setHasUnsavedChanges(true);
+        }
+      } else {
+        if (hasUnsavedChanges) {
+          console.log('💾 Изменения синхронизированы');
+          setHasUnsavedChanges(false);
+        }
       }
     }
-  }, [blocks, selectedPage?.id, selectedPage?.content, isInitialLoad]);
+  }, [blocks, selectedPage?.id, selectedPage?.content, isInitialLoad, hasUnsavedChanges]);
 
 
 
@@ -599,11 +620,41 @@ export default function AdvancedContentEditor({
 
   // Функция ручного сохранения
   const handleManualSave = async () => {
-    if (!selectedPage?.id || !hasUnsavedChanges) return;
+    console.log('🔄 Начинаем ручное сохранение:', {
+      hasSelectedPage: !!selectedPage?.id,
+      hasUnsavedChanges,
+      isManualSaving,
+      blocksCount: blocks.length
+    });
+
+    // Добавляем дополнительные проверки
+    if (!selectedPage?.id) {
+      console.warn('⚠️ Нет выбранной страницы для сохранения');
+      return;
+    }
+
+    if (!hasUnsavedChanges) {
+      console.log('ℹ️ Нет несохраненных изменений');
+      return;
+    }
+
+    if (isManualSaving) {
+      console.log('ℹ️ Сохранение уже в процессе');
+      return;
+    }
 
     setIsManualSaving(true);
+    
+    // Устанавливаем таймаут для предотвращения зависания
+    const emergencyTimeout = setTimeout(() => {
+      console.warn('⚠️ Принудительное завершение сохранения по таймауту');
+      setIsManualSaving(false);
+    }, 30000); // 30 секунд
+    
     try {
       const currentContent = convertBlocksToMarkdown(blocks);
+      console.log('📝 Контент подготовлен для сохранения, длина:', currentContent.length);
+      
       const updatedPage = {
         ...selectedPage,
         content: currentContent
@@ -611,18 +662,35 @@ export default function AdvancedContentEditor({
 
       // Обновляем контент
       onUpdateContent(currentContent);
+      console.log('✅ Контент обновлен через onUpdateContent');
       
       // Принудительно сохраняем
       if (onForceSave) {
+        console.log('💾 Вызываем onForceSave...');
         const saveResult = await onForceSave(updatedPage);
+        console.log('💾 Результат onForceSave:', saveResult);
+        
         if (saveResult) {
           setHasUnsavedChanges(false);
+          console.log('✅ Сохранение успешно завершено');
+        } else {
+          console.warn('⚠️ onForceSave вернул false');
         }
+      } else {
+        console.warn('⚠️ onForceSave не определен');
+        // Если onForceSave не определен, все равно сбрасываем флаг
+        setHasUnsavedChanges(false);
       }
     } catch (error) {
-      console.error('Ошибка при ручном сохранении:', error);
+      console.error('❌ Ошибка при ручном сохранении:', error);
+      // Можно добавить уведомление пользователю об ошибке
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('Ошибка сохранения: ' + (error instanceof Error ? error.message : 'Неизвестная ошибка'));
+      }
     } finally {
+      clearTimeout(emergencyTimeout);
       setIsManualSaving(false);
+      console.log('🏁 Ручное сохранение завершено');
     }
   };
 
@@ -1096,13 +1164,17 @@ export default function AdvancedContentEditor({
               disabled={!hasUnsavedChanges || isManualSaving}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                 hasUnsavedChanges && !isManualSaving
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'cursor-not-allowed'
-                }} disabled className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all" style={{
-                  backgroundColor: 'var(--editor-accent)',
-                  color: 'var(--editor-secondary-text)'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm border border-blue-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed border border-gray-300 dark:border-gray-600'
               }`}
-              title={hasUnsavedChanges ? "Сохранить изменения" : "Нет изменений для сохранения"}
+              title={
+                isManualSaving 
+                  ? "Сохранение в процессе..." 
+                  : hasUnsavedChanges 
+                    ? "Сохранить изменения" 
+                    : "Нет изменений для сохранения"
+              }
+              style={{ minWidth: '80px' }}
             >
               {isManualSaving ? (
                 <>
@@ -1118,6 +1190,24 @@ export default function AdvancedContentEditor({
                 </>
               )}
             </button>
+
+            {/* Кнопка экстренного сохранения (только если обычная кнопка не работает) */}
+            {isManualSaving && (
+              <button
+                onClick={() => {
+                  console.log('🆘 Экстренное прерывание сохранения');
+                  setIsManualSaving(false);
+                  setHasUnsavedChanges(true);
+                }}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-all bg-red-600 hover:bg-red-700 text-white border border-red-700"
+                title="Прервать зависшее сохранение"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="hidden sm:inline">Стоп</span>
+              </button>
+            )}
             
             {/* Кнопка публикации/скрытия */}
             {onTogglePublication && (
