@@ -12,7 +12,7 @@ interface ShiftLog {
   scheduledEnd: string;
   actualStart?: string;
   actualEnd?: string;
-  status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'MISSED';
+  status: 'ACTIVE' | 'COMPLETED' | 'MISSED';
   notes?: string;
   adminNotes?: string;
   createdAt: string;
@@ -239,12 +239,7 @@ export default function ShiftLogsTab() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'SCHEDULED':
-        return (
-          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
+      // SCHEDULED статус убран
       case 'ACTIVE':
         return (
           <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +265,6 @@ export default function ShiftLogsTab() {
 
   const getStatusLabel = (status: string) => {
     const labels = {
-      'SCHEDULED': 'Запланирована',
       'ACTIVE': 'Активна',
       'COMPLETED': 'Завершена',
       'MISSED': 'Пропущена'
@@ -280,7 +274,6 @@ export default function ShiftLogsTab() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'SCHEDULED': 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20',
       'ACTIVE': 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20',
       'COMPLETED': 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20',
       'MISSED': 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20'
@@ -455,7 +448,6 @@ export default function ShiftLogsTab() {
           className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
         >
           <option value="">Все статусы</option>
-          <option value="SCHEDULED">Запланированные</option>
           <option value="ACTIVE">Активные</option>
           <option value="COMPLETED">Завершенные</option>
           <option value="MISSED">Пропущенные</option>

@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     
         const statusStats = {
           total: total,
-          scheduled: stats.find(s => s.status === 'SCHEDULED')?._count.id || 0,
+          // scheduled статус убран
           active: stats.find(s => s.status === 'ACTIVE')?._count.id || 0,
           completed: stats.find(s => s.status === 'COMPLETED')?._count.id || 0,
           missed: stats.find(s => s.status === 'MISSED')?._count.id || 0,

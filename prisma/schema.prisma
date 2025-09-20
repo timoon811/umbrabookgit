@@ -430,7 +430,6 @@ enum ShiftType {
 }
 
 enum ShiftStatus {
-  SCHEDULED
   ACTIVE
   COMPLETED
   MISSED
@@ -693,7 +692,7 @@ model processor_shifts {
   scheduledEnd   DateTime
   actualStart    DateTime?
   actualEnd      DateTime?
-  status         ShiftStatus @default(SCHEDULED)
+  status         ShiftStatus @default(ACTIVE)
   notes          String?
   adminNotes     String?
   createdAt      DateTime    @default(now())

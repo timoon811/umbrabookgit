@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         scheduledEnd.setHours(endHour, 0, 0, 0);
         
         // Случайный статус
-        const statuses = ['SCHEDULED', 'ACTIVE', 'COMPLETED', 'MISSED'];
-        const weights = [0.1, 0.1, 0.7, 0.1]; // Больше вероятность для COMPLETED
+        const statuses = ['ACTIVE', 'COMPLETED', 'MISSED'];
+        const weights = [0.1, 0.8, 0.1]; // Больше вероятность для COMPLETED
         let randomStatus = 'COMPLETED';
         const random = Math.random();
         let cumulative = 0;
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         let actualStart = null;
         let actualEnd = null;
         
-        if (randomStatus !== 'MISSED' && randomStatus !== 'SCHEDULED') {
+        if (randomStatus !== 'MISSED') {
           actualStart = new Date(scheduledStart);
           // Добавляем случайное отклонение в начале (±30 минут)
           actualStart.setMinutes(actualStart.getMinutes() + (Math.random() - 0.5) * 60);

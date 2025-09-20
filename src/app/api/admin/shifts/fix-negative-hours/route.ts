@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           where: { id: shift.id },
           data: {
             actualEnd: null,
-            status: shift.status === 'COMPLETED' ? 'SCHEDULED' : shift.status,
+            status: shift.status === 'COMPLETED' ? 'ACTIVE' : shift.status,
             notes: (shift.notes || '') + ' [Исправлено: удален некорректный actualEnd]'
           }
         });

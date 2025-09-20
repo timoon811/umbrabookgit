@@ -299,7 +299,7 @@ interface ManagerShift {
   scheduledEnd: string;
   actualStart?: string;
   actualEnd?: string;
-  status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'MISSED';
+  status: 'ACTIVE' | 'COMPLETED' | 'MISSED';
   notes?: string;
 }
 

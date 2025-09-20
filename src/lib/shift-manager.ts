@@ -15,7 +15,7 @@ export interface CreateShiftOptions {
   shiftDate?: Date; // Если не указано, используется текущий день
   scheduledStart?: Date;
   scheduledEnd?: Date;
-  status?: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'MISSED';
+  status?: 'ACTIVE' | 'COMPLETED' | 'MISSED';
   notes?: string;
   adminNotes?: string;
   bypassChecks?: boolean; // Только для админских операций
@@ -110,7 +110,7 @@ export async function createShiftSafely(options: CreateShiftOptions): Promise<Sh
             shiftDate: shiftDate,
             scheduledStart: scheduledStart,
             scheduledEnd: scheduledEnd,
-            status: options.status || 'SCHEDULED',
+            status: options.status || 'ACTIVE',
             notes: options.notes || null,
             adminNotes: options.adminNotes || null,
           }

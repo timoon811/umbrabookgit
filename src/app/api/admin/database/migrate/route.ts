@@ -125,7 +125,7 @@ async function runFullMigration() {
       END $$;`,
     
     `DO $$ BEGIN
-      CREATE TYPE "ShiftStatus" AS ENUM ('SCHEDULED', 'ACTIVE', 'COMPLETED', 'MISSED');
+      CREATE TYPE "ShiftStatus" AS ENUM ('ACTIVE', 'COMPLETED', 'MISSED');
       EXCEPTION
         WHEN duplicate_object THEN null;
       END $$;`,
