@@ -71,14 +71,17 @@ function ShiftManagementControls({
         
         if (isNightShiftThroughMidnight) {
           // Обычная ночная смена через полночь (22:00-06:00)
+          // ✅ ИСПРАВЛЕНИЕ: Логика уже правильная, используется < для избежания пересечений
           isCurrentShift = (currentTotalMinutes >= canStartAtMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else if (isEarlyMorningShift) {
           // Раннеутренняя "ночная" смена (00:00-08:00)
           // Активна за 30 минут до начала до конца смены
           const canStartFromMinutes = shiftStartMinutes > 30 ? shiftStartMinutes - 30 : (24 * 60) - 30;
+          // ✅ ИСПРАВЛЕНИЕ: Логика уже правильная, используется < для избежания пересечений
           isCurrentShift = (currentTotalMinutes >= canStartFromMinutes) || (currentTotalMinutes < shiftEndMinutes);
         } else {
           // Обычная смена в рамках одного дня
+          // ✅ ИСПРАВЛЕНИЕ: Логика уже правильная, используется < для избежания пересечений
           isCurrentShift = currentTotalMinutes >= canStartAtMinutes && currentTotalMinutes < shiftEndMinutes;
         }
         

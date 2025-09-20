@@ -83,15 +83,17 @@ export async function GET(request: NextRequest) {
         // Ночная смена типа 00:01-08:01 
         // Можно начать с 23:31 предыдущего дня до 08:01
         const canStartFrom = (24 * 60) - 30; // 23:30
-        isCurrent = (currentTotalMinutes >= canStartFrom) || (currentTotalMinutes <= shiftEndMinutes);
+        isCurrent = (currentTotalMinutes >= canStartFrom) || (currentTotalMinutes < shiftEndMinutes);
       } else if (isCrossMidnightShift) {
         // Смена через полночь типа 22:00-06:00
-        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes <= shiftEndMinutes);
+        // ✅ ИСПРАВЛЕНИЕ: Используем < вместо <= для избежания пересечения смен
+        isCurrent = (currentTotalMinutes >= shiftStartMinutes) || (currentTotalMinutes < shiftEndMinutes);
       } else {
         // Обычная дневная смена в пределах одного дня
         // Можно начать за 30 минут до старта
         const canStartFrom = thirtyMinutesBefore >= 0 ? thirtyMinutesBefore : 0;
-        isCurrent = currentTotalMinutes >= canStartFrom && currentTotalMinutes <= shiftEndMinutes;
+        // ✅ ИСПРАВЛЕНИЕ: Используем < вместо <= для избежания пересечения смен
+        isCurrent = currentTotalMinutes >= canStartFrom && currentTotalMinutes < shiftEndMinutes;
       }
 
       // Определяем доступность смены для менеджера (должна быть активна и назначена пользователю)
