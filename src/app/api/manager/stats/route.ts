@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from '@/lib/api-auth';
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentDayStartUTC3,
-  getCurrentWeekPeriod,
-  getCurrentMonthPeriod
- } from '@/lib/time-utils';
+import { getCurrentDayStartUTC3, TimePeriods } from '@/lib/time-utils';
 import { getSystemTime } from '@/lib/system-time';
 
 export async function GET(request: NextRequest) {
@@ -29,8 +26,8 @@ export async function GET(request: NextRequest) {
     const todayStart = getCurrentDayStartUTC3();
 
     // Получаем периоды по UTC+3
-    const weekPeriod = getCurrentWeekPeriod();
-    const monthPeriod = getCurrentMonthPeriod();
+    const weekPeriod = TimePeriods.thisWeek();
+    const monthPeriod = TimePeriods.thisMonth();
 
     // Для обратной совместимости сохраняем старые переменные
     const weekStart = weekPeriod.start;

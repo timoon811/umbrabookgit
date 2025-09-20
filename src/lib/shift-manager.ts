@@ -6,7 +6,8 @@
  */
 
 import { prisma } from "./prisma";
-import { getUnifiedTime, TimePeriods } from "./unified-time";
+import { getSystemTime } from "./system-time";
+import { TimePeriods } from "./time-utils";
 
 export interface CreateShiftOptions {
   processorId: string;
@@ -33,11 +34,11 @@ export interface ShiftCreationResult {
  */
 export async function createShiftSafely(options: CreateShiftOptions): Promise<ShiftCreationResult> {
   try {
-    const unifiedTime = getUnifiedTime();
-    const dayPeriod = TimePeriods.getCurrentDayStart();
+    const systemTime = getSystemTime();
+    const todayPeriod = TimePeriods.today();
     
     // Определяем дату смены
-    const shiftDate = options.shiftDate || dayPeriod.utc;
+    const shiftDate = options.shiftDate || todayPeriod.start;
     
     // Валидация входных данных
     if (!options.processorId) {

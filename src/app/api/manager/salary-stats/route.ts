@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from '@/lib/api-auth';
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentDayStartUTC3,
-  getCurrentMonthPeriod
- } from '@/lib/time-utils';
+import { getCurrentDayStartUTC3, TimePeriods } from '@/lib/time-utils';
 import { getSystemTime } from '@/lib/system-time';
 
 export async function GET(request: NextRequest) {
@@ -23,7 +21,7 @@ export async function GET(request: NextRequest) {
   const processorId = user.userId;
     const utc3Now = getSystemTime();
     const todayStart = getCurrentDayStartUTC3();
-    const monthPeriod = getCurrentMonthPeriod();
+    const monthPeriod = TimePeriods.thisMonth();
 
     // Получаем настройки зарплаты
     const salarySettings = await prisma.salary_settings.findFirst({

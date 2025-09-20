@@ -1,50 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUnifiedTime, validateTimeSync, TimeFormatter } from "@/lib/unified-time";
+import { getSystemTime } from "@/lib/system-time";
+import { getShiftTypeByTime } from "@/lib/time-utils";
 
 /**
- * API для проверки синхронизации времени на платформе
- * Помогает диагностировать проблемы с временем
+ * API для проверки времени на платформе
+ * Упрощенная версия для диагностики системного времени
  */
 export async function GET(request: NextRequest) {
   try {
-    // Получаем унифицированное время
-    const unifiedTime = getUnifiedTime();
+    const systemTime = getSystemTime();
+    const hour = systemTime.getHours();
+    const minute = systemTime.getMinutes();
     
-    // Проверяем синхронизацию
-    const syncCheck = validateTimeSync();
+    // Определяем текущую смену
+    const currentShift = getShiftTypeByTime(systemTime);
     
-    // Дополнительная информация о временных зонах
+    // Информация о временной зоне сервера
     const timezoneInfo = {
       serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      serverOffset: new Date().getTimezoneOffset(),
-      moscowTime: new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }),
-      frankfurtTime: new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' }),
-      utcTime: new Date().toISOString()
-    };
-    
-    // Сравнение времени в разных форматах
-    const timeComparison = {
-      raw_new_Date: new Date().toISOString(),
-      unified_utc: unifiedTime.utc.toISOString(),
-      unified_utc3: unifiedTime.utc3.toISOString(),
-      unified_moscow: unifiedTime.moscow,
-      formatted_for_api: TimeFormatter.forAPI(unifiedTime),
-      formatted_for_user: TimeFormatter.forUser(unifiedTime),
-      formatted_for_logs: TimeFormatter.forLogs(unifiedTime)
+      serverOffset: systemTime.getTimezoneOffset(),
+      moscowTime: systemTime.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }),
+      utcTime: systemTime.toISOString()
     };
     
     return NextResponse.json({
-      status: syncCheck.isValid ? 'OK' : 'WARNING',
-      timestamp: unifiedTime.timestamp,
-      unifiedTime,
-      syncCheck,
+      status: 'OK',
+      systemTime: systemTime.toISOString(),
+      serverTime: systemTime.toISOString(), // Для обратной совместимости
+      currentHour: hour,
+      currentMinute: minute,
+      timeDisplay: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+      currentShift: currentShift,
+      shiftSchedule: {
+        MORNING: '06:00 - 14:00',
+        DAY: '14:00 - 22:00', 
+        NIGHT: '22:00 - 06:00'
+      },
       timezoneInfo,
-      timeComparison,
-      recommendations: syncCheck.recommendations,
       debug: {
         nodeEnv: process.env.NODE_ENV,
         platform: process.platform,
-        timezone: process.env.TZ || 'not_set',
+        timezone: process.env.TZ || 'system_default',
         renderRegion: process.env.RENDER_REGION || 'not_render'
       }
     });
