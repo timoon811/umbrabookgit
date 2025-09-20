@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       
         const { user } = authResult;
     
-        const now = getCurrentUTC3Time();
+        const now = getSystemTime();
         console.log(`🔄 [AUTO-END] Запуск проверки автозавершения смен в ${now.toISOString()}`);
     
         // Находим все активные смены, которые должны быть завершены

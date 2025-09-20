@@ -45,6 +45,7 @@ export default function ProjectSelector({
           
           // Если нет выбранного проекта, выбираем первый доступный
           if (!selectedProject && Array.isArray(data) && data.length > 0) {
+            console.log('🔄 ProjectSelector: Автоматически выбираем первый проект', data[0].name);
             onProjectSelect(data[0]);
           }
         } else {
@@ -203,6 +204,7 @@ export default function ProjectSelector({
                     <button
                       key={project.id}
                       onClick={() => {
+                        console.log('🔄 ProjectSelector: Выбираем проект', project.name, project.id);
                         onProjectSelect(project);
                         setIsOpen(false);
                       }}

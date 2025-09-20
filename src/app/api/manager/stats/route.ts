@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from '@/lib/api-auth';
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import {
-  getCurrentUTC3Time,
-  getCurrentDayStartUTC3,
+import { getCurrentDayStartUTC3,
   getCurrentWeekPeriod,
   getCurrentMonthPeriod
-} from "@/lib/time-utils";
+ } from '@/lib/time-utils';
+import { getSystemTime } from '@/lib/system-time';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
     const processorId = user.role === "ADMIN" ? null : user.userId;
 
     // Получаем текущую дату по UTC+3
-    const utc3Now = getCurrentUTC3Time();
+    const utc3Now = getSystemTime();
     const todayStart = getCurrentDayStartUTC3();
 
     // Получаем периоды по UTC+3

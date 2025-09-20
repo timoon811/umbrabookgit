@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 import { requireAuth } from '@/lib/api-auth';
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const { user } = authResult;
 
 // Проверяем авторизацию
-  const now = getCurrentUTC3Time();
+  const now = getSystemTime();
     const todayStart = new Date(now);
     todayStart.setUTCHours(3, 0, 0, 0); // Начало дня по UTC+3 = 06:00 UTC+3 = 03:00 UTC
 

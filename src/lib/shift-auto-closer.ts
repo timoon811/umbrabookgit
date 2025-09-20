@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { getCurrentUTC3Time } from '@/lib/time-utils';
+import { getSystemTime } from '@/lib/system-time';
 import { ProcessorLogger } from '@/lib/processor-logger';
 import { SalaryLogger } from '@/lib/salary-logger';
 
@@ -16,7 +16,7 @@ export class ShiftAutoCloser {
    * Работает с дебаунсингом для избежания чрезмерных проверок
    */
   static async checkAndCloseOverdueShifts(): Promise<void> {
-    const now = getCurrentUTC3Time();
+    const now = getSystemTime();
 
     // Дебаунсинг: проверяем не чаще раза в 5 минут
     if (this.lastCheck && (now.getTime() - this.lastCheck.getTime()) < this.CHECK_INTERVAL) {
@@ -87,7 +87,7 @@ export class ShiftAutoCloser {
         actualEnd: autoEndTime,
         status: 'COMPLETED',
         notes: (shift.notes || '') + ' [Автозавершена системой через 30 мин после окончания]',
-        adminNotes: `Автозакрыта ${getCurrentUTC3Time().toISOString()} - смена просрочена более чем на 30 минут`
+        adminNotes: `Автозакрыта ${getSystemTime().toISOString()} - смена просрочена более чем на 30 минут`
       }
     });
 
@@ -193,7 +193,7 @@ export class ShiftAutoCloser {
       where: {
         status: 'ACTIVE',
         scheduledEnd: {
-          lt: new Date(getCurrentUTC3Time().getTime() - 30 * 60 * 1000)
+          lt: new Date(getSystemTime().getTime() - 30 * 60 * 1000)
         }
       }
     });

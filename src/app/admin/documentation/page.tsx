@@ -50,11 +50,17 @@ export default function DocumentationAdminPage() {
     handleDeleteSection
   } = useDocumentationActions({ sections, setSections, loadDocumentation, projectId: selectedProject?.id });
 
-  // Обработчики для проектов
+  // ИСПРАВЛЕНО: Обработчики для проектов с принудительной очисткой
   const handleProjectSelect = (project: ContentProject) => {
     console.log('🔄 Выбран проект:', project);
+    console.log('🔄 Project ID:', project?.id);
+    
+    // Сначала очищаем все
+    setSelectedPage(null);
+    setSections([]);
+    
+    // Затем устанавливаем новый проект
     setSelectedProject(project);
-    setSelectedPage(null); // Сбрасываем выбранную страницу при смене проекта
   };
 
   const handleCreateProject = async (projectData: { name: string; description?: string; type: string }) => {

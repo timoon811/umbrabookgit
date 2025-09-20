@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  getCurrentUTC3Time,
-  getCurrentDayStartUTC3,
+import { getCurrentDayStartUTC3,
   getShiftType
-} from "@/lib/time-utils";
+ } from '@/lib/time-utils';
+import { getSystemTime } from '@/lib/system-time';
 import { ShiftType as PrismaShiftType } from "@prisma/client";
 import { requireManagerAuth } from "@/lib/api-auth";
 import { requireAuth } from '@/lib/api-auth';
@@ -324,7 +323,7 @@ export async function POST(request: NextRequest) {
 
     // Проверяем дневную сумму для применения сетки бонусов
     // Используем UTC+3 время для корректного расчета 24-часового периода
-    const utc3Now = getCurrentUTC3Time();
+    const utc3Now = getSystemTime();
     const todayStart = getCurrentDayStartUTC3();
 
     // Определяем тип смены для текущего времени

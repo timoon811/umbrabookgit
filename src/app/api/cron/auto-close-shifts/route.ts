@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const now = getCurrentUTC3Time();
+    const now = getSystemTime();
     console.log(`🔄 [CRON-AUTO-CLOSE] Запуск автозакрытия смен: ${now.toISOString()}`);
 
     // Находим все активные смены, которые должны быть завершены
@@ -223,7 +223,7 @@ async function calculateShiftEarnings(
 
 // GET запрос для проверки статуса
 export async function GET(request: NextRequest) {
-  const now = getCurrentUTC3Time();
+  const now = getSystemTime();
   
   // Проверяем количество активных смен
   const activeShiftsCount = await prisma.processor_shifts.count({

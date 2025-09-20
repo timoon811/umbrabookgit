@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import UmbraLogo from "./UmbraLogo";
 import NotificationIcon from "./admin/NotificationIcon";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 import { useAuth } from "@/hooks/useAuth";
 import { getUserInitial } from "@/utils/userUtils";
 
@@ -18,7 +18,7 @@ export default function AdminHeader() {
   // Обновляем время каждую секунду
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(getCurrentUTC3Time());
+      setCurrentTime(getSystemTime());
     }, 1000);
 
     return () => clearInterval(interval);

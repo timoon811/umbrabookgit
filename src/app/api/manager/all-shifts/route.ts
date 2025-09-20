@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireManagerAuth } from "@/lib/api-auth";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from '@/lib/api-auth';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const { user } = authResult;
 
 // Проверяем авторизацию
-  const now = getCurrentUTC3Time();
+  const now = getSystemTime();
     
     // Получаем все настройки смен из базы данных
     const allShiftSettings = await prisma.shift_settings.findMany({

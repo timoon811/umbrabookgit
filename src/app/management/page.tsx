@@ -10,7 +10,7 @@ import { MetricCard, ProgressBar, LeaderboardCard, ProjectionCard, ShiftGoalsCar
 import SalaryStatsCard from "@/components/SalaryStatsCard";
 import WalletBalance from "@/components/WalletBalance";
 import { useAuth } from "@/hooks/useAuth";
-import { getCurrentUTC3Time } from "@/lib/time-utils";
+import { getSystemTime } from '@/lib/system-time';
 
 // Компонент управления сменами
 function ShiftManagementControls({ 
@@ -49,7 +49,7 @@ function ShiftManagementControls({
       if (availableShifts.length === 0) return;
 
       // ИСПРАВЛЕНО: Используем унифицированную функцию UTC+3 без зависимости от локального времени
-      const utc3Time = getCurrentUTC3Time();
+      const utc3Time = getSystemTime();
       const currentHour = utc3Time.getUTCHours();
       const currentMinute = utc3Time.getUTCMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
@@ -683,7 +683,7 @@ function ProcessingPageContent() {
   useEffect(() => {
     const updateTime = () => {
       // Используем унифицированную функцию UTC+3
-      const utc3Time = getCurrentUTC3Time();
+      const utc3Time = getSystemTime();
       setCurrentTime(utc3Time);
     };
 

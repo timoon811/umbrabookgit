@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerAuth } from "@/lib/api-auth";
-import {
-  getCurrentUTC3Time,
-  getCurrentDayStartUTC3,
+import { getCurrentDayStartUTC3,
   getCurrentWeekPeriod,
   getCurrentMonthPeriod
-} from "@/lib/time-utils";
+ } from '@/lib/time-utils';
+import { getSystemTime } from '@/lib/system-time';
 import { maskUserName } from "@/utils/userUtils";
 import { requireAuth } from '@/lib/api-auth';
 
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
   const customEnd = url.searchParams.get('endDate');
   
   const processorId = user.userId;
-    const utc3Now = getCurrentUTC3Time();
+    const utc3Now = getSystemTime();
     
     // Определяем периоды в зависимости от выбора
     let todayStart, weekPeriod, monthPeriod;
@@ -105,9 +104,9 @@ export async function GET(request: NextRequest) {
 
     // Корректные временные окончания для фильтрации
     // ИСПРАВЛЕНО: Используем корректное UTC+3 время вместо new Date()
-    const todayEnd = period === 'current' ? getCurrentUTC3Time() : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    const weekEnd = period === 'current' ? getCurrentUTC3Time() : weekPeriod.end || getCurrentUTC3Time();
-    const monthEnd = period === 'current' ? getCurrentUTC3Time() : monthPeriod.end || getCurrentUTC3Time();
+    const todayEnd = period === 'current' ? getSystemTime() : new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const weekEnd = period === 'current' ? getSystemTime() : weekPeriod.end || getSystemTime();
+    const monthEnd = period === 'current' ? getSystemTime() : monthPeriod.end || getSystemTime();
 
     // Статистика за разные периоды с корректными фильтрами
     const [todayDeposits, weekDeposits, monthDeposits] = await Promise.all([
@@ -210,7 +209,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Если нет активной смены, используем тип смены по времени и депозиты за день
-      const currentHour = getCurrentUTC3Time().getUTCHours();
+      const currentHour = getSystemTime().getUTCHours();
       if (currentHour >= 6 && currentHour < 14) {
         currentShiftType = 'MORNING';
       } else if (currentHour >= 14 && currentHour < 22) {
