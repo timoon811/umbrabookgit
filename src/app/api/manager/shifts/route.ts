@@ -7,10 +7,12 @@ import { ProcessorLogger } from "@/lib/processor-logger";
 import { SalaryLogger } from "@/lib/salary-logger";
 import { requireAuth } from '@/lib/api-auth';
 import { createShiftSafely } from "@/lib/shift-manager";
+import { ShiftAutoCloser } from "@/lib/shift-auto-closer";
 
 export async function GET(request: NextRequest) {
   try {
-  
+    // ДОБАВЛЕНО: Автоматическое закрытие просроченных смен
+    await ShiftAutoCloser.checkAndCloseOverdueShifts();
 
     const authResult = await requireAuth(request);
   
@@ -66,7 +68,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-  
+    // ДОБАВЛЕНО: Автоматическое закрытие просроченных смен при любой операции
+    await ShiftAutoCloser.checkAndCloseOverdueShifts();
 
     const authResult = await requireAuth(request);
   

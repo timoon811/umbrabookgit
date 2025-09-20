@@ -28,50 +28,71 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     );
   }, [setSections]);
 
-  // Генерация системных названий
+  // ИСПРАВЛЕНО: Улучшенная генерация системных названий
   const generateSystemPageName = (sectionId: string) => {
     // Получаем все страницы из всех секций для проверки глобальной уникальности title
     const allPages = sections.flatMap(s => s.pages);
     
-    let pageNumber = 1;
-    while (allPages.some(page => page.title === `page${pageNumber}`)) {
-      pageNumber++;
+    // Используем timestamp для гарантированной уникальности
+    const timestamp = Date.now();
+    const baseTitle = `page_${timestamp}`;
+    
+    // Дополнительная проверка на случай коллизий
+    let counter = 1;
+    let finalTitle = baseTitle;
+    while (allPages.some(page => page.title === finalTitle)) {
+      finalTitle = `${baseTitle}_${counter}`;
+      counter++;
     }
-    return `page${pageNumber}`;
+    
+    return finalTitle;
   };
 
   const generateSystemSlug = (sectionId: string) => {
     // Получаем все страницы из всех секций для проверки глобальной уникальности slug
     const allPages = sections.flatMap(s => s.pages);
     
-    // Сначала пробуем простую нумерацию
-    let pageNumber = 1;
-    while (allPages.some(page => page.slug === `page-${pageNumber}`)) {
-      pageNumber++;
+    // Используем timestamp для гарантированной уникальности
+    const timestamp = Date.now();
+    const baseSlug = `page-${timestamp}`;
+    
+    // Дополнительная проверка на случай коллизий
+    let counter = 1;
+    let finalSlug = baseSlug;
+    while (allPages.some(page => page.slug === finalSlug)) {
+      finalSlug = `${baseSlug}-${counter}`;
+      counter++;
     }
     
-    // Если достигли большого числа, добавляем timestamp для гарантированной уникальности
-    if (pageNumber > 1000) {
-      return `page-${Date.now()}`;
-    }
-    
-    return `page-${pageNumber}`;
+    return finalSlug;
   };
 
   const generateSystemSectionName = () => {
-    let sectionNumber = 1;
-    while (sections.some(section => section.name === `section${sectionNumber}`)) {
-      sectionNumber++;
+    // ИСПРАВЛЕНО: Используем timestamp для гарантированной уникальности
+    const timestamp = Date.now();
+    const baseName = `section_${timestamp}`;
+    
+    let counter = 1;
+    let finalName = baseName;
+    while (sections.some(section => section.name === finalName)) {
+      finalName = `${baseName}_${counter}`;
+      counter++;
     }
-    return `section${sectionNumber}`;
+    return finalName;
   };
 
   const generateSystemSectionKey = () => {
-    let sectionNumber = 1;
-    while (sections.some(section => section.key === `section-${sectionNumber}`)) {
-      sectionNumber++;
+    // ИСПРАВЛЕНО: Используем timestamp для гарантированной уникальности
+    const timestamp = Date.now();
+    const baseKey = `section-${timestamp}`;
+    
+    let counter = 1;
+    let finalKey = baseKey;
+    while (sections.some(section => section.key === finalKey)) {
+      finalKey = `${baseKey}-${counter}`;
+      counter++;
     }
-    return `section-${sectionNumber}`;
+    return finalKey;
   };
 
   // Улучшенное автосохранение с надежной обработкой ошибок
@@ -174,7 +195,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     updatePageInState(updatedPage);
   }, [updatePageInState]);
 
-  // Создание новой страницы
+  // ИСПРАВЛЕНО: Создание новой страницы без полной перезагрузки
   const handleCreatePage = async (sectionId: string): Promise<DocumentationPage | null> => {
     const systemName = generateSystemPageName(sectionId);
     const systemSlug = generateSystemSlug(sectionId);
@@ -198,7 +219,16 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
 
       if (response.ok) {
         const newPage = await response.json();
-        await loadDocumentation();
+        
+        // ИСПРАВЛЕНО: Обновляем состояние локально вместо полной перезагрузки
+        setSections(currentSections => 
+          currentSections.map(section => 
+            section.id === sectionId 
+              ? { ...section, pages: [...section.pages, newPage] }
+              : section
+          )
+        );
+        
         showSuccess('Страница создана', `Новая страница "${newPage.title}" успешно создана`);
         return newPage;
       } else {
@@ -207,11 +237,12 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       }
     } catch (error) {
       console.error('Ошибка создания страницы:', error);
+      showError('Ошибка создания', 'Произошла ошибка при создании страницы');
     }
     return null;
   };
 
-  // Удаление страницы (без подтверждения - подтверждение должно быть в UI)
+  // ИСПРАВЛЕНО: Удаление страницы без полной перезагрузки
   const handleDeletePage = async (pageId: string) => {
     if (!pageId) return false;
 
@@ -221,7 +252,13 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        // ИСПРАВЛЕНО: Удаляем страницу из локального состояния
+        setSections(currentSections => 
+          currentSections.map(section => ({
+            ...section,
+            pages: section.pages.filter(page => page.id !== pageId)
+          }))
+        );
         showSuccess('Страница удалена', 'Страница успешно удалена');
         return true;
       } else {
@@ -235,10 +272,10 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return false;
   };
 
-  // Создание нового раздела
+  // ИСПРАВЛЕНО: Создание нового раздела без полной перезагрузки
   const handleCreateSection = async () => {
     if (!projectId) {
-      showError('Выберите проект для создания раздела');
+      showError('Ошибка', 'Выберите проект для создания раздела');
       return;
     }
 
@@ -261,14 +298,26 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        const newSection = await response.json();
+        
+        // ИСПРАВЛЕНО: Обновляем состояние локально вместо полной перезагрузки
+        setSections(currentSections => [
+          ...currentSections,
+          { ...newSection, pages: [] } // Новый раздел с пустым массивом страниц
+        ]);
+        
+        showSuccess('Раздел создан', `Новый раздел "${newSection.name}" успешно создан`);
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка создания', errorData.error || 'Не удалось создать раздел');
       }
     } catch (error) {
       console.error('Ошибка создания раздела:', error);
+      showError('Ошибка создания', 'Произошла ошибка при создании раздела');
     }
   };
 
-  // Переименование раздела
+  // ИСПРАВЛЕНО: Переименование раздела без полной перезагрузки
   const handleUpdateSectionName = async (sectionId: string, newName: string) => {
     try {
       const response = await fetch(`/api/admin/documentation/sections/${sectionId}`, {
@@ -282,10 +331,21 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        // ИСПРАВЛЕНО: Обновляем только этот раздел в локальном состоянии
+        setSections(currentSections => 
+          currentSections.map(section => 
+            section.id === sectionId 
+              ? { ...section, name: newName }
+              : section
+          )
+        );
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка переименования', errorData.error || 'Не удалось переименовать раздел');
       }
     } catch (error) {
       console.error('Ошибка обновления названия раздела:', error);
+      showError('Ошибка переименования', 'Произошла ошибка при переименовании раздела');
     }
   };
 
@@ -317,7 +377,7 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return false;
   };
 
-  // Скрытие/показ раздела
+  // ИСПРАВЛЕНО: Скрытие/показ раздела без полной перезагрузки
   const handleToggleSectionVisibility = async (sectionId: string) => {
     try {
       const section = sections.find(s => s.id === sectionId);
@@ -334,10 +394,21 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        // ИСПРАВЛЕНО: Обновляем только этот раздел в локальном состоянии
+        setSections(currentSections => 
+          currentSections.map(s => 
+            s.id === sectionId 
+              ? { ...s, isVisible: !s.isVisible }
+              : s
+          )
+        );
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка изменения видимости', errorData.error || 'Не удалось изменить видимость раздела');
       }
     } catch (error) {
       console.error('Ошибка изменения видимости раздела:', error);
+      showError('Ошибка изменения видимости', 'Произошла ошибка при изменении видимости раздела');
     }
   };
 
@@ -372,13 +443,13 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
     return false;
   };
 
-  // Удаление раздела
+  // ИСПРАВЛЕНО: Удаление раздела без полной перезагрузки
   const handleDeleteSection = async (sectionId: string) => {
     const section = sections.find(s => s.id === sectionId);
     if (!section) return;
 
     if (section.pages.length > 0) {
-      alert('Нельзя удалить раздел, в котором есть страницы. Сначала удалите все страницы.');
+      showError('Ошибка удаления', 'Нельзя удалить раздел, в котором есть страницы. Сначала удалите все страницы.');
       return;
     }
 
@@ -390,10 +461,18 @@ export function useDocumentationActions({ sections, setSections, loadDocumentati
       });
 
       if (response.ok) {
-        await loadDocumentation();
+        // ИСПРАВЛЕНО: Удаляем раздел из локального состояния
+        setSections(currentSections => 
+          currentSections.filter(s => s.id !== sectionId)
+        );
+        showSuccess('Раздел удален', 'Раздел успешно удален');
+      } else {
+        const errorData = await response.json();
+        showError('Ошибка удаления', errorData.error || 'Не удалось удалить раздел');
       }
     } catch (error) {
       console.error('Ошибка удаления раздела:', error);
+      showError('Ошибка удаления', 'Произошла ошибка при удалении раздела');
     }
   };
 

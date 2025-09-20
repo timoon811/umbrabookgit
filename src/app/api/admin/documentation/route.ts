@@ -209,8 +209,13 @@ export async function POST(request: NextRequest) {
 // PUT /api/admin/documentation - Переупорядочивание страниц и разделов
 export async function PUT(request: NextRequest) {
   try {
+    const authResult = await requireAdminAuth(request);
     
-    await checkAdminAuth();
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    
+    const { user } = authResult;
 
     const body = await request.json();
     const { type, sections, pages, sectionId } = body;
