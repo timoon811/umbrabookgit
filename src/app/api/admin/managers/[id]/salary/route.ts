@@ -48,9 +48,9 @@ export async function GET(
     }
 
     // Рассчитываем статистику зарплаты
-    const monthlyEarnings = user.processorDeposits.reduce((sum, d) => sum + d.processorEarnings, 0);
-    const lastPaidRequest = user.salaryRequests[0];
-    const totalPaid = user.salaryRequests.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0);
+    const monthlyEarnings = targetUser.processorDeposits.reduce((sum, d) => sum + d.processorEarnings, 0);
+    const lastPaidRequest = targetUser.salaryRequests[0];
+    const totalPaid = targetUser.salaryRequests.reduce((sum, s) => sum + (s.calculatedAmount || s.requestedAmount), 0);
 
     const salaryData = {
       baseSalary: 0, // Base hourly rate (можно добавить в схему)

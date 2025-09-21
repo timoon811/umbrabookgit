@@ -52,7 +52,7 @@ export async function GET(
       fixedBonus: 0, // Фиксированный бонус
       customBonusRules: bonusSettings?.description || "",
       commissionRate: 30.0, // Default commission rate
-      shiftTypes: user.assignedShifts.map(assignment => ({
+      shiftTypes: targetUser.assignedShifts.map(assignment => ({
         type: assignment.shiftSetting.shiftType,
         name: assignment.shiftSetting.name,
         startTime: `${String(assignment.shiftSetting.startHour).padStart(2, '0')}:${String(assignment.shiftSetting.startMinute).padStart(2, '0')}`,
@@ -60,12 +60,12 @@ export async function GET(
         isActive: assignment.isActive
       })),
       userInfo: {
-        name: user.name,
-        email: user.email,
-        telegram: user.telegram,
-        role: user.role,
-        status: user.status,
-        isBlocked: user.isBlocked
+        name: targetUser.name,
+        email: targetUser.email,
+        telegram: targetUser.telegram,
+        role: targetUser.role,
+        status: targetUser.status,
+        isBlocked: targetUser.isBlocked
       }
     };
 
