@@ -128,7 +128,6 @@ async function getCombinedDeposits(params: {
         createdAt: deposit.createdAt,
         processor: deposit.processor,
         type: 'manual', // Тип: ручные депозиты обработчиков
-        status: deposit.status,
         source: 'Обработчик',
         // Дополнительные поля только для processor_deposits
         commissionRate: deposit.commissionRate,

@@ -76,7 +76,6 @@ export async function POST(request: NextRequest) {
       const yesterdayDeposits = await prisma.processor_deposits.findMany({
         where: {
           processorId: manager.id,
-          status: 'APPROVED',
           createdAt: {
             gte: yesterdayStart,
             lte: yesterdayEnd
@@ -87,7 +86,6 @@ export async function POST(request: NextRequest) {
       const todayDeposits = await prisma.processor_deposits.findMany({
         where: {
           processorId: manager.id,
-          status: 'APPROVED',
           createdAt: {
             gte: todayStart
           }

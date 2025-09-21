@@ -149,7 +149,6 @@ export async function POST(request: NextRequest) {
     const approvedDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
-        status: "APPROVED",
         createdAt: {
           gte: periodStart,
           lte: periodEnd,

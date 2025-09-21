@@ -148,7 +148,6 @@ async function calculateAndLogShiftEarnings(
     const shiftDeposits = await prisma.processor_deposits.findMany({
       where: {
         processorId,
-        status: 'APPROVED',
         createdAt: {
           gte: shift.actualStart || undefined,
           lte: shift.actualEnd || new Date(),

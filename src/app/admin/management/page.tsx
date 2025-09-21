@@ -838,17 +838,8 @@ export default function AdminManagementPage() {
                             </span>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              deposit.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              deposit.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              deposit.status === 'PROCESSED' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                              deposit.status === 'REJECTED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                              'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                            }`}>
-                              {deposit.status === 'PENDING' ? 'Ожидает' :
-                               deposit.status === 'APPROVED' ? 'Одобрен' :
-                               deposit.status === 'PROCESSED' ? 'Обработан' :
-                               deposit.status === 'REJECTED' ? 'Отклонен' : deposit.status}
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                              Активен
                             </span>
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">

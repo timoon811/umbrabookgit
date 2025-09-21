@@ -280,16 +280,15 @@ async function calculateAndLogShiftEarnings(
     }
 
     // 2. Рассчитываем заработки от депозитов за смену
-    const shiftDeposits = await prisma.processor_deposits.findMany({
-      where: {
-        processorId,
-        status: 'APPROVED',
-        createdAt: {
-          gte: shift.actualStart || undefined,
-          lte: shift.actualEnd || new Date(),
+      const shiftDeposits = await prisma.processor_deposits.findMany({
+        where: {
+          processorId,
+          createdAt: {
+            gte: shift.actualStart || undefined,
+            lte: shift.actualEnd || new Date(),
+          },
         },
-      },
-    });
+      });
 
     // Логируем заработки от каждого депозита
     for (const deposit of shiftDeposits) {
@@ -351,16 +350,15 @@ async function calculateAndLogShiftEarnings(
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-      const monthlyDeposits = await prisma.processor_deposits.findMany({
-        where: {
-          processorId,
-          status: 'APPROVED',
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
+    const monthlyDeposits = await prisma.processor_deposits.findMany({
+      where: {
+        processorId,
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd,
         },
-      });
+      },
+    });
 
       const monthlyVolume = monthlyDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
 

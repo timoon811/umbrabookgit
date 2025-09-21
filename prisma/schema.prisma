@@ -383,12 +383,6 @@ enum TransactionType {
   EXCHANGE
 }
 
-enum DepositStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  PROCESSING
-}
 
 enum SalaryRequestStatus {
   PENDING
@@ -537,7 +531,6 @@ model processor_deposits {
   leadSource        String?
   proofs            String?
   notes             String?
-  status            DepositStatus @default(PENDING)
   moderatorId       String?
   moderatorComment  String?
   moderatedAt       DateTime?
@@ -554,7 +547,6 @@ model processor_deposits {
 
   @@index([processorId])
   @@index([playerId])
-  @@index([status])
   @@index([createdAt])
   @@map("processor_deposits")
 }

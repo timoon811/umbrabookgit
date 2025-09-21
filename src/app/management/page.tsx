@@ -273,7 +273,7 @@ interface ManagerDeposit {
   amount: number;
   currency: string;
   currencyType?: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "PROCESSING";
+  // Статус убран - все депозиты автоматически добавляются в систему
   createdAt: string;
   bonusAmount: number;
   proofs?: string;
