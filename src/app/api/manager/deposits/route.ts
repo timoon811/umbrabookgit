@@ -316,7 +316,7 @@ export async function POST(request: NextRequest) {
     const platformCommissionPercent = platformCommission?.commissionPercent || 0;
 
     // Проверяем дневную сумму для применения сетки бонусов
-    // Используем UTC+3 время для корректного расчета 24-часового периода
+    // Используем Стамбульское время для корректного расчета 24-часового периода
     const utc3Now = getSystemTime();
     const todayStart = getCurrentDayStartUTC3();
 

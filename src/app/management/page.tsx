@@ -48,7 +48,7 @@ function ShiftManagementControls({
       const availableShifts = allShifts.filter(s => s.isAvailableForManager);
       if (availableShifts.length === 0) return;
 
-      // ИСПРАВЛЕНО: Используем унифицированную функцию UTC+3 без зависимости от локального времени
+      // ИСПРАВЛЕНО: Используем Стамбульское время без зависимости от локального времени
       const utc3Time = getSystemTime();
       const currentHour = utc3Time.getHours();
       const currentMinute = utc3Time.getMinutes();
@@ -682,10 +682,10 @@ function ProcessingPageContent() {
     }
   }, [user, router]);
 
-  // ИСПРАВЛЕНО: Обновление текущего времени каждую секунду (UTC+3)
+  // ИСПРАВЛЕНО: Обновление текущего времени каждую секунду (Стамбул)
   useEffect(() => {
     const updateTime = () => {
-      // Используем унифицированную функцию UTC+3
+      // Используем Стамбульское время
       const utc3Time = getSystemTime();
       setCurrentTime(utc3Time);
     };
@@ -1349,7 +1349,7 @@ function ProcessingPageContent() {
                   {/* Текущее время */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Время UTC+3</span>
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Время Стамбула</span>
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>

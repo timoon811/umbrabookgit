@@ -245,7 +245,7 @@ function calculateShiftTimes(
   
   // Если настройки смены есть, рассчитываем на их основе
   if (shiftSettings) {
-    // ✅ ИСПРАВЛЕНО: Система уже работает в UTC+3, не нужно дополнительного преобразования
+    // ✅ ИСПРАВЛЕНО: Система работает в Europe/Istanbul, не нужно дополнительного преобразования
     const scheduledStart = new Date(shiftDate);
     scheduledStart.setHours(shiftSettings.startHour, shiftSettings.startMinute, 0, 0);
 
