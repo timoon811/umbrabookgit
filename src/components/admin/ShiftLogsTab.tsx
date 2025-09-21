@@ -26,7 +26,6 @@ interface ShiftLog {
 
 interface ShiftStats {
   total: number;
-  scheduled: number;
   active: number;
   completed: number;
   missed: number;
@@ -372,8 +371,8 @@ export default function ShiftLogsTab() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">{stats.scheduled}</div>
-              <div className="text-xs text-blue-600 dark:text-blue-400">Запланировано</div>
+              <div className="text-lg font-semibold text-blue-700 dark:text-blue-300">{stats.total}</div>
+              <div className="text-xs text-blue-600 dark:text-blue-400">Всего смен</div>
             </div>
           </div>
           

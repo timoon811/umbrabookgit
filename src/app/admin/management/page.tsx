@@ -25,7 +25,6 @@ interface DepositData {
     email: string;
   } | null;
   type: 'manual' | 'external'; // Тип депозита
-  status: string;
   source: string; // Источник депозита
   // Дополнительные поля для ручных депозитов
   commissionRate?: number;
